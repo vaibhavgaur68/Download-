@@ -125,10 +125,31 @@ input,textarea{-webkit-user-select:text;user-select:text;}
 #viewport::-webkit-scrollbar-track{background:transparent;}
 #viewport::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 #cv-wrap{display:flex;justify-content:center;align-items:flex-start;padding:40px;min-width:min-content;}
-#canvas{
-  display:block;background:var(--paper);border-radius:2px;
+
+/* ── TWO-LAYER CANVAS STACK ── */
+/* bgCanvas: holds pattern permanently (eraser never touches it) */
+/* canvas:   holds user drawing (eraser uses destination-out safely) */
+#canvas-stack{
+  position:relative;
+  display:inline-block;
+  border-radius:2px;
   box-shadow:0 0 0 1px rgba(0,0,0,.12),0 8px 40px rgba(0,0,0,.5);
-  touch-action:none;cursor:crosshair;
+}
+#bg-canvas{
+  display:block;
+  background:var(--paper);
+  border-radius:2px;
+  pointer-events:none; /* bg canvas never gets touch events */
+}
+#canvas{
+  display:block;
+  background:transparent; /* transparent so bgCanvas shows through */
+  border-radius:2px;
+  position:absolute;
+  top:0;left:0;
+  /* Always none — finger scrolling is handled manually in JS */
+  touch-action:none;
+  cursor:crosshair;
 }
 
 /* ── FLOATING TOOLBAR ── */
@@ -324,6 +345,20 @@ input,textarea{-webkit-user-select:text;user-select:text;}
   background-image:radial-gradient(rgba(0,0,0,.25) 1px,transparent 1px);
   background-size:20px 20px;
 }
+
+/* ── CANVAS SIZE SETTINGS ── */
+.size-presets-row{display:flex;flex-wrap:wrap;gap:6px;}
+.size-preset-btn{
+  padding:6px 10px;background:rgba(255,255,255,.05);
+  border:1px solid var(--border);border-radius:6px;color:var(--dim);
+  cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;
+  transition:all .15s;
+}
+.size-preset-btn:hover{border-color:rgba(201,149,58,.5);color:var(--accent-hi);}
+.size-wh-row{display:flex;gap:8px;align-items:center;}
+.size-wh-row .s-inp{text-align:center;}
+.size-x-lbl{color:var(--dim);font-size:14px;flex-shrink:0;}
+
 .s-footer{
   padding:14px 22px;border-top:1px solid var(--border);
   display:flex;gap:8px;justify-content:flex-end;
@@ -415,7 +450,11 @@ input,textarea{-webkit-user-select:text;user-select:text;}
   <!-- CANVAS VIEWPORT -->
   <div id="viewport">
     <div id="cv-wrap">
-      <canvas id="canvas"></canvas>
+      <!-- Two-layer stack: bgCanvas (pattern) sits behind canvas (drawings) -->
+      <div id="canvas-stack">
+        <canvas id="bg-canvas"></canvas>
+        <canvas id="canvas"></canvas>
+      </div>
     </div>
   </div>
 
@@ -534,7 +573,30 @@ input,textarea{-webkit-user-select:text;user-select:text;}
             <option value="pencil">Pencil Only — Palm Rejection On</option>
             <option value="all">All Input — Draw with finger too</option>
           </select>
-          <div class="s-hint">With "Pencil Only", fingers scroll/pan and only Apple Pencil draws.</div>
+          <div class="s-hint">With "Pencil Only", your finger scrolls/pans and only Apple Pencil draws.</div>
+        </div>
+      </div>
+      <!-- ── CANVAS SIZE ── -->
+      <div class="s-sec">
+        <div class="s-sec-t">Canvas Size</div>
+        <div class="s-row">
+          <label class="s-lbl">Presets</label>
+          <div class="size-presets-row">
+            <button class="size-preset-btn" onclick="applyPreset(1240,1754)">A4 Portrait</button>
+            <button class="size-preset-btn" onclick="applyPreset(1754,1240)">A4 Landscape</button>
+            <button class="size-preset-btn" onclick="applyPreset(877,1240)">A5 Portrait</button>
+            <button class="size-preset-btn" onclick="applyPreset(1275,1650)">US Letter</button>
+            <button class="size-preset-btn" onclick="applyPreset(1200,1200)">Square</button>
+          </div>
+        </div>
+        <div class="s-row">
+          <label class="s-lbl">Custom Size (pixels)</label>
+          <div class="size-wh-row">
+            <input type="number" class="s-inp" id="s-cw" placeholder="Width" min="400" max="4000" style="flex:1;">
+            <span class="size-x-lbl">×</span>
+            <input type="number" class="s-inp" id="s-ch" placeholder="Height" min="400" max="4000" style="flex:1;">
+          </div>
+          <div class="s-hint">Width × Height in pixels (400–4000). Takes effect when you save settings.</div>
         </div>
       </div>
     </div>
@@ -549,10 +611,10 @@ input,textarea{-webkit-user-select:text;user-select:text;}
 
 <script>
 // ═══════════════════════════════════════════
-// CONSTANTS
+// CONSTANTS  (let so canvas size can change)
 // ═══════════════════════════════════════════
-const CW = 1240;   // canvas logical width
-const CH = 1754;   // canvas logical height (A4 proportions)
+let CW = 1240;   // canvas logical width  (A4)
+let CH = 1754;   // canvas logical height (A4)
 const MIN_Z = 0.2;
 const MAX_Z = 5.0;
 
@@ -584,7 +646,7 @@ const S = {
   drawing: false,
   lastPt: null,
   strokePts: [],
-  snapAtStrokeStart: null,  // for redo-friendly start-of-stroke
+  snapAtStrokeStart: null,
   undoStack: [],
   redoStack: [],
   aiOpen: false,
@@ -595,51 +657,61 @@ const S = {
     model: 'llama-3.3-70b-versatile',
     sys: 'You are a helpful note-taking assistant in the Inkwell app. Help the user with their notes, answer questions, summarize, create flashcards, or explain topics clearly.',
     bg: 'plain',
-    input: 'pencil'
+    input: 'pencil',
+    cw: 1240,
+    ch: 1754
   }
 };
 
 // ═══════════════════════════════════════════
-// CANVAS
+// CANVAS SETUP  —  TWO LAYERS
+// bgCanvas: background pattern  (eraser never touches this)
+// canvas:   user drawings       (eraser uses destination-out safely)
 // ═══════════════════════════════════════════
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d', {willReadFrequently: true});
+const canvas   = document.getElementById('canvas');
+const bgCanvas = document.getElementById('bg-canvas');
+const ctx      = canvas.getContext('2d', {willReadFrequently: true});
+const bgCtx    = bgCanvas.getContext('2d');
 
 function initCanvas() {
-  canvas.width = CW;
-  canvas.height = CH;
-  canvas.style.width = CW + 'px';
-  canvas.style.height = CH + 'px';
+  // Size both canvases identically
+  canvas.width    = CW;  canvas.height    = CH;
+  bgCanvas.width  = CW;  bgCanvas.height  = CH;
+  // CSS size (will be adjusted by applyZoom)
+  canvas.style.width    = CW + 'px'; canvas.style.height    = CH + 'px';
+  bgCanvas.style.width  = CW + 'px'; bgCanvas.style.height  = CH + 'px';
   drawBg();
 }
 
+// drawBg draws ONLY onto bgCanvas.
+// The main canvas stays transparent so erasing only removes drawing strokes.
 function drawBg() {
-  ctx.fillStyle = '#faf6ed';
-  ctx.fillRect(0, 0, CW, CH);
+  bgCtx.fillStyle = '#faf6ed';
+  bgCtx.fillRect(0, 0, CW, CH);
   const bg = S.cfg.bg;
 
   if (bg === 'lined') {
-    ctx.strokeStyle = 'rgba(180,160,130,.45)';
-    ctx.lineWidth = 1;
+    bgCtx.strokeStyle = 'rgba(180,160,130,.45)';
+    bgCtx.lineWidth = 1;
     for (let y = 36; y < CH; y += 36) {
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
+      bgCtx.beginPath(); bgCtx.moveTo(0,y); bgCtx.lineTo(CW,y); bgCtx.stroke();
     }
-    ctx.strokeStyle = 'rgba(200,120,120,.3)';
-    ctx.beginPath(); ctx.moveTo(80,0); ctx.lineTo(80,CH); ctx.stroke();
+    bgCtx.strokeStyle = 'rgba(200,120,120,.3)';
+    bgCtx.beginPath(); bgCtx.moveTo(80,0); bgCtx.lineTo(80,CH); bgCtx.stroke();
   } else if (bg === 'grid') {
-    ctx.strokeStyle = 'rgba(180,160,130,.35)';
-    ctx.lineWidth = 1;
+    bgCtx.strokeStyle = 'rgba(180,160,130,.35)';
+    bgCtx.lineWidth = 1;
     for (let x = 0; x < CW; x += 36) {
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,CH); ctx.stroke();
+      bgCtx.beginPath(); bgCtx.moveTo(x,0); bgCtx.lineTo(x,CH); bgCtx.stroke();
     }
     for (let y = 0; y < CH; y += 36) {
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
+      bgCtx.beginPath(); bgCtx.moveTo(0,y); bgCtx.lineTo(CW,y); bgCtx.stroke();
     }
   } else if (bg === 'dot') {
-    ctx.fillStyle = 'rgba(150,130,100,.5)';
+    bgCtx.fillStyle = 'rgba(150,130,100,.5)';
     for (let x = 24; x < CW; x += 24) {
       for (let y = 24; y < CH; y += 24) {
-        ctx.beginPath(); ctx.arc(x,y,1.2,0,Math.PI*2); ctx.fill();
+        bgCtx.beginPath(); bgCtx.arc(x,y,1.2,0,Math.PI*2); bgCtx.fill();
       }
     }
   }
@@ -687,6 +759,8 @@ function applyCtx(p) {
       ctx.lineWidth   = S.strokeW * 6;
       break;
     case 'eraser':
+      // destination-out is now safe — it only erases the drawing canvas.
+      // The bgCanvas underneath (with lines/dots/grid) is never touched.
       ctx.globalCompositeOperation = 'destination-out';
       ctx.globalAlpha = 1;
       ctx.strokeStyle = 'rgba(0,0,0,1)';
@@ -736,25 +810,45 @@ function drawFullStroke(pts) {
 
 // ═══════════════════════════════════════════
 // POINTER EVENTS
+// FIX: canvas always has touch-action:none.
+// When in "pencil only" mode, finger touches manually scroll the viewport.
+// Stylus (pointerType === 'pen') always draws regardless of mode.
 // ═══════════════════════════════════════════
 function shouldDraw(e) {
   if (S.cfg.input === 'pencil') return e.pointerType === 'pen';
   return true;
 }
 
+const vp = document.getElementById('viewport');
+
+// State for manual finger-scroll when canvas has touch-action:none
+let _fingerScroll = null;
+
 canvas.addEventListener('pointerdown', e => {
-  if (!shouldDraw(e)) return;
+  // ── FINGER in pencil-only mode → scroll the viewport manually ──
+  if (!shouldDraw(e)) {
+    if (e.pointerType === 'touch') {
+      _fingerScroll = {
+        x: e.clientX, y: e.clientY,
+        sl: vp.scrollLeft, st: vp.scrollTop
+      };
+      canvas.setPointerCapture(e.pointerId); // so move/up fire on canvas
+    }
+    return;
+  }
+
+  // ── STYLUS / finger-in-all-mode → draw ──
   e.preventDefault();
   canvas.setPointerCapture(e.pointerId);
 
   pushUndo();
 
   const pt = getPt(e);
-  S.drawing  = true;
-  S.lastPt   = pt;
+  S.drawing   = true;
+  S.lastPt    = pt;
   S.strokePts = [pt];
 
-  // dot
+  // dot at start
   applyCtx(pt);
   ctx.beginPath();
   ctx.arc(pt.x, pt.y, ctx.lineWidth/2, 0, Math.PI*2);
@@ -763,12 +857,20 @@ canvas.addEventListener('pointerdown', e => {
 }, {passive:false});
 
 canvas.addEventListener('pointermove', e => {
+  // ── FINGER SCROLL ──
+  if (_fingerScroll && e.pointerType === 'touch') {
+    const dx = _fingerScroll.x - e.clientX;
+    const dy = _fingerScroll.y - e.clientY;
+    vp.scrollLeft = _fingerScroll.sl + dx;
+    vp.scrollTop  = _fingerScroll.st + dy;
+    return;
+  }
+
   if (!S.drawing || !shouldDraw(e)) return;
   e.preventDefault();
   const pt = getPt(e);
 
   if (S.tool === 'marker') {
-    // Restore snapshot and redraw full stroke (prevents darkening on overlap)
     if (S.snapAtStrokeStart) ctx.putImageData(S.snapAtStrokeStart, 0, 0);
     S.strokePts.push(pt);
     drawFullStroke(S.strokePts);
@@ -781,8 +883,14 @@ canvas.addEventListener('pointermove', e => {
   resetCtx();
 }, {passive:false});
 
-canvas.addEventListener('pointerup',     e => endDraw());
-canvas.addEventListener('pointercancel', e => endDraw());
+canvas.addEventListener('pointerup', e => {
+  if (_fingerScroll) { _fingerScroll = null; return; }
+  endDraw();
+});
+canvas.addEventListener('pointercancel', e => {
+  _fingerScroll = null;
+  endDraw();
+});
 canvas.addEventListener('pointerleave',  e => { if (S.drawing) endDraw(); });
 canvas.addEventListener('contextmenu',   e => e.preventDefault());
 
@@ -796,13 +904,12 @@ function endDraw() {
 }
 
 // ═══════════════════════════════════════════
-// UNDO / REDO
+// UNDO / REDO  (operates on drawing canvas only)
 // ═══════════════════════════════════════════
 function pushUndo() {
   const snap = ctx.getImageData(0, 0, CW, CH);
   S.undoStack.push(snap);
   if (S.undoStack.length > 30) S.undoStack.shift();
-  // Also save for marker wet-ink
   S.snapAtStrokeStart = snap;
 }
 
@@ -825,11 +932,11 @@ function redo() {
 // ═══════════════════════════════════════════
 // ZOOM
 // ═══════════════════════════════════════════
-const vp = document.getElementById('viewport');
-
 function applyZoom() {
-  canvas.style.width  = (CW * S.zoom) + 'px';
-  canvas.style.height = (CH * S.zoom) + 'px';
+  const w = (CW * S.zoom) + 'px';
+  const h = (CH * S.zoom) + 'px';
+  canvas.style.width    = w; canvas.style.height    = h;
+  bgCanvas.style.width  = w; bgCanvas.style.height  = h;
   document.getElementById('zoom-pct').textContent = Math.round(S.zoom*100) + '%';
 }
 
@@ -837,7 +944,7 @@ function setZoom(z, px, py) {
   const prev = S.zoom;
   S.zoom = Math.max(MIN_Z, Math.min(MAX_Z, z));
   if (px !== undefined) {
-    const r = S.zoom / prev;
+    const r  = S.zoom / prev;
     const sl = vp.scrollLeft, st = vp.scrollTop;
     applyZoom();
     vp.scrollLeft = (sl + px) * r - px;
@@ -871,8 +978,8 @@ vp.addEventListener('touchstart', e => {
 
 vp.addEventListener('touchmove', e => {
   if (e.touches.length === 2 && _pinchD) {
-    const d = pDist(e);
-    const r = vp.getBoundingClientRect();
+    const d  = pDist(e);
+    const r  = vp.getBoundingClientRect();
     const cx = ((e.touches[0].clientX + e.touches[1].clientX)/2) - r.left;
     const cy = ((e.touches[0].clientY + e.touches[1].clientY)/2) - r.top;
     setZoom(_pinchZ * d / _pinchD, cx, cy);
@@ -949,7 +1056,6 @@ function toggleColorPop() {
   if (!was) { buildColorPop(); p.classList.add('open'); }
 }
 
-// Init color
 document.getElementById('cur-color').style.background = S.color;
 
 // ═══════════════════════════════════════════
@@ -991,6 +1097,9 @@ document.addEventListener('pointerdown', e => {
 
 // ═══════════════════════════════════════════
 // PAGES
+// savePage: composites bgCanvas + canvas → PNG (bg pattern preserved in export)
+// loadPage: drawBg onto bgCanvas, then draw saved composite onto ctx
+// clearCanvas: only clears ctx (bgCanvas/pattern stays intact)
 // ═══════════════════════════════════════════
 function initPages() {
   if (!S.pages.length) {
@@ -1024,7 +1133,10 @@ function switchPage(idx) {
 function loadPage(idx) {
   const p = S.pages[idx];
   document.getElementById('page-title-inp').value = p.title;
+  // Always redraw background on the bg layer
   drawBg();
+  // Clear the drawing layer
+  ctx.clearRect(0, 0, CW, CH);
   if (p.data) {
     const img = new Image();
     img.onload = () => ctx.drawImage(img, 0, 0);
@@ -1034,7 +1146,13 @@ function loadPage(idx) {
 }
 
 function savePage() {
-  S.pages[S.pageIdx].data = canvas.toDataURL('image/png');
+  // Composite bgCanvas (pattern) + canvas (drawings) into one image
+  const off    = document.createElement('canvas');
+  off.width    = CW; off.height = CH;
+  const offCtx = off.getContext('2d');
+  offCtx.drawImage(bgCanvas, 0, 0);
+  offCtx.drawImage(canvas,   0, 0);
+  S.pages[S.pageIdx].data = off.toDataURL('image/png');
   persist();
 }
 
@@ -1046,6 +1164,7 @@ function addPage() {
   S.undoStack = [];
   S.redoStack = [];
   drawBg();
+  ctx.clearRect(0, 0, CW, CH);
   document.getElementById('page-title-inp').value = `Page ${n}`;
   renderPages();
 }
@@ -1074,13 +1193,11 @@ function updateTitle(v) {
 function toggleSidebar() {
   S.sbOpen ? closeSidebar() : openSidebar();
 }
-
 function openSidebar() {
   S.sbOpen = true;
   document.getElementById('sidebar').classList.remove('closed');
   document.getElementById('sb-ov').classList.add('on');
 }
-
 function closeSidebar() {
   S.sbOpen = false;
   document.getElementById('sidebar').classList.add('closed');
@@ -1092,9 +1209,15 @@ function closeSidebar() {
 // ═══════════════════════════════════════════
 function exportPage() {
   savePage();
+  // Composite both layers for a clean export
+  const off    = document.createElement('canvas');
+  off.width    = CW; off.height = CH;
+  const offCtx = off.getContext('2d');
+  offCtx.drawImage(bgCanvas, 0, 0);
+  offCtx.drawImage(canvas,   0, 0);
   const a = document.createElement('a');
   a.download = (S.pages[S.pageIdx].title||'page') + '.png';
-  a.href = canvas.toDataURL('image/png');
+  a.href = off.toDataURL('image/png');
   a.click();
   toast('Exported!');
 }
@@ -1102,9 +1225,43 @@ function exportPage() {
 function clearCanvas() {
   if (!confirm('Clear this page?')) return;
   pushUndo();
-  drawBg();
+  // Only clear the drawing layer. bgCanvas pattern stays untouched.
+  ctx.clearRect(0, 0, CW, CH);
   savePage();
   toast('Page cleared');
+}
+
+// ═══════════════════════════════════════════
+// CANVAS SIZE  (custom size feature)
+// ═══════════════════════════════════════════
+function applyPreset(w, h) {
+  document.getElementById('s-cw').value = w;
+  document.getElementById('s-ch').value = h;
+  toast(`Preset set to ${w} × ${h} — click Save Settings to apply`);
+}
+
+function resizeCanvas(w, h) {
+  savePage();          // save current content at old size
+  CW = w; CH = h;
+  S.cfg.cw = CW; S.cfg.ch = CH;
+
+  // Resize both canvases
+  canvas.width   = CW; canvas.height   = CH;
+  bgCanvas.width = CW; bgCanvas.height = CH;
+
+  S.undoStack = []; S.redoStack = [];
+
+  // Redraw bg + scale existing page content to new size
+  drawBg();
+  ctx.clearRect(0, 0, CW, CH);
+  const p = S.pages[S.pageIdx];
+  if (p.data) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, CW, CH);
+    img.src = p.data;
+  }
+  applyZoom();
+  toast(`Canvas resized to ${CW} × ${CH}`);
 }
 
 // ═══════════════════════════════════════════
@@ -1214,6 +1371,8 @@ function openSettings() {
   document.getElementById('s-model').value = S.cfg.model;
   document.getElementById('s-sys').value   = S.cfg.sys;
   document.getElementById('s-palm').value  = S.cfg.input;
+  document.getElementById('s-cw').value    = CW;
+  document.getElementById('s-ch').value    = CH;
   document.querySelectorAll('.bg-opt').forEach(e =>
     e.classList.toggle('on', e.dataset.bg === S.cfg.bg)
   );
@@ -1239,24 +1398,33 @@ function saveSettings() {
   S.cfg.model = document.getElementById('s-model').value;
   S.cfg.sys   = document.getElementById('s-sys').value.trim();
   S.cfg.input = document.getElementById('s-palm').value;
+
+  // Canvas size
+  const newW = Math.max(400, Math.min(4000, parseInt(document.getElementById('s-cw').value) || CW));
+  const newH = Math.max(400, Math.min(4000, parseInt(document.getElementById('s-ch').value) || CH));
+  const sizeChanged = (newW !== CW || newH !== CH);
+
+  S.cfg.cw = newW;
+  S.cfg.ch = newH;
   localStorage.setItem('inkwell_cfg', JSON.stringify(S.cfg));
 
-  // Update badge
+  // Update AI badge
   const opt = document.getElementById('s-model');
   document.getElementById('ai-badge').textContent =
     opt.options[opt.selectedIndex].text.split(' ')[0].toLowerCase();
 
-  // Apply bg change (new bg drawn under current content)
+  // Apply background change
   const cur = S.pages[S.pageIdx].data;
   drawBg();
-  if (cur) {
+  if (!sizeChanged && cur) {
+    ctx.clearRect(0, 0, CW, CH);
     const img = new Image();
     img.onload = () => ctx.drawImage(img, 0, 0);
     img.src = cur;
   }
 
-  // Update touch-action for palm rejection
-  canvas.style.touchAction = S.cfg.input === 'pencil' ? 'pan-x pan-y' : 'none';
+  // Apply canvas size if changed
+  if (sizeChanged) resizeCanvas(newW, newH);
 
   closeSettings();
   toast('Settings saved ✓');
@@ -1267,6 +1435,9 @@ function loadCfg() {
   try {
     const s = JSON.parse(localStorage.getItem('inkwell_cfg')||'{}');
     Object.assign(S.cfg, s);
+    // Restore custom canvas size
+    if (S.cfg.cw) CW = S.cfg.cw;
+    if (S.cfg.ch) CH = S.cfg.ch;
   } catch{}
 }
 
@@ -1290,7 +1461,7 @@ function loadStorage() {
   try {
     const raw = localStorage.getItem('inkwell_pages');
     if (raw) {
-      const d = JSON.parse(raw);
+      const d  = JSON.parse(raw);
       S.pages   = d.pages || [];
       S.pageIdx = d.idx   || 0;
     }
@@ -1313,7 +1484,7 @@ function toast(msg, ms=2000) {
 // INIT
 // ═══════════════════════════════════════════
 function init() {
-  loadCfg();
+  loadCfg();     // loads CW/CH from saved config first
   loadStorage();
   initCanvas();
   initPages();
@@ -1325,8 +1496,9 @@ function init() {
   }
   applyZoom();
 
-  // Palm rejection
-  canvas.style.touchAction = S.cfg.input === 'pencil' ? 'pan-x pan-y' : 'none';
+  // canvas always uses touch-action:none — finger scroll is handled in pointer events
+  // (this is set in CSS too, just ensuring it's enforced)
+  canvas.style.touchAction = 'none';
 
   // Set AI badge label
   const opt = document.getElementById('s-model');

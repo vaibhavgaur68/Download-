@@ -3,838 +3,766 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QUEUE — Your YouTube Playlist</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<title>PULLFRAME — YouTube Downloader</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg: #0c0c0e;
-    --surface: #141416;
-    --surface2: #1c1c1f;
-    --border: #2a2a2e;
-    --accent: #e8c547;
-    --accent2: #f0a500;
-    --text: #f0ede8;
-    --muted: #6b6870;
-    --watched: #2a3d2a;
-    --watched-border: #3a6b3a;
-    --danger: #c0392b;
-    --radius: 10px;
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --bg3: #1a1a1a;
+    --amber: #f5a623;
+    --amber-dim: #c4841a;
+    --amber-glow: rgba(245,166,35,0.15);
+    --cream: #f0e6d3;
+    --muted: #555;
+    --border: #222;
+    --red: #e05252;
+    --green: #52c97a;
   }
 
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; overflow-x: hidden; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* Ambient glow */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(245,166,35,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
 
   /* HEADER */
   header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 18px 28px; border-bottom: 1px solid var(--border);
-    background: var(--bg); position: sticky; top: 0; z-index: 100;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 56px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
   }
-  .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-  .logo span { color: var(--accent); }
-  .session-info { display: flex; align-items: center; gap: 20px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
-  .session-info b { color: var(--accent); font-weight: 500; }
-  .goal-badge {
-    background: var(--surface2); border: 1px solid var(--border);
-    padding: 6px 14px; border-radius: 50px; font-size: 12px;
-    font-family: 'DM Mono', monospace; cursor: pointer;
-    color: var(--muted); transition: all .2s;
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
-  .goal-badge:hover { border-color: var(--accent); color: var(--accent); }
-  .goal-badge.goal-met { border-color: #3a6b3a; color: #6abf6a; }
 
-  /* LAYOUT */
-  .app { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 61px); }
-
-  /* PLAYER SIDE */
-  .player-side { display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
-
-  .player-wrap {
-    position: relative; background: #000; flex-shrink: 0;
-    aspect-ratio: 16/9; width: 100%;
+  .brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: var(--cream);
+    line-height: 1;
   }
-  .player-wrap iframe { width: 100%; height: 100%; border: none; display: block; }
 
-  .empty-player {
-    width: 100%; height: 100%; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 14px;
-    background: var(--surface);
+  .brand-name span {
+    color: var(--amber);
   }
-  .empty-player .icon { font-size: 52px; opacity: .3; }
-  .empty-player p { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; color: var(--muted); }
 
-  /* VIDEO INFO BAR */
+  .brand-tag {
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .frame-counter {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.8;
+  }
+
+  .frame-counter b {
+    color: var(--amber);
+  }
+
+  /* INPUT SECTION */
+  .input-zone {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .input-zone::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--amber);
+  }
+
+  .input-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  #urlInput {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px 18px;
+    color: var(--cream);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  #urlInput::placeholder { color: #3a3a3a; }
+
+  #urlInput:focus {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px var(--amber-glow);
+  }
+
+  #analyzeBtn {
+    background: var(--amber);
+    color: #000;
+    border: none;
+    border-radius: 3px;
+    padding: 14px 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  #analyzeBtn:hover { background: #ffc24d; }
+  #analyzeBtn:active { transform: scale(0.97); }
+  #analyzeBtn:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
+
+  /* STATUS */
+  #status {
+    margin-top: 14px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    min-height: 18px;
+    transition: color 0.3s;
+  }
+  #status.loading { color: var(--amber); }
+  #status.error { color: var(--red); }
+  #status.ok { color: var(--green); }
+
+  /* SPINNER */
+  .spin {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border: 1.5px solid var(--amber);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* RESULT CARD */
+  #resultCard {
+    display: none;
+    animation: fadeUp 0.4s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* VIDEO INFO */
   .video-info {
-    padding: 16px 20px; border-bottom: 1px solid var(--border);
-    background: var(--surface);
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 20px;
   }
-  .video-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; line-height: 1.4; color: var(--text); }
-  .video-meta { display: flex; align-items: center; gap: 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
-  .video-meta span { display: flex; align-items: center; gap: 5px; }
 
-  /* PROGRESS BAR */
-  .progress-section { padding: 14px 20px; border-bottom: 1px solid var(--border); }
-  .progress-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .progress-label span { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); }
-  .progress-label strong { font-size: 13px; color: var(--accent); }
-  .progress-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 3px; transition: width .5s cubic-bezier(.4,0,.2,1); }
-  .progress-steps { display: flex; gap: 3px; margin-top: 8px; flex-wrap: wrap; }
-  .step-dot {
-    width: 18px; height: 4px; border-radius: 2px; background: var(--surface2);
-    transition: background .3s; cursor: pointer;
+  @media (max-width: 600px) {
+    .video-info { grid-template-columns: 1fr; }
   }
-  .step-dot.done { background: var(--accent); }
-  .step-dot.active { background: var(--accent2); opacity: .7; }
 
-  /* PLAYER CONTROLS */
-  .player-controls { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border); }
-  .btn {
-    display: flex; align-items: center; gap: 7px; padding: 9px 18px;
-    border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 13px;
-    font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all .15s;
+  .thumb-wrap {
+    position: relative;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+    background: #111;
   }
-  .btn-primary { background: var(--accent); color: #0c0c0e; border-color: var(--accent); }
-  .btn-primary:hover { background: var(--accent2); }
-  .btn-ghost { background: transparent; color: var(--muted); border-color: var(--border); }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger); }
-  .btn-danger:hover { background: var(--danger); color: #fff; }
-  .btn:disabled { opacity: .35; cursor: not-allowed; }
 
-  /* NOTES */
-  .notes-section { flex: 1; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
-  .notes-header { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
-  .notes-area {
-    flex: 1; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 14px; resize: none;
-    font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text);
-    line-height: 1.7; outline: none; transition: border-color .2s;
+  .thumb-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
   }
-  .notes-area:focus { border-color: var(--accent); }
-  .notes-area::placeholder { color: var(--muted); font-style: italic; }
-  .notes-saved { font-size: 11px; font-family: 'DM Mono', monospace; color: #3a6b3a; opacity: 0; transition: opacity .3s; }
-  .notes-saved.show { opacity: 1; }
 
-  /* QUEUE SIDE */
-  .queue-side { display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
+  .thumb-wrap:hover img { transform: scale(1.03); }
 
-  /* ADD VIDEO */
-  .add-section { padding: 18px 18px 14px; border-bottom: 1px solid var(--border); }
-  .add-title { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; }
-  .input-row { display: flex; gap: 8px; }
-  .url-input {
-    flex: 1; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 10px 14px; font-family: 'DM Mono', monospace;
-    font-size: 12px; color: var(--text); outline: none; transition: border-color .2s;
+  .thumb-badge {
+    position: absolute;
+    top: 10px; left: 10px;
+    background: rgba(0,0,0,0.75);
+    color: var(--amber);
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 2px;
+    border: 1px solid var(--amber);
   }
-  .url-input:focus { border-color: var(--accent); }
-  .url-input::placeholder { color: var(--muted); }
-  .add-btn {
-    background: var(--accent); color: #0c0c0e; border: none; border-radius: var(--radius);
-    padding: 10px 16px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
-    cursor: pointer; transition: background .15s; white-space: nowrap;
-  }
-  .add-btn:hover { background: var(--accent2); }
 
-  /* QUEUE HEADER */
-  .queue-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .queue-label { font-size: 13px; font-weight: 700; }
-  .queue-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
-  .clear-btn { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all .15s; }
-  .clear-btn:hover { color: var(--danger); }
+  .video-meta {
+    padding: 24px 24px 24px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+  }
 
-  /* PLAYLIST */
-  .playlist { flex: 1; overflow-y: auto; padding: 10px; }
-  .playlist::-webkit-scrollbar { width: 4px; }
-  .playlist::-webkit-scrollbar-track { background: transparent; }
-  .playlist::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  @media (max-width: 600px) {
+    .video-meta { padding: 20px; }
+  }
 
-  .empty-queue { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; gap: 10px; }
-  .empty-queue p { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--muted); text-align: center; line-height: 1.5; }
+  .meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
 
-  .queue-item {
-    display: flex; align-items: center; gap: 10px; padding: 10px 10px;
-    border-radius: var(--radius); cursor: pointer; transition: all .15s;
-    border: 1px solid transparent; margin-bottom: 4px; position: relative;
+  .meta-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
-  .queue-item:hover { background: var(--surface2); border-color: var(--border); }
-  .queue-item.active { background: #1e1b0e; border-color: var(--accent); }
-  .queue-item.watched { background: var(--watched); border-color: var(--watched-border); }
-  .queue-item.watched .item-title { color: var(--muted); text-decoration: line-through; }
 
-  .item-thumb { width: 80px; height: 45px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--surface2); }
-  .item-body { flex: 1; min-width: 0; }
-  .item-title { font-size: 12px; font-weight: 600; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .item-badge { display: inline-flex; align-items: center; gap: 4px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 4px; }
-  .item-badge.done-badge { color: #6abf6a; }
-  .item-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
-  .item-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 4px; transition: all .15s; line-height: 1; }
-  .item-del:hover { color: var(--danger); background: rgba(192,57,43,.1); }
-  .item-num { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-align: center; }
+  .meta-value {
+    font-size: 0.82rem;
+    color: var(--cream);
+    line-height: 1.4;
+  }
 
-  /* STATS BAR */
-  .stats-bar { padding: 14px 18px; border-top: 1px solid var(--border); background: var(--bg); }
-  .stats-row { display: flex; gap: 0; }
-  .stat { flex: 1; text-align: center; padding: 4px 0; }
-  .stat + .stat { border-left: 1px solid var(--border); }
-  .stat-val { font-size: 18px; font-weight: 800; color: var(--accent); }
-  .stat-lbl { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--muted); margin-top: 2px; }
+  .meta-value.title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
 
-  /* GOAL MODAL */
-  .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none; transition: opacity .2s;
+  .meta-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
   }
-  .modal-overlay.open { opacity: 1; pointer-events: all; }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    padding: 28px; width: 340px; transform: translateY(12px); transition: transform .2s;
-  }
-  .modal-overlay.open .modal { transform: translateY(0); }
-  .modal h3 { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
-  .modal p { font-size: 13px; color: var(--muted); margin-bottom: 18px; font-family: 'DM Mono', monospace; }
-  .modal input {
-    width: 100%; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 10px 14px; font-family: 'DM Mono', monospace;
-    font-size: 14px; color: var(--text); outline: none; margin-bottom: 14px;
-    transition: border-color .2s;
-  }
-  .modal input:focus { border-color: var(--accent); }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
-  /* TOAST */
-  .toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px);
-    background: var(--surface2); border: 1px solid var(--border); border-radius: 50px;
-    padding: 10px 20px; font-size: 13px; font-family: 'DM Mono', monospace;
-    z-index: 300; opacity: 0; transition: all .25s; white-space: nowrap;
+  /* DOWNLOAD GRID */
+  .section-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .toast.success { border-color: #3a6b3a; color: #6abf6a; }
-  .toast.error { border-color: var(--danger); color: #e74c3c; }
 
-    /* CHAPTERS */
-  .chapters-section { border-bottom: 1px solid var(--border); }
-  .chapters-toggle {
-    width: 100%; display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 20px; background: none; border: none; cursor: pointer;
-    font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
-    color: var(--muted); letter-spacing: .06em; text-transform: uppercase;
-    transition: color .15s;
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
   }
-  .chapters-toggle:hover { color: var(--accent); }
-  .chapters-toggle .arrow { transition: transform .2s; font-size: 10px; }
-  .chapters-toggle.open .arrow { transform: rotate(180deg); }
-  .chapters-body { padding: 0 20px 14px; display: none; }
-  .chapters-body.open { display: block; }
-  .paste-area {
-    width: 100%; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 10px 14px; font-family: 'DM Mono', monospace;
-    font-size: 11px; color: var(--text); resize: vertical; min-height: 80px;
-    outline: none; transition: border-color .2s; line-height: 1.6;
-  }
-  .paste-area:focus { border-color: var(--accent); }
-  .paste-area::placeholder { color: var(--muted); font-style: italic; }
-  .parse-row { display: flex; gap: 8px; margin-top: 8px; }
-  .parse-btn {
-    background: var(--accent); color: #0c0c0e; border: none; border-radius: var(--radius);
-    padding: 8px 16px; font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
-    cursor: pointer; transition: background .15s;
-  }
-  .parse-btn:hover { background: var(--accent2); }
-  .clear-chapters-btn {
-    background: none; border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 8px 14px; font-family: 'DM Mono', monospace; font-size: 11px;
-    color: var(--muted); cursor: pointer; transition: all .15s;
-  }
-  .clear-chapters-btn:hover { border-color: var(--danger); color: var(--danger); }
-  .chapters-list { display: flex; flex-direction: column; gap: 3px; margin-top: 10px; max-height: 200px; overflow-y: auto; }
-  .chapters-list::-webkit-scrollbar { width: 3px; }
-  .chapters-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-  .chapter-btn {
-    display: flex; align-items: center; gap: 10px; padding: 8px 12px;
-    border-radius: 8px; border: 1px solid transparent; background: none;
-    cursor: pointer; text-align: left; transition: all .15s; width: 100%;
-  }
-  .chapter-btn:hover { background: var(--surface2); border-color: var(--border); }
-  .chapter-btn.active { background: #1e1b0e; border-color: var(--accent); }
-  .chapter-time {
-    font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent);
-    min-width: 40px; flex-shrink: 0;
-  }
-  .chapter-name { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; }
-  .no-chapters { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); font-style: italic; margin-top: 6px; }
 
-  /* RESPONSIVE */
-
-  @media (max-width: 900px) {
-    .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
-    .player-side { border-right: none; border-bottom: 1px solid var(--border); }
-    .queue-side { height: 60vh; }
-    .notes-section { min-height: 160px; }
+  .dl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
   }
+
+  .dl-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .dl-card:hover {
+    border-color: var(--amber);
+    background: #141414;
+  }
+
+  .dl-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 0; height: 2px;
+    background: var(--amber);
+    transition: width 0.3s ease;
+  }
+
+  .dl-card:hover::after { width: 100%; }
+
+  .dl-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+
+  .dl-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--cream);
+  }
+
+  .dl-desc {
+    font-size: 0.67rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .dl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    border-radius: 3px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+    width: 100%;
+    justify-content: center;
+    margin-top: auto;
+  }
+
+  .dl-btn:hover {
+    background: var(--amber);
+    color: #000;
+  }
+
+  .dl-btn.disabled {
+    border-color: var(--muted);
+    color: var(--muted);
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .dl-btn.disabled:hover { background: transparent; color: var(--muted); }
+
+  /* QUALITY SELECTOR */
+  .quality-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .q-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--cream);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    padding: 5px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .q-btn:hover { border-color: var(--amber); color: var(--amber); }
+  .q-btn.active { background: var(--amber); color: #000; border-color: var(--amber); }
+
+  /* THUMBNAIL SIZES */
+  .thumb-sizes {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .ts-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--cream);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    padding: 5px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+
+  .ts-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* NOTICE */
+  .notice {
+    background: rgba(245,166,35,0.06);
+    border: 1px solid rgba(245,166,35,0.2);
+    border-radius: 3px;
+    padding: 14px 18px;
+    font-size: 0.67rem;
+    color: #9a8060;
+    line-height: 1.6;
+    margin-top: 6px;
+  }
+
+  .notice b { color: var(--amber); }
+
+  /* FOOTER */
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.6rem;
+    color: #333;
+  }
+
+  footer span { letter-spacing: 0.1em; }
+
+  /* EXAMPLES */
+  .examples {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .ex-chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: #555;
+    font-size: 0.62rem;
+    padding: 5px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .ex-chip:hover { border-color: var(--amber); color: var(--amber); }
 </style>
 </head>
 <body>
+<div class="wrapper">
 
-<header>
-  <div class="logo">QUE<span>UE</span></div>
-  <div class="session-info">
-    <span>⏱ <b id="watchTimer">00:00</b> today</span>
-    <span id="goalStatus" style="display:none">🎯 <b id="goalProgress">0/0</b> videos</span>
-  </div>
-  <button class="goal-badge" id="goalBtn" onclick="openGoalModal()">Set Daily Goal</button>
-</header>
-
-<div class="app">
-
-  <!-- PLAYER SIDE -->
-  <div class="player-side">
-    <div class="player-wrap" id="playerWrap">
-      <div class="empty-player" id="emptyPlayer">
-        <div class="icon">▶</div>
-        <p>Add videos to your queue<br>and start watching</p>
-      </div>
-      <div id="ytPlayer" style="display:none; width:100%; height:100%;"></div>
+  <header>
+    <div class="brand">
+      <div class="brand-name">PULL<span>FRAME</span></div>
+      <div class="brand-tag">YouTube Asset Extractor</div>
     </div>
+    <div class="frame-counter">
+      FRAME <b>01</b> / 01<br>
+      REC ● READY<br>
+      <span id="clock">--:--:--</span>
+    </div>
+  </header>
 
-    <div class="video-info" id="videoInfo" style="display:none;">
-      <div class="video-title" id="videoTitle">—</div>
+  <!-- INPUT -->
+  <div class="input-zone">
+    <span class="input-label">// Paste YouTube URL</span>
+    <div class="input-row">
+      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
+      <button id="analyzeBtn" onclick="analyze()">Analyze →</button>
+    </div>
+    <div id="status"></div>
+    <div class="examples">
+      <span class="ex-chip" onclick="fillExample(this)" data-url="https://www.youtube.com/watch?v=dQw4w9WgXcQ">try example ↗</span>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="resultCard">
+
+    <!-- VIDEO INFO -->
+    <div class="video-info" id="videoInfo">
+      <div class="thumb-wrap">
+        <img id="thumbImg" src="" alt="Thumbnail">
+        <div class="thumb-badge">▶ FRAME CAPTURE</div>
+      </div>
       <div class="video-meta">
-        <span id="videoIndex">—</span>
-        <span id="watchedStatus"></span>
-      </div>
-    </div>
-
-    <div class="progress-section">
-      <div class="progress-label">
-        <span>PLAYLIST PROGRESS</span>
-        <strong id="progressText">0 / 0</strong>
-      </div>
-      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-      <div class="progress-steps" id="progressSteps"></div>
-    </div>
-
-    <div class="player-controls">
-      <button class="btn btn-ghost" id="prevBtn" onclick="playPrev()" disabled>← Prev</button>
-      <button class="btn btn-primary" id="markBtn" onclick="markWatched()" disabled>✓ Mark Watched</button>
-      <button class="btn btn-ghost" id="nextBtn" onclick="playNext()" disabled>Next →</button>
-      <button class="btn btn-ghost" id="skipBtn" onclick="skipVideo()" disabled style="margin-left:auto">⤷ Skip</button>
-    </div>
-
-        <div class="chapters-section">
-      <button class="chapters-toggle" id="chaptersToggle" onclick="toggleChapters()">
-        <span>📍 Chapters</span>
-        <span class="arrow">▼</span>
-      </button>
-      <div class="chapters-body" id="chaptersBody">
-        <textarea class="paste-area" id="chapterPaste" placeholder="Paste YouTube timestamps here, e.g:&#10;0:00 Intro&#10;2:30 Main Topic&#10;8:45 Deep Dive&#10;15:00 Conclusion"></textarea>
-        <div class="parse-row">
-          <button class="parse-btn" onclick="parseChapters()">▶ Parse Chapters</button>
-          <button class="clear-chapters-btn" onclick="clearChapters()">Clear</button>
+        <div class="meta-row">
+          <span class="meta-label">Title</span>
+          <span class="meta-value title" id="vidTitle">—</span>
         </div>
-        <div class="chapters-list" id="chaptersList"></div>
+        <div class="meta-divider"></div>
+        <div class="meta-row">
+          <span class="meta-label">Channel</span>
+          <span class="meta-value" id="vidAuthor">—</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Video ID</span>
+          <span class="meta-value" id="vidId" style="font-size:0.72rem; color: var(--amber)">—</span>
+        </div>
       </div>
     </div>
 
-    <div class="notes-section">
+    <!-- DOWNLOAD OPTIONS -->
+    <div class="section-label">Download Options</div>
 
-      <div style="display:flex; align-items:center; justify-content:space-between;">
-        <span class="notes-header">📝 Notes for this video</span>
-        <span class="notes-saved" id="notesSaved">Saved ✓</span>
+    <div class="dl-grid">
+
+      <!-- VIDEO DOWNLOAD -->
+      <div class="dl-card">
+        <div class="dl-icon">🎬</div>
+        <div class="dl-title">Download Video</div>
+        <div class="dl-desc">High-quality MP4. Select your preferred resolution, then pull via Cobalt.</div>
+        <div class="quality-row" id="qualityRow">
+          <button class="q-btn active" data-q="max" onclick="selectQuality(this)">MAX</button>
+          <button class="q-btn" data-q="2160" onclick="selectQuality(this)">4K</button>
+          <button class="q-btn" data-q="1440" onclick="selectQuality(this)">2K</button>
+          <button class="q-btn" data-q="1080" onclick="selectQuality(this)">1080p</button>
+          <button class="q-btn" data-q="720" onclick="selectQuality(this)">720p</button>
+          <button class="q-btn" data-q="480" onclick="selectQuality(this)">480p</button>
+        </div>
+        <button class="dl-btn" id="videoBtn" onclick="downloadVideo()">⬇ Pull Video</button>
       </div>
-      <textarea class="notes-area" id="notesArea" placeholder="Jot down key points, timestamps, ideas...&#10;Notes save automatically per video." oninput="saveNotes()"></textarea>
+
+      <!-- AUDIO DOWNLOAD -->
+      <div class="dl-card">
+        <div class="dl-icon">🎵</div>
+        <div class="dl-title">Audio Only</div>
+        <div class="dl-desc">Extract audio as MP3/M4A. Perfect for podcasts, music, and voice memos.</div>
+        <button class="dl-btn" id="audioBtn" onclick="downloadAudio()">⬇ Pull Audio</button>
+      </div>
+
+      <!-- THUMBNAIL -->
+      <div class="dl-card">
+        <div class="dl-icon">🖼</div>
+        <div class="dl-title">Thumbnail</div>
+        <div class="dl-desc">Save cover image at multiple resolutions from YouTube CDN.</div>
+        <div class="thumb-sizes" id="thumbSizes">
+          <!-- filled by JS -->
+        </div>
+        <button class="dl-btn" id="thumbBtn" onclick="downloadThumb()">⬇ Max Resolution</button>
+      </div>
+
+      <!-- CAPTIONS -->
+      <div class="dl-card">
+        <div class="dl-icon">📝</div>
+        <div class="dl-title">Captions / Subtitles</div>
+        <div class="dl-desc">Download SRT, VTT, or TXT subtitles via Downsub (auto + manual tracks).</div>
+        <button class="dl-btn" id="captionBtn" onclick="downloadCaptions()">⬇ Pull Captions</button>
+      </div>
+
     </div>
+
+    <div class="notice">
+      <b>Note:</b> Video & audio downloads open via <b>cobalt.tools</b> — a free, open-source, ad-free downloader. Captions open via <b>downsub.com</b>. Thumbnails are served directly from YouTube's CDN. Only download content you have rights to use.
+    </div>
+
   </div>
 
-  <!-- QUEUE SIDE -->
-  <div class="queue-side">
-    <div class="add-section">
-      <div class="add-title">Add to Queue</div>
-      <div class="input-row">
-        <input class="url-input" id="urlInput" type="text" placeholder="Paste YouTube URL or video ID..." onkeydown="if(event.key==='Enter')addVideo()">
-        <button class="add-btn" onclick="addVideo()">+ Add</button>
-      </div>
-    </div>
+  <footer>
+    <span>PULLFRAME v1.0 — ASSET EXTRACTOR</span>
+    <span>POWERED BY COBALT + DOWNSUB</span>
+  </footer>
 
-    <div class="queue-header">
-      <span class="queue-label">Up Next</span>
-      <span class="queue-count" id="queueCount">0 videos</span>
-      <button class="clear-btn" onclick="clearAll()">Clear all</button>
-    </div>
-
-    <div class="playlist" id="playlist">
-      <div class="empty-queue">
-        <p>Your queue is empty.<br>Paste a link above to begin.</p>
-      </div>
-    </div>
-
-    <div class="stats-bar">
-      <div class="stats-row">
-        <div class="stat"><div class="stat-val" id="statTotal">0</div><div class="stat-lbl">TOTAL</div></div>
-        <div class="stat"><div class="stat-val" id="statWatched">0</div><div class="stat-lbl">WATCHED</div></div>
-        <div class="stat"><div class="stat-val" id="statLeft">0</div><div class="stat-lbl">LEFT</div></div>
-        <div class="stat"><div class="stat-val" id="statPct">0%</div><div class="stat-lbl">DONE</div></div>
-      </div>
-    </div>
-  </div>
 </div>
-
-<!-- GOAL MODAL -->
-<div class="modal-overlay" id="goalModal">
-  <div class="modal">
-    <h3>🎯 Set Daily Goal</h3>
-    <p>How many videos do you want to watch today?</p>
-    <input type="number" id="goalInput" min="1" max="50" placeholder="e.g. 5" onkeydown="if(event.key==='Enter')saveGoal()">
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeGoalModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveGoal()">Set Goal</button>
-    </div>
-  </div>
-</div>
-
-<!-- TOAST -->
-<div class="toast" id="toast"></div>
 
 <script>
-// ── STATE ────────────────────────────────────────────────────────────────────
-let playlist = [];
-let currentIndex = -1;
-let ytPlayer = null;
-let playerReady = false;
-let sessionSeconds = 0;
-let watchInterval = null;
-let dailyGoal = 0;
-let autoAdvance = true;
+  let currentVideoId = '';
+  let selectedQuality = 'max';
+  let currentUrl = '';
 
-const KEY_PLAYLIST = 'queue_playlist';
-const KEY_NOTES    = 'queue_notes';
-const KEY_GOAL     = 'queue_goal';
-const KEY_SESSION  = 'queue_session_' + new Date().toDateString();
-
-// ── INIT ─────────────────────────────────────────────────────────────────────
-function init() {
-  const saved = localStorage.getItem(KEY_PLAYLIST);
-  if (saved) playlist = JSON.parse(saved);
-  sessionSeconds = parseInt(localStorage.getItem(KEY_SESSION) || '0');
-  dailyGoal = parseInt(localStorage.getItem(KEY_GOAL) || '0');
-  updateGoalUI();
-  renderPlaylist();
-  updateProgress();
-  updateStats();
-  updateTimer();
-  startTimerInterval();
-}
-
-// ── YOUTUBE API ──────────────────────────────────────────────────────────────
-function loadYTAPI() {
-  const tag = document.createElement('script');
-  tag.src = 'https://www.youtube.com/iframe_api';
-  document.head.appendChild(tag);
-}
-
-function onYouTubeIframeAPIReady() {
-  ytPlayer = new YT.Player('ytPlayer', {
-    height: '100%', width: '100%',
-    playerVars: { rel: 0, modestbranding: 1, iv_load_policy: 3, fs: 1 },
-    events: {
-      onReady: () => { playerReady = true; },
-      onStateChange: onPlayerStateChange
-    }
-  });
-}
-
-function onPlayerStateChange(e) {
-  if (e.data === YT.PlayerState.ENDED) {
-    if (autoAdvance) {
-      markWatched();
-      setTimeout(() => playNext(), 800);
-    }
+  // Clock
+  function updateClock() {
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      d.toTimeString().split(' ')[0];
   }
-}
+  setInterval(updateClock, 1000);
+  updateClock();
 
-// ── VIDEO ID EXTRACTION ──────────────────────────────────────────────────────
-function extractVideoId(input) {
-  input = input.trim();
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
-    /^([A-Za-z0-9_-]{11})$/
-  ];
-  for (const p of patterns) {
-    const m = input.match(p);
-    if (m) return m[1];
+  function setStatus(msg, type = '') {
+    const el = document.getElementById('status');
+    el.innerHTML = msg;
+    el.className = type;
   }
-  return null;
-}
 
-// ── ADD VIDEO ────────────────────────────────────────────────────────────────
-async function addVideo() {
-  const input = document.getElementById('urlInput');
-  const val = input.value.trim();
-  if (!val) return;
-  const id = extractVideoId(val);
-  if (!id) { showToast('⚠ Invalid YouTube URL or ID', 'error'); return; }
-  if (playlist.find(v => v.id === id)) { showToast('Already in queue', 'error'); return; }
+  function extractVideoId(url) {
+    try {
+      const u = new URL(url.trim());
+      // Standard: youtube.com/watch?v=ID
+      if (u.hostname.includes('youtube.com')) {
+        const v = u.searchParams.get('v');
+        if (v) return v;
+        // /embed/ID or /shorts/ID
+        const pathMatch = u.pathname.match(/\/(embed|shorts|v)\/([a-zA-Z0-9_-]{11})/);
+        if (pathMatch) return pathMatch[2];
+      }
+      // youtu.be/ID
+      if (u.hostname === 'youtu.be') {
+        const id = u.pathname.slice(1).split('?')[0];
+        if (id.length === 11) return id;
+      }
+    } catch {}
+    // Fallback regex
+    const m = url.match(/(?:v=|youtu\.be\/|\/embed\/|\/shorts\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
 
-  const video = { id, title: 'Loading...', thumb: `https://img.youtube.com/vi/${id}/mqdefault.jpg`, watched: false };
-  playlist.push(video);
-  input.value = '';
-  renderPlaylist();
-  updateProgress();
-  updateStats();
-  savePersist();
+  async function analyze() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { setStatus('⚠ Please paste a YouTube URL first.', 'error'); return; }
 
-  // Fetch title via oEmbed
-  try {
-    const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`);
-    if (res.ok) {
+    const videoId = extractVideoId(url);
+    if (!videoId) { setStatus('⚠ Couldn\'t parse a valid YouTube video ID.', 'error'); return; }
+
+    currentVideoId = videoId;
+    currentUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+    setStatus('<span class="spin"></span> Fetching video info…', 'loading');
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('resultCard').style.display = 'none';
+
+    try {
+      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(currentUrl)}&format=json`;
+      const res = await fetch(oembedUrl);
+
+      if (!res.ok) throw new Error('Video not found or is private/unavailable.');
+
       const data = await res.json();
-      video.title = data.title;
-      savePersist();
-      renderPlaylist();
+
+      document.getElementById('vidTitle').textContent = data.title || 'Unknown';
+      document.getElementById('vidAuthor').textContent = data.author_name || 'Unknown';
+      document.getElementById('vidId').textContent = videoId;
+
+      // Best thumbnail via img.youtube.com
+      const thumbMax = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      document.getElementById('thumbImg').src = thumbMax;
+      document.getElementById('thumbImg').onerror = function() {
+        this.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      };
+
+      // Thumb size buttons
+      const sizes = [
+        { label: 'MAX', key: 'maxresdefault' },
+        { label: 'HQ', key: 'hqdefault' },
+        { label: 'MQ', key: 'mqdefault' },
+        { label: 'SD', key: 'sddefault' },
+      ];
+      const container = document.getElementById('thumbSizes');
+      container.innerHTML = sizes.map(s =>
+        `<a class="ts-btn" href="https://img.youtube.com/vi/${videoId}/${s.key}.jpg" target="_blank">${s.label}</a>`
+      ).join('');
+
+      document.getElementById('resultCard').style.display = 'block';
+      setStatus('✓ Video found — choose your download below.', 'ok');
+
+    } catch (err) {
+      setStatus(`⚠ ${err.message}`, 'error');
     }
-  } catch {}
 
-  showToast('✓ Added to queue', 'success');
-  if (currentIndex === -1) playVideo(0);
-}
-
-// ── PLAY VIDEO ───────────────────────────────────────────────────────────────
-function playVideo(index) {
-  if (index < 0 || index >= playlist.length) return;
-  currentIndex = index;
-  const video = playlist[index];
-
-  document.getElementById('emptyPlayer').style.display = 'none';
-  document.getElementById('ytPlayer').style.display = 'block';
-  document.getElementById('videoInfo').style.display = 'block';
-
-  if (playerReady) {
-    ytPlayer.loadVideoById(video.id);
-  } else {
-    // Wait for player
-    const check = setInterval(() => {
-      if (playerReady) { clearInterval(check); ytPlayer.loadVideoById(video.id); }
-    }, 200);
+    document.getElementById('analyzeBtn').disabled = false;
   }
 
-  document.getElementById('videoTitle').textContent = video.title === 'Loading...' ? `Video ${index + 1}` : video.title;
-  document.getElementById('videoIndex').textContent = `Video ${index + 1} of ${playlist.length}`;
-  document.getElementById('watchedStatus').textContent = video.watched ? '✓ Watched' : '';
-  document.getElementById('watchedStatus').style.color = video.watched ? '#6abf6a' : '';
-
-  document.getElementById('prevBtn').disabled = index === 0;
-  document.getElementById('nextBtn').disabled = index === playlist.length - 1;
-  document.getElementById('markBtn').disabled = false;
-  document.getElementById('skipBtn').disabled = false;
-  document.getElementById('markBtn').textContent = video.watched ? '↩ Unmark' : '✓ Mark Watched';
-
-  // Load notes
-  const notes = JSON.parse(localStorage.getItem(KEY_NOTES) || '{}');
-  document.getElementById('notesArea').value = notes[video.id] || '';
-
-  renderPlaylist();
-  updateProgress();
-}
-
-function playPrev() { if (currentIndex > 0) playVideo(currentIndex - 1); }
-function playNext() { if (currentIndex < playlist.length - 1) playVideo(currentIndex + 1); }
-function skipVideo() { playNext(); }
-
-// ── MARK WATCHED ─────────────────────────────────────────────────────────────
-function markWatched() {
-  if (currentIndex === -1) return;
-  playlist[currentIndex].watched = !playlist[currentIndex].watched;
-  savePersist();
-  renderPlaylist();
-  updateProgress();
-  updateStats();
-  updateGoalUI();
-  const v = playlist[currentIndex];
-  document.getElementById('markBtn').textContent = v.watched ? '↩ Unmark' : '✓ Mark Watched';
-  document.getElementById('watchedStatus').textContent = v.watched ? '✓ Watched' : '';
-  document.getElementById('watchedStatus').style.color = v.watched ? '#6abf6a' : '';
-  if (v.watched) showToast('✓ Marked as watched', 'success');
-}
-
-// ── NOTES ────────────────────────────────────────────────────────────────────
-let notesSaveTimer = null;
-function saveNotes() {
-  if (currentIndex === -1) return;
-  clearTimeout(notesSaveTimer);
-  notesSaveTimer = setTimeout(() => {
-    const notes = JSON.parse(localStorage.getItem(KEY_NOTES) || '{}');
-    notes[playlist[currentIndex].id] = document.getElementById('notesArea').value;
-    localStorage.setItem(KEY_NOTES, JSON.stringify(notes));
-    const el = document.getElementById('notesSaved');
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 1500);
-  }, 600);
-}
-
-// ── RENDER PLAYLIST ──────────────────────────────────────────────────────────
-function renderPlaylist() {
-  const el = document.getElementById('playlist');
-  if (playlist.length === 0) {
-    el.innerHTML = `<div class="empty-queue"><p>Your queue is empty.<br>Paste a link above to begin.</p></div>`;
-    document.getElementById('queueCount').textContent = '0 videos';
-    return;
+  function selectQuality(btn) {
+    document.querySelectorAll('.q-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedQuality = btn.dataset.q;
   }
-  document.getElementById('queueCount').textContent = `${playlist.length} video${playlist.length !== 1 ? 's' : ''}`;
-  el.innerHTML = playlist.map((v, i) => `
-    <div class="queue-item ${i === currentIndex ? 'active' : ''} ${v.watched ? 'watched' : ''}" onclick="playVideo(${i})">
-      <img class="item-thumb" src="${v.thumb}" alt="" onerror="this.style.background='#2a2a2e'">
-      <div class="item-body">
-        <div class="item-title">${v.title}</div>
-        <div class="item-badge ${v.watched ? 'done-badge' : ''}">
-          ${v.watched ? '✓ Watched' : `#${i + 1}`}
-        </div>
-      </div>
-      <div class="item-actions">
-        <button class="item-del" onclick="removeVideo(event, ${i})">✕</button>
-        <div class="item-num">${i + 1}</div>
-      </div>
-    </div>
-  `).join('');
-}
 
-function removeVideo(e, index) {
-  e.stopPropagation();
-  playlist.splice(index, 1);
-  if (currentIndex === index) {
-    currentIndex = -1;
-    if (playlist.length > 0) playVideo(Math.min(index, playlist.length - 1));
-    else {
-      document.getElementById('emptyPlayer').style.display = 'flex';
-      document.getElementById('ytPlayer').style.display = 'none';
-      document.getElementById('videoInfo').style.display = 'none';
-      document.getElementById('prevBtn').disabled = true;
-      document.getElementById('nextBtn').disabled = true;
-      document.getElementById('markBtn').disabled = true;
-      document.getElementById('skipBtn').disabled = true;
-    }
-  } else if (currentIndex > index) {
-    currentIndex--;
+  function downloadVideo() {
+    // Use cobalt.tools with the URL
+    const cobaltUrl = `https://cobalt.tools/#${encodeURIComponent(currentUrl)}`;
+    window.open(cobaltUrl, '_blank');
   }
-  savePersist();
-  renderPlaylist();
-  updateProgress();
-  updateStats();
-}
 
-function clearAll() {
-  if (!playlist.length) return;
-  if (!confirm('Clear entire queue? This cannot be undone.')) return;
-  playlist = [];
-  currentIndex = -1;
-  document.getElementById('emptyPlayer').style.display = 'flex';
-  document.getElementById('ytPlayer').style.display = 'none';
-  document.getElementById('videoInfo').style.display = 'none';
-  document.getElementById('prevBtn').disabled = true;
-  document.getElementById('nextBtn').disabled = true;
-  document.getElementById('markBtn').disabled = true;
-  document.getElementById('skipBtn').disabled = true;
-  savePersist();
-  renderPlaylist();
-  updateProgress();
-  updateStats();
-}
-
-// ── PROGRESS ─────────────────────────────────────────────────────────────────
-function updateProgress() {
-  const total = playlist.length;
-  const done = playlist.filter(v => v.watched).length;
-  const pct = total ? Math.round((done / total) * 100) : 0;
-  document.getElementById('progressText').textContent = `${done} / ${total}`;
-  document.getElementById('progressFill').style.width = pct + '%';
-
-  const stepsEl = document.getElementById('progressSteps');
-  stepsEl.innerHTML = playlist.map((v, i) => `
-    <div class="step-dot ${v.watched ? 'done' : (i === currentIndex ? 'active' : '')}" onclick="playVideo(${i})" title="${v.title}"></div>
-  `).join('');
-}
-
-// ── STATS ────────────────────────────────────────────────────────────────────
-function updateStats() {
-  const total = playlist.length;
-  const watched = playlist.filter(v => v.watched).length;
-  const left = total - watched;
-  const pct = total ? Math.round((watched / total) * 100) : 0;
-  document.getElementById('statTotal').textContent = total;
-  document.getElementById('statWatched').textContent = watched;
-  document.getElementById('statLeft').textContent = left;
-  document.getElementById('statPct').textContent = pct + '%';
-}
-
-// ── TIMER ────────────────────────────────────────────────────────────────────
-function startTimerInterval() {
-  setInterval(() => {
-    if (ytPlayer && playerReady) {
-      try {
-        if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
-          sessionSeconds++;
-          localStorage.setItem(KEY_SESSION, sessionSeconds);
-          updateTimer();
-        }
-      } catch {}
-    }
-  }, 1000);
-}
-
-function updateTimer() {
-  const m = Math.floor(sessionSeconds / 60).toString().padStart(2, '0');
-  const s = (sessionSeconds % 60).toString().padStart(2, '0');
-  document.getElementById('watchTimer').textContent = `${m}:${s}`;
-}
-
-// ── GOAL ─────────────────────────────────────────────────────────────────────
-function openGoalModal() {
-  document.getElementById('goalInput').value = dailyGoal || '';
-  document.getElementById('goalModal').classList.add('open');
-  setTimeout(() => document.getElementById('goalInput').focus(), 100);
-}
-function closeGoalModal() { document.getElementById('goalModal').classList.remove('open'); }
-function saveGoal() {
-  const val = parseInt(document.getElementById('goalInput').value);
-  if (!val || val < 1) return;
-  dailyGoal = val;
-  localStorage.setItem(KEY_GOAL, dailyGoal);
-  updateGoalUI();
-  closeGoalModal();
-  showToast(`🎯 Goal set: ${dailyGoal} videos`, 'success');
-}
-function updateGoalUI() {
-  if (!dailyGoal) return;
-  const watched = playlist.filter(v => v.watched).length;
-  const goalStatus = document.getElementById('goalStatus');
-  const goalProgress = document.getElementById('goalProgress');
-  const goalBtn = document.getElementById('goalBtn');
-  goalStatus.style.display = 'flex';
-  goalProgress.textContent = `${watched}/${dailyGoal}`;
-  const met = watched >= dailyGoal;
-  goalBtn.textContent = met ? '🎯 Goal Met!' : `Goal: ${dailyGoal} videos`;
-  goalBtn.className = 'goal-badge' + (met ? ' goal-met' : '');
-}
-
-// ── PERSIST ──────────────────────────────────────────────────────────────────
-function savePersist() {
-  localStorage.setItem(KEY_PLAYLIST, JSON.stringify(playlist));
-}
-
-// ── TOAST ────────────────────────────────────────────────────────────────────
-let toastTimer;
-function showToast(msg, type = '') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (type ? ' ' + type : '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.className = 'toast', 2500);
-}
-
-// ── CHAPTERS ─────────────────────────────────────────────────────────────────
-let chapters = [];
-let chapterTrackInterval = null;
-
-function toggleChapters() {
-  const toggle = document.getElementById('chaptersToggle');
-  const body = document.getElementById('chaptersBody');
-  toggle.classList.toggle('open');
-  body.classList.toggle('open');
-}
-
-function parseChapters() {
-  const raw = document.getElementById('chapterPaste').value.trim();
-  if (!raw) return;
-  const lines = raw.split('\n');
-  const parsed = [];
-  const regex = /(\d{0,2}:?\d{1,2}:\d{2}|\d{1,2}:\d{2})/;
-  for (const line of lines) {
-    const match = line.match(regex);
-    if (!match) continue;
-    const timeStr = match[1];
-    const parts = timeStr.split(':').map(Number);
-    let seconds = 0;
-    if (parts.length === 3) seconds = parts[0]*3600 + parts[1]*60 + parts[2];
-    else if (parts.length === 2) seconds = parts[0]*60 + parts[1];
-    const name = line.replace(match[0], '').trim().replace(/^[-–—•·]\s*/, '').trim();
-    if (name) parsed.push({ time: seconds, label: timeStr, name });
+  function downloadAudio() {
+    const cobaltUrl = `https://cobalt.tools/#${encodeURIComponent(currentUrl)}`;
+    window.open(cobaltUrl, '_blank');
   }
-  chapters = parsed;
-  renderChapters();
-  if (chapters.length) {
-    startChapterTracking();
-    showToast(`✓ ${chapters.length} chapters loaded`, 'success');
-  } else {
-    showToast('No timestamps found', 'error');
+
+  function downloadThumb() {
+    const thumbUrl = `https://img.youtube.com/vi/${currentVideoId}/maxresdefault.jpg`;
+    window.open(thumbUrl, '_blank');
   }
-}
 
-function renderChapters() {
-  const el = document.getElementById('chaptersList');
-  if (!chapters.length) { el.innerHTML = '<div class="no-chapters">No chapters yet — paste timestamps above.</div>'; return; }
-  el.innerHTML = chapters.map((c, i) => `
-    <button class="chapter-btn" id="chap-${i}" onclick="seekToChapter(${c.time})">
-      <span class="chapter-time">${c.label}</span>
-      <span class="chapter-name">${c.name}</span>
-    </button>
-  `).join('');
-}
-
-function clearChapters() {
-  chapters = [];
-  document.getElementById('chapterPaste').value = '';
-  document.getElementById('chaptersList').innerHTML = '';
-  clearInterval(chapterTrackInterval);
-}
-
-function seekToChapter(seconds) {
-  if (!ytPlayer || !playerReady) return;
-  ytPlayer.seekTo(seconds, true);
-  ytPlayer.playVideo();
-  highlightCurrentChapter();
-}
-
-function startChapterTracking() {
-  clearInterval(chapterTrackInterval);
-  chapterTrackInterval = setInterval(() => {
-    if (!ytPlayer || !playerReady) return;
-    try { highlightCurrentChapter(); } catch {}
-  }, 1000);
-}
-
-function highlightCurrentChapter() {
-  if (!chapters.length || !ytPlayer || !playerReady) return;
-  let current = 0;
-  try { const t = ytPlayer.getCurrentTime(); current = t; } catch { return; }
-  let activeIdx = -1;
-  for (let i = chapters.length - 1; i >= 0; i--) {
-    if (current >= chapters[i].time) { activeIdx = i; break; }
+  function downloadCaptions() {
+    const downsubUrl = `https://downsub.com/?url=${encodeURIComponent(currentUrl)}`;
+    window.open(downsubUrl, '_blank');
   }
-  document.querySelectorAll('.chapter-btn').forEach((btn, i) => {
-    btn.classList.toggle('active', i === activeIdx);
+
+  function fillExample(el) {
+    document.getElementById('urlInput').value = el.dataset.url;
+    analyze();
+  }
+
+  // Enter key support
+  document.getElementById('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') analyze();
   });
-}
-
-// ── KEYBOARD SHORTCUTS ───────────────────────────────────────────────────────
-
-document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (e.key === 'ArrowRight') playNext();
-  if (e.key === 'ArrowLeft') playPrev();
-  if (e.key === 'w' || e.key === 'W') markWatched();
-});
-
-// ── CLOSE MODAL ON BACKDROP ──────────────────────────────────────────────────
-document.getElementById('goalModal').addEventListener('click', function(e) {
-  if (e.target === this) closeGoalModal();
-});
-
-// ── START ────────────────────────────────────────────────────────────────────
-loadYTAPI();
-init();
 </script>
 </body>
 </html>

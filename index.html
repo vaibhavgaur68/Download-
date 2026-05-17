@@ -917,6 +917,39 @@ function pDist(e) {
   return Math.hypot(dx, dy);
 }
 
+// ═══════════════════════════════════════════
+// FINGER SCROLL ON CANVAS
+// Because touch-action:none blocks browser-level scrolling on the canvas,
+// we implement it manually so fingers can still pan the page.
+// In "pencil" mode this is the primary scroll method; in "all" mode
+// a drawing finger is indistinguishable so we skip scroll.
+// ═══════════════════════════════════════════
+let _fingerScroll = null;
+
+canvas.addEventListener('touchstart', e => {
+  // Only activate finger-scroll in pencil-only mode
+  if (S.cfg.input !== 'pencil') return;
+  if (e.touches.length === 1) {
+    _fingerScroll = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      scrollLeft: vp.scrollLeft,
+      scrollTop:  vp.scrollTop
+    };
+  } else {
+    _fingerScroll = null; // 2-finger pinch — let pinch-zoom handle it
+  }
+}, {passive: true});
+
+canvas.addEventListener('touchmove', e => {
+  if (!_fingerScroll || e.touches.length !== 1) return;
+  vp.scrollLeft = _fingerScroll.scrollLeft - (e.touches[0].clientX - _fingerScroll.startX);
+  vp.scrollTop  = _fingerScroll.scrollTop  - (e.touches[0].clientY - _fingerScroll.startY);
+}, {passive: true});
+
+canvas.addEventListener('touchend',   () => { _fingerScroll = null; }, {passive: true});
+canvas.addEventListener('touchcancel',() => { _fingerScroll = null; }, {passive: true});
+
 // Ctrl+scroll zoom (desktop/trackpad)
 vp.addEventListener('wheel', e => {
   if (e.ctrlKey || e.metaKey) {
@@ -1284,8 +1317,8 @@ function saveSettings() {
     img.src = cur;
   }
 
-  // Update touch-action for palm rejection
-  canvas.style.touchAction = S.cfg.input === 'pencil' ? 'pan-x pan-y' : 'none';
+  // touch-action stays none — finger scroll is always handled via JS
+  canvas.style.touchAction = 'none';
 
   closeSettings();
   toast('Settings saved ✓');
@@ -1354,8 +1387,11 @@ function init() {
   }
   applyZoom();
 
-  // Palm rejection
-  canvas.style.touchAction = S.cfg.input === 'pencil' ? 'pan-x pan-y' : 'none';
+  // Palm rejection: touch-action is ALWAYS none on the canvas so the
+  // browser never steals pen events for scrolling (touch-action:pan-x pan-y
+  // would override e.preventDefault() and make the pencil scroll the page).
+  // Finger scrolling is handled manually below via touchstart/touchmove.
+  canvas.style.touchAction = 'none';
 
   // Set AI badge label
   const opt = document.getElementById('s-model');

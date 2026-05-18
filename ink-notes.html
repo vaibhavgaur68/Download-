@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>INK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+:root{
+  --bg:#07070b;
+  --surface:#0d0d14;
+  --elevated:#141420;
+  --border:#1a1a28;
+  --border-soft:#111119;
+  --text:#ddd9d2;
+  --text-mid:#6e6a7a;
+  --text-dim:#2e2e3e;
+  --accent:#c9a96c;
+  --accent-glow:rgba(201,169,108,.15);
+  --accent-border:rgba(201,169,108,.25);
+  --paper:#07070b;
+  --header-h:52px;
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-top:env(safe-area-inset-top,0px);
+}
+
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}
+
+/* ── HEADER ─────────────────────────────────────── */
+#header{
+  position:fixed;top:var(--safe-top);left:0;right:0;
+  height:var(--header-h);z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;
+  background:rgba(7,7,11,.88);
+  backdrop-filter:blur(20px) saturate(1.3);
+  -webkit-backdrop-filter:blur(20px) saturate(1.3);
+  border-bottom:1px solid var(--border-soft);
+}
+
+.logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:19px;font-weight:300;
+  letter-spacing:5px;color:var(--text);opacity:.85;
+  user-select:none;
+}
+
+#note-title{
+  position:absolute;left:50%;transform:translateX(-50%);
+  width:200px;text-align:center;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:400;
+  color:var(--text-mid);letter-spacing:.02em;
+  background:none;border:none;outline:none;
+}
+#note-title::placeholder{color:var(--text-dim)}
+#note-title:focus{color:var(--text)}
+
+.hdr-btn{
+  width:38px;height:38px;border-radius:10px;
+  background:none;border:none;color:var(--text-mid);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;
+}
+.hdr-btn:active{background:var(--elevated);color:var(--text)}
+
+/* ── CANVAS AREA ─────────────────────────────────── */
+#canvas-wrap{
+  position:fixed;
+  top:calc(var(--safe-top) + var(--header-h));
+  left:0;right:0;bottom:0;
+  background:var(--paper);
+  background-image:radial-gradient(circle,#1b1b28 1.3px,transparent 1.3px);
+  background-size:26px 26px;
+}
+
+#canvas{
+  display:block;width:100%;height:100%;
+  touch-action:none;-webkit-user-select:none;user-select:none;
+  cursor:crosshair;
+}
+#canvas.erasing{cursor:cell}
+
+/* ── TOOLBAR ─────────────────────────────────────── */
+#toolbar{
+  position:fixed;
+  bottom:calc(var(--safe-bottom) + 20px);
+  left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:2px;
+  padding:7px 12px;
+  background:rgba(13,13,20,.94);
+  backdrop-filter:blur(28px) saturate(1.5);
+  -webkit-backdrop-filter:blur(28px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:22px;
+  box-shadow:0 8px 40px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.04);
+  z-index:100;white-space:nowrap;
+}
+
+.t-sep{width:1px;height:18px;background:var(--border);margin:0 5px;flex-shrink:0}
+
+.t-btn{
+  width:40px;height:40px;border-radius:11px;
+  background:none;border:none;color:var(--text-mid);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;flex-shrink:0;
+}
+.t-btn:active{background:var(--elevated);color:var(--text)}
+.t-btn.on{background:var(--accent-glow);color:var(--accent)}
+
+.swatch{
+  width:20px;height:20px;border-radius:50%;
+  border:2px solid transparent;cursor:pointer;
+  transition:transform .15s,border-color .15s;flex-shrink:0;
+  margin:0 3px;
+}
+.swatch.on{border-color:rgba(255,255,255,.55);transform:scale(1.22)}
+.swatch:active{transform:scale(.88)}
+
+#sz-slider{
+  -webkit-appearance:none;appearance:none;
+  width:54px;height:3px;
+  background:var(--border);border-radius:2px;
+  outline:none;cursor:pointer;
+}
+#sz-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:13px;height:13px;border-radius:50%;
+  background:var(--accent);cursor:pointer;
+}
+
+/* ── AI PANEL ─────────────────────────────────────── */
+#ai-overlay{
+  position:fixed;inset:0;z-index:180;
+  background:rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;
+  transition:opacity .3s;
+}
+#ai-overlay.on{opacity:1;pointer-events:all}
+
+#ai-panel{
+  position:fixed;bottom:0;left:0;right:0;
+  height:440px;z-index:190;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  border-radius:22px 22px 0 0;
+  transform:translateY(100%);
+  transition:transform .38s cubic-bezier(.32,.72,0,1);
+  display:flex;flex-direction:column;
+  box-shadow:0 -20px 60px rgba(0,0,0,.65);
+  padding-bottom:var(--safe-bottom);
+}
+#ai-panel.on{transform:translateY(0)}
+
+.p-handle{
+  width:36px;height:4px;background:var(--border);
+  border-radius:2px;margin:12px auto 0;flex-shrink:0;
+}
+
+.p-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px 10px;flex-shrink:0;
+}
+.p-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:18px;font-weight:300;letter-spacing:2.5px;color:var(--text);
+}
+.p-close{
+  width:26px;height:26px;border-radius:50%;
+  background:var(--elevated);border:none;
+  color:var(--text-mid);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;transition:color .15s;
+}
+.p-close:active{color:var(--text)}
+
+.qa-row{
+  display:flex;gap:7px;padding:0 18px 14px;flex-shrink:0;overflow-x:auto;
+}
+.qa-row::-webkit-scrollbar{display:none}
+
+.qa-btn{
+  flex-shrink:0;
+  padding:8px 14px;
+  background:var(--elevated);
+  border:1px solid var(--border);
+  border-radius:10px;
+  color:var(--text-mid);
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:400;
+  letter-spacing:.03em;cursor:pointer;
+  transition:all .15s;
+}
+.qa-btn:active,
+.qa-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+
+#ai-resp{
+  flex:1;overflow-y:auto;
+  padding:2px 20px 10px;
+  font-size:14px;font-weight:300;line-height:1.75;
+  color:var(--text-mid);
+}
+#ai-resp.live{color:var(--text)}
+#ai-resp::-webkit-scrollbar{width:2px}
+#ai-resp::-webkit-scrollbar-thumb{background:var(--border)}
+
+#ai-resp p{margin-bottom:.7em}
+#ai-resp p:last-child{margin-bottom:0}
+#ai-resp strong{font-weight:500;color:var(--accent)}
+#ai-resp ul,#ai-resp ol{padding-left:1.2em}
+#ai-resp li{margin-bottom:.3em}
+
+.ai-in-row{
+  display:flex;gap:8px;padding:10px 18px 14px;
+  border-top:1px solid var(--border-soft);flex-shrink:0;
+}
+#ai-input{
+  flex:1;
+  background:var(--elevated);
+  border:1px solid var(--border);border-radius:12px;
+  padding:10px 14px;
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;
+  outline:none;transition:border-color .15s;
+}
+#ai-input:focus{border-color:var(--accent)}
+#ai-input::placeholder{color:var(--text-dim)}
+#ai-send{
+  width:40px;height:40px;border-radius:12px;flex-shrink:0;
+  background:var(--accent);border:none;
+  color:#1a1208;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity .15s;
+}
+#ai-send:active{opacity:.75}
+
+/* ── SIDEBAR ─────────────────────────────────────── */
+#sb-overlay{
+  position:fixed;inset:0;z-index:280;
+  background:rgba(0,0,0,.6);
+  opacity:0;pointer-events:none;
+  transition:opacity .3s;
+}
+#sb-overlay.on{opacity:1;pointer-events:all}
+
+#sidebar{
+  position:fixed;top:0;left:0;bottom:0;
+  width:270px;z-index:290;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  transform:translateX(-100%);
+  transition:transform .3s cubic-bezier(.32,.72,0,1);
+  display:flex;flex-direction:column;
+  padding-top:var(--safe-top);
+}
+#sidebar.on{transform:translateX(0)}
+
+.sb-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 16px 14px;
+  border-bottom:1px solid var(--border-soft);flex-shrink:0;
+}
+.sb-logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:17px;font-weight:300;letter-spacing:4px;
+}
+.sb-new{
+  width:30px;height:30px;border-radius:9px;
+  background:var(--accent-glow);border:1px solid var(--accent-border);
+  color:var(--accent);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:19px;line-height:1;transition:opacity .15s;
+}
+.sb-new:active{opacity:.7}
+
+#notes-list{flex:1;overflow-y:auto;padding:8px}
+#notes-list::-webkit-scrollbar{display:none}
+
+.n-item{
+  display:flex;gap:10px;align-items:center;
+  padding:10px;border-radius:12px;cursor:pointer;
+  margin-bottom:3px;transition:background .12s;
+  position:relative;
+}
+.n-item:active,.n-item.on{background:var(--elevated)}
+
+.n-thumb{
+  width:44px;height:44px;border-radius:8px;
+  background:var(--bg);border:1px solid var(--border);
+  flex-shrink:0;overflow:hidden;
+}
+.n-thumb img{width:100%;height:100%;object-fit:cover}
+
+.n-meta{min-width:0}
+.n-name{font-size:13px;font-weight:400;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.n-date{font-size:11px;color:var(--text-dim);margin-top:2px}
+
+.n-del{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  width:24px;height:24px;border-radius:7px;
+  background:none;border:none;color:var(--text-dim);
+  cursor:pointer;display:none;align-items:center;justify-content:center;
+  font-size:12px;
+}
+.n-item:hover .n-del,.n-item:active .n-del{display:flex}
+.n-del:active{color:#c06b6b;background:rgba(192,107,107,.1)}
+
+/* ── MISC ─────────────────────────────────────────── */
+.spin{
+  display:inline-block;width:16px;height:16px;
+  border:2px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:rot .7s linear infinite;
+  vertical-align:middle;margin-right:6px;
+}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* Undo indicator */
+#undo-hint{
+  position:fixed;bottom:calc(var(--safe-bottom) + 80px);
+  left:50%;transform:translateX(-50%);
+  font-size:11px;color:var(--text-mid);
+  background:var(--elevated);border:1px solid var(--border);
+  border-radius:8px;padding:5px 10px;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s;
+  white-space:nowrap;
+}
+#undo-hint.show{opacity:1}
+
+/* Empty state hint */
+#canvas-hint{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  text-align:center;pointer-events:none;
+  opacity:.35;transition:opacity 1s;
+}
+#canvas-hint.gone{opacity:0}
+.hint-icon{font-size:28px;margin-bottom:8px}
+.hint-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;letter-spacing:2px;color:var(--text-mid)}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <button class="hdr-btn" onclick="toggleSidebar()" title="Notes">
+    <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
+      <rect width="18" height="1.5" rx=".75" fill="currentColor"/>
+      <rect y="5.75" width="11" height="1.5" rx=".75" fill="currentColor"/>
+      <rect y="11.5" width="15" height="1.5" rx=".75" fill="currentColor"/>
+    </svg>
+  </button>
+  <input id="note-title" type="text" placeholder="Untitled" maxlength="50" spellcheck="false">
+  <button class="hdr-btn" onclick="undoLast()" title="Undo">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M3 6.5h7a4 4 0 010 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M3 6.5L6 3.5M3 6.5L6 9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</div>
+
+<!-- Canvas area -->
+<div id="canvas-wrap">
+  <canvas id="canvas"></canvas>
+  <div id="canvas-hint">
+    <div class="hint-icon">✦</div>
+    <div class="hint-text">Begin writing</div>
+  </div>
+</div>
+
+<!-- Undo hint -->
+<div id="undo-hint">Nothing to undo</div>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <!-- Pen -->
+  <button class="t-btn on" id="btn-pen" onclick="setTool('pen')" title="Pen">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <path d="M10.5 2.5l2 2L4 13H2v-2L10.5 2.5z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+    </svg>
+  </button>
+  <!-- Eraser -->
+  <button class="t-btn" id="btn-erase" onclick="setTool('eraser')" title="Eraser">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <path d="M9 2.5l3.5 3.5-6 6H2.5L1 10.5 5.5 6 9 2.5z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+      <path d="M2 13.5h11" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <div class="t-sep"></div>
+
+  <!-- Colors -->
+  <div class="swatch on" style="background:#ddd9d2" data-c="#ddd9d2" onclick="pickColor(this)" title="Cream"></div>
+  <div class="swatch" style="background:#c9a96c" data-c="#c9a96c" onclick="pickColor(this)" title="Gold"></div>
+  <div class="swatch" style="background:#78b09a" data-c="#78b09a" onclick="pickColor(this)" title="Sage"></div>
+  <div class="swatch" style="background:#8a9ec9" data-c="#8a9ec9" onclick="pickColor(this)" title="Steel"></div>
+  <div class="swatch" style="background:#c47a7a" data-c="#c47a7a" onclick="pickColor(this)" title="Rose"></div>
+
+  <div class="t-sep"></div>
+
+  <!-- Size -->
+  <input type="range" id="sz-slider" min="1" max="18" value="3" title="Size">
+
+  <div class="t-sep"></div>
+
+  <!-- AI -->
+  <button class="t-btn" id="btn-ai" onclick="toggleAI()" title="Ask AI">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <path d="M7.5 1L9 4.5 12.5 6 9 7.5 7.5 11 6 7.5 2.5 6 6 4.5 7.5 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="M12 9.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/>
+    </svg>
+  </button>
+
+  <!-- Clear -->
+  <button class="t-btn" onclick="clearCanvas()" title="Clear">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <path d="M3 4h9M6 4V3h3v1M4.5 4l.5 8.5h5L11 4" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</div>
+
+<!-- AI Overlay + Panel -->
+<div id="ai-overlay" onclick="closeAI()"></div>
+<div id="ai-panel">
+  <div class="p-handle"></div>
+  <div class="p-head">
+    <span class="p-title">ASK INK</span>
+    <button class="p-close" onclick="closeAI()">✕</button>
+  </div>
+  <div class="qa-row">
+    <button class="qa-btn" onclick="aiAction('transcribe')">Transcribe</button>
+    <button class="qa-btn" onclick="aiAction('summarize')">Summarize</button>
+    <button class="qa-btn" onclick="aiAction('explain')">Explain</button>
+    <button class="qa-btn" onclick="aiAction('tasks')">Extract Tasks</button>
+    <button class="qa-btn" onclick="aiAction('improve')">Improve</button>
+  </div>
+  <div id="ai-resp">Ask anything about your notes, or use a quick action above.</div>
+  <div class="ai-in-row">
+    <input id="ai-input" type="text" placeholder="Ask a question about these notes…" onkeydown="if(event.key==='Enter')sendAI()">
+    <button id="ai-send" onclick="sendAI()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- Sidebar Overlay + Panel -->
+<div id="sb-overlay" onclick="toggleSidebar()"></div>
+<div id="sidebar">
+  <div class="sb-head">
+    <span class="sb-logo">INK</span>
+    <button class="sb-new" onclick="newNote()" title="New note">+</button>
+  </div>
+  <div id="notes-list"></div>
+</div>
+
+<script>
+// ─── CANVAS SETUP ─────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+const DPR    = window.devicePixelRatio || 2; // iPad Retina = 2
+
+function resizeCanvas(restoreImg) {
+  const wrap = document.getElementById('canvas-wrap');
+  const W = wrap.offsetWidth, H = wrap.offsetHeight;
+  canvas.width  = W * DPR;
+  canvas.height = H * DPR;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(DPR, DPR);
+  ctx.lineCap  = 'round';
+  ctx.lineJoin = 'round';
+  if (restoreImg) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, W, H);
+    img.src = restoreImg;
+  }
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let tool      = 'pen';
+let color     = '#ddd9d2';
+let size      = 3;
+let drawing   = false;
+let pts       = [];
+
+// Undo stack: store dataURL after each stroke
+let undoStack = [];
+const MAX_UNDO = 20;
+
+// Notes
+let notes         = [];
+let currentId     = null;
+let saveTimer     = null;
+let hasDrawn      = false;
+
+// ─── DRAWING ──────────────────────────────────────────────────────────────────
+function pos(e) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: e.clientX - r.left,
+    y: e.clientY - r.top,
+    p: e.pressure > 0 ? e.pressure : 0.5
+  };
+}
+
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  drawing = true;
+  pts = [pos(e)];
+  canvas.setPointerCapture(e.pointerId);
+  // snapshot before stroke for undo
+  pushUndo();
+  dismissHint();
+}, {passive:false});
+
+canvas.addEventListener('pointermove', e => {
+  if (!drawing) return;
+  e.preventDefault();
+  const p = pos(e);
+  pts.push(p);
+  renderStroke();
+}, {passive:false});
+
+canvas.addEventListener('pointerup',     e => endDraw(e));
+canvas.addEventListener('pointercancel', e => endDraw(e));
+canvas.addEventListener('pointerleave',  e => { if(drawing) endDraw(e); });
+
+function endDraw(e) {
+  if (!drawing) return;
+  drawing = false;
+  // dot for tap
+  if (pts.length === 1 && tool === 'pen') {
+    const p = pts[0];
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size * 0.55, 0, Math.PI*2);
+    ctx.fill();
+  }
+  pts = [];
+  hasDrawn = true;
+  queueSave();
+}
+
+function renderStroke() {
+  if (pts.length < 2) return;
+
+  if (tool === 'eraser') {
+    const a = pts[pts.length-2], b = pts[pts.length-1];
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.lineWidth  = size * 7;
+    ctx.lineCap    = 'round';
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  if (pts.length < 3) {
+    const a = pts[0], b = pts[1];
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = size;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    return;
+  }
+
+  // Smooth bezier with pressure-sensitive width
+  const p0 = pts[pts.length-3];
+  const p1 = pts[pts.length-2];
+  const p2 = pts[pts.length-1];
+
+  const m1x = (p0.x+p1.x)/2, m1y = (p0.y+p1.y)/2;
+  const m2x = (p1.x+p2.x)/2, m2y = (p1.y+p2.y)/2;
+
+  const lw = size * (0.5 + p1.p * 1.1);
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = lw;
+  ctx.beginPath();
+  ctx.moveTo(m1x, m1y);
+  ctx.quadraticCurveTo(p1.x, p1.y, m2x, m2y);
+  ctx.stroke();
+}
+
+// ─── UNDO ─────────────────────────────────────────────────────────────────────
+function pushUndo() {
+  undoStack.push(canvas.toDataURL('image/jpeg', 0.7));
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+}
+
+function undoLast() {
+  if (undoStack.length === 0) {
+    flashHint('Nothing to undo');
+    return;
+  }
+  const snap = undoStack.pop();
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  ctx.clearRect(0, 0, W, H);
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(img, 0, 0, W, H);
+  };
+  img.src = snap;
+  queueSave();
+}
+
+function flashHint(msg) {
+  const el = document.getElementById('undo-hint');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1600);
+}
+
+// ─── TOOLS ────────────────────────────────────────────────────────────────────
+function setTool(t) {
+  tool = t;
+  document.getElementById('btn-pen').classList.toggle('on',  t==='pen');
+  document.getElementById('btn-erase').classList.toggle('on', t==='eraser');
+  canvas.className = t==='eraser' ? 'erasing' : '';
+}
+
+function pickColor(el) {
+  color = el.dataset.c;
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('on'));
+  el.classList.add('on');
+  if (tool==='eraser') setTool('pen');
+}
+
+document.getElementById('sz-slider').addEventListener('input', function(){
+  size = +this.value;
+});
+
+function clearCanvas() {
+  if (!hasDrawn) return;
+  if (!confirm('Clear this page? This cannot be undone.')) return;
+  pushUndo();
+  const W=canvas.offsetWidth, H=canvas.offsetHeight;
+  ctx.clearRect(0,0,W,H);
+  hasDrawn = false;
+  queueSave();
+}
+
+// ─── HINT ─────────────────────────────────────────────────────────────────────
+function dismissHint() {
+  document.getElementById('canvas-hint').classList.add('gone');
+}
+
+// ─── NOTES / STORAGE ──────────────────────────────────────────────────────────
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2) }
+
+function queueSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNote, 1200);
+}
+
+function saveNote() {
+  if (!currentId) return;
+  const note = notes.find(n=>n.id===currentId);
+  if (!note) return;
+  note.title     = document.getElementById('note-title').value.trim() || 'Untitled';
+  note.data      = canvas.toDataURL('image/png', 0.8);
+  note.updated   = Date.now();
+  persist();
+  renderList();
+}
+
+function newNote(skipSave) {
+  if (!skipSave) saveNote();
+  undoStack = [];
+  hasDrawn  = false;
+
+  const n = { id:uid(), title:'', data:null, created:Date.now(), updated:Date.now() };
+  notes.unshift(n);
+  currentId = n.id;
+
+  const W=canvas.offsetWidth, H=canvas.offsetHeight;
+  ctx.clearRect(0,0,W,H);
+  document.getElementById('note-title').value = '';
+  document.getElementById('canvas-hint').classList.remove('gone');
+
+  persist();
+  renderList();
+  closeSidebar();
+}
+
+function loadNote(id) {
+  saveNote();
+  undoStack = [];
+  hasDrawn  = false;
+
+  const n = notes.find(x=>x.id===id);
+  if (!n) return;
+  currentId = id;
+  document.getElementById('note-title').value = n.title==='Untitled'?'':n.title;
+
+  const W=canvas.offsetWidth, H=canvas.offsetHeight;
+  ctx.clearRect(0,0,W,H);
+
+  if (n.data) {
+    dismissHint();
+    const img=new Image();
+    img.onload=()=>{ ctx.drawImage(img,0,0,W,H); hasDrawn=true; };
+    img.src=n.data;
+  } else {
+    document.getElementById('canvas-hint').classList.remove('gone');
+  }
+
+  renderList();
+  closeSidebar();
+}
+
+function deleteNote(id, e) {
+  e.stopPropagation();
+  if (notes.length <= 1) { flashHint('Last note'); return; }
+  if (!confirm('Delete this note?')) return;
+  notes = notes.filter(n=>n.id!==id);
+  persist();
+  if (currentId===id) {
+    currentId = null;
+    loadNote(notes[0].id);
+  } else {
+    renderList();
+  }
+}
+
+function renderList() {
+  const list = document.getElementById('notes-list');
+  list.innerHTML = notes.map(n=>`
+    <div class="n-item ${n.id===currentId?'on':''}" onclick="loadNote('${n.id}')">
+      <div class="n-thumb">${n.data?`<img src="${n.data}" loading="lazy">`:''}  </div>
+      <div class="n-meta">
+        <div class="n-name">${escH(n.title||'Untitled')}</div>
+        <div class="n-date">${relTime(n.updated||n.created)}</div>
+      </div>
+      <button class="n-del" onclick="deleteNote('${n.id}',event)" title="Delete">✕</button>
+    </div>
+  `).join('');
+}
+
+function persist() {
+  try { localStorage.setItem('ink_v2', JSON.stringify(notes)); } catch(_){}
+}
+function loadPersisted() {
+  try { const r=localStorage.getItem('ink_v2'); if(r) notes=JSON.parse(r); } catch(_){}
+}
+function escH(s){ const d=document.createElement('div');d.textContent=s;return d.innerHTML }
+function relTime(ts){
+  const d=Date.now()-ts;
+  if(d<60000)return 'Just now';
+  if(d<3600000)return Math.floor(d/60000)+'m ago';
+  if(d<86400000)return Math.floor(d/3600000)+'h ago';
+  return new Date(ts).toLocaleDateString([],{month:'short',day:'numeric'});
+}
+
+// ─── AI ───────────────────────────────────────────────────────────────────────
+const PROMPTS = {
+  transcribe: 'Transcribe all handwritten text in this image exactly as written. Format cleanly with line breaks. If you see no writing, say so briefly.',
+  summarize:  'Summarize the key ideas from these handwritten notes in 3–5 sentences.',
+  explain:    'Explain the concepts or content in these notes clearly and helpfully.',
+  tasks:      'Extract all tasks, action items, or to-dos from these notes as a clean numbered list.',
+  improve:    'Suggest how these notes could be better organized or expanded. Be brief and practical.'
+};
+
+function toggleAI() {
+  const p=document.getElementById('ai-panel');
+  p.classList.contains('on') ? closeAI() : openAI();
+}
+function openAI(){
+  document.getElementById('ai-panel').classList.add('on');
+  document.getElementById('ai-overlay').classList.add('on');
+  document.getElementById('btn-ai').classList.add('on');
+}
+function closeAI(){
+  document.getElementById('ai-panel').classList.remove('on');
+  document.getElementById('ai-overlay').classList.remove('on');
+  document.getElementById('btn-ai').classList.remove('on');
+}
+
+function setResp(html, live=true) {
+  const el=document.getElementById('ai-resp');
+  el.innerHTML=html;
+  el.className=live?'live':'';
+}
+
+async function aiAction(action){
+  await callAI(PROMPTS[action]);
+}
+async function sendAI(){
+  const el=document.getElementById('ai-input');
+  const q=el.value.trim();
+  if(!q)return;
+  el.value='';
+  await callAI(q);
+}
+
+async function callAI(prompt) {
+  setResp('<span class="spin"></span> Analyzing…', false);
+
+  // Get canvas as JPEG (smaller than PNG, fast upload)
+  const b64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } },
+            { type:'text',  text: prompt }
+          ]
+        }]
+      })
+    });
+
+    const data = await res.json();
+    const raw  = data.content?.[0]?.text || 'No response received.';
+
+    // Lightweight markdown → HTML
+    const html = raw
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^\s*[-•]\s+(.+)/gm,'<li>$1</li>')
+      .replace(/^\s*\d+\.\s+(.+)/gm,'<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/s,'<ul>$1</ul>')
+      .replace(/\n\n+/g,'</p><p>')
+      .replace(/\n/g,'<br>');
+
+    setResp(`<p>${html}</p>`, true);
+  } catch(err) {
+    setResp('⚠ Could not reach AI. Check your connection.', false);
+    console.error(err);
+  }
+}
+
+// ─── SIDEBAR ──────────────────────────────────────────────────────────────────
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('on');
+  document.getElementById('sb-overlay').classList.toggle('on');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('on');
+  document.getElementById('sb-overlay').classList.remove('on');
+}
+
+// ─── RESIZE ───────────────────────────────────────────────────────────────────
+let resizeTimer;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  const snap = canvas.toDataURL('image/jpeg', 0.8);
+  resizeTimer = setTimeout(()=>{ resizeCanvas(snap); }, 150);
+});
+
+// ─── TITLE SAVE ───────────────────────────────────────────────────────────────
+document.getElementById('note-title').addEventListener('blur', queueSave);
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+(function init() {
+  loadPersisted();
+  resizeCanvas();
+
+  if (notes.length === 0) {
+    newNote(true);
+  } else {
+    currentId = notes[0].id;
+    const n = notes[0];
+    document.getElementById('note-title').value = n.title==='Untitled'?'':n.title;
+    if (n.data) {
+      dismissHint();
+      const img=new Image();
+      img.onload=()=>{
+        const W=canvas.offsetWidth,H=canvas.offsetHeight;
+        ctx.drawImage(img,0,0,W,H);
+        hasDrawn=true;
+      };
+      img.src=n.data;
+    }
+    renderList();
+  }
+})();
+</script>
+</body>
+</html>

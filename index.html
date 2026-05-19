@@ -158,6 +158,45 @@ html, body {
   color: var(--green);
 }
 
+/* ── PEN SETTINGS POPOVER ───────────────────── */
+#pen-pop {
+  position: fixed;
+  background: var(--chrome2);
+  border-radius: 12px;
+  padding: 10px;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 250;
+  width: 210px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.07);
+}
+#pen-pop.open { display: flex; }
+.pp-label {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .6px;
+  color: rgba(255,255,255,0.4); margin-bottom: 4px;
+}
+.pp-tips { display: flex; gap: 5px; }
+.pp-tip {
+  flex: 1; height: 50px; border: 1.5px solid transparent;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.55);
+  border-radius: 8px; cursor: pointer;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px; font-size: 9px; font-weight: 600;
+  letter-spacing: .4px; text-transform: uppercase;
+  transition: background .15s, color .15s, border-color .15s;
+  font-family: inherit;
+}
+.pp-tip:hover { background: rgba(255,255,255,0.12); color: white; }
+.pp-tip.on { background: rgba(67,97,238,0.2); color: var(--blue); border-color: rgba(67,97,238,0.5); }
+.pp-smooth-row { display: flex; flex-direction: column; gap: 5px; }
+.pp-smooth-hdr { display: flex; justify-content: space-between; align-items: center; }
+#pp-smooth-val { color: white; font-size: 11px; font-weight: 600; }
+#pp-smooth { width: 100%; accent-color: var(--blue); cursor: pointer; }
+
 /* ── OBJECT CONTEXT BAR ──────────────────────── */
 #obj-ctx-bar {
   position: fixed;
@@ -422,7 +461,7 @@ html, body {
   <div class="sep"></div>
 
   <!-- Pen -->
-  <button class="tb on" data-tool="pen" title="Pen">
+  <button class="tb on" data-tool="pen" title="Pen (tap again for settings)">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
     </svg>
@@ -562,6 +601,40 @@ html, body {
     </svg>
     Arrow
   </button>
+</div>
+
+<!-- ═══ PEN SETTINGS POPOVER ═══ -->
+<div id="pen-pop">
+  <div>
+    <div class="pp-label">Tip Style</div>
+    <div class="pp-tips">
+      <button class="pp-tip on" data-tip="round">
+        <svg width="20" height="12" viewBox="0 0 20 12" fill="none">
+          <path d="M2 10 C5 2 15 2 18 4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        Round
+      </button>
+      <button class="pp-tip" data-tip="chisel">
+        <svg width="20" height="12" viewBox="0 0 20 12" fill="currentColor">
+          <path d="M2 11 L6 7 L18 2 L14 6 Z"/>
+        </svg>
+        Chisel
+      </button>
+      <button class="pp-tip" data-tip="tapered">
+        <svg width="20" height="12" viewBox="0 0 20 12" fill="currentColor">
+          <path d="M2 9 C7 6 14 4 18 2 L18 4 C14 6 7 9 3 11 Z"/>
+        </svg>
+        Fountain
+      </button>
+    </div>
+  </div>
+  <div class="pp-smooth-row">
+    <div class="pp-smooth-hdr">
+      <div class="pp-label">Stability</div>
+      <span id="pp-smooth-val">3</span>
+    </div>
+    <input type="range" id="pp-smooth" min="1" max="5" value="3">
+  </div>
 </div>
 
 <!-- ═══ OBJECT CONTEXT BAR ═══ -->
@@ -726,6 +799,11 @@ let histFuture = [];
 let tool  = 'pen';
 let color = '#1B1D2E';
 let size  = 3;
+
+// Pen style settings
+let penStyle     = 'round'; // 'round' | 'chisel' | 'tapered'
+let penSmoothing = 3;        // 1–5
+let rawPts = [];             // raw pointer positions for stabiliser
 
 // Pointer tracking
 const ptrs = new Map();
@@ -945,42 +1023,105 @@ function drawLines(W, H) {
   }
 }
 
+// ════════════════════════════════════════════════════════
+// STROKE RENDERING — with tip styles
+// ════════════════════════════════════════════════════════
 function renderStroke(st) {
   const pts = st.pts;
   if (!pts.length) return;
   ctx.save();
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   ctx.globalCompositeOperation = 'source-over';
+
   if (st.tool === 'eraser') {
     ctx.globalCompositeOperation = 'destination-out';
-    ctx.strokeStyle = 'rgba(0,0,0,1)';
-    ctx.fillStyle   = 'rgba(0,0,0,1)';
-    ctx.lineWidth   = st.size * 2.5;
-  } else if (st.tool === 'highlighter') {
-    ctx.strokeStyle = hexA(st.color, 0.28);
-    ctx.fillStyle   = hexA(st.color, 0.28);
-    ctx.lineWidth   = st.size * 4.5;
-  } else {
-    ctx.strokeStyle = st.color;
-    ctx.fillStyle   = st.color;
-    ctx.lineWidth   = st.size;
-  }
-  if (pts.length === 1) {
-    ctx.beginPath();
-    ctx.arc(pts[0].x, pts[0].y, ctx.lineWidth / 2, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length - 1; i++) {
-      const mx = (pts[i].x + pts[i+1].x) / 2;
-      const my = (pts[i].y + pts[i+1].y) / 2;
-      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.fillStyle = 'rgba(0,0,0,1)';
+    ctx.lineWidth = st.size * 2.5;
+    if (pts.length === 1) {
+      ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill();
+    } else {
+      _smoothPath(pts); ctx.stroke();
     }
-    ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
-    ctx.stroke();
+  } else if (st.tool === 'highlighter') {
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = hexA(st.color, 0.28); ctx.fillStyle = hexA(st.color, 0.28);
+    ctx.lineWidth = st.size * 4.5;
+    if (pts.length === 1) {
+      ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill();
+    } else {
+      _smoothPath(pts); ctx.stroke();
+    }
+  } else if (st.penStyle === 'chisel') {
+    _drawChisel(st, pts);
+  } else if (st.penStyle === 'tapered') {
+    _drawTapered(st, pts);
+  } else {
+    // Round (default)
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = st.color; ctx.fillStyle = st.color;
+    ctx.lineWidth = st.size;
+    if (pts.length === 1) {
+      ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill();
+    } else {
+      _smoothPath(pts); ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+// Shared smooth quadratic path builder
+function _smoothPath(pts) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const mx = (pts[i].x + pts[i+1].x) / 2;
+    const my = (pts[i].y + pts[i+1].y) / 2;
+    ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+  }
+  ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+}
+
+// Chisel tip — shear transform gives a calligraphy / italic pen feel
+function _drawChisel(st, pts) {
+  ctx.strokeStyle = st.color; ctx.fillStyle = st.color;
+  ctx.lineJoin = 'miter'; ctx.lineCap = 'square';
+  ctx.save();
+  ctx.transform(1, 0, -0.25, 1, 0, 0); // horizontal shear = chisel tilt
+  ctx.lineWidth = st.size;
+  if (pts.length === 1) {
+    ctx.fillRect(pts[0].x - st.size / 2, pts[0].y - st.size / 2, st.size, st.size);
+  } else {
+    _smoothPath(pts); ctx.stroke();
   }
   ctx.restore();
+}
+
+// Fountain / tapered tip — stroke tapers at start and end
+function _drawTapered(st, pts) {
+  if (pts.length === 1) {
+    ctx.fillStyle = st.color;
+    ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, st.size * 0.25, 0, Math.PI * 2); ctx.fill();
+    return;
+  }
+  const n = pts.length;
+  const minW = Math.max(0.5, st.size * 0.12);
+  const maxW = st.size;
+  const inEnd    = Math.max(1, Math.floor(n * 0.15));
+  const outStart = Math.max(inEnd + 1, Math.floor(n * 0.82));
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.strokeStyle = st.color;
+  for (let i = 1; i < n; i++) {
+    let w;
+    if      (i <= inEnd)     w = minW + (maxW - minW) * (i / inEnd);
+    else if (i >= outStart)  w = minW + (maxW - minW) * ((n - 1 - i) / Math.max(1, n - 1 - outStart));
+    else                     w = maxW;
+    ctx.beginPath();
+    ctx.lineWidth = Math.max(0.5, w);
+    ctx.moveTo(pts[i-1].x, pts[i-1].y);
+    ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+  }
 }
 
 function renderObject(obj) {
@@ -1302,19 +1443,31 @@ function updateLassoCursor(e) {
 }
 
 // ════════════════════════════════════════════════════════
-// STROKE
+// STROKE — with stabiliser + pen style
 // ════════════════════════════════════════════════════════
 function startStroke(e) {
   penDown = true;
   const { sx, sy } = evXY(e);
   const pt = s2c(sx, sy);
-  cur = { tool, color, size, pts: [pt] };
+  rawPts = [pt];
+  cur = { tool, color, size, penStyle: tool === 'pen' ? penStyle : 'round', pts: [pt] };
 }
 
 function continueStroke(e) {
   if (!penDown || !cur) return;
   const { sx, sy } = evXY(e);
-  cur.pts.push(s2c(sx, sy));
+  const raw = s2c(sx, sy);
+  rawPts.push(raw);
+  if (penSmoothing <= 1 || tool !== 'pen') {
+    cur.pts.push(raw);
+  } else {
+    const n = Math.min(rawPts.length, penSmoothing);
+    const recent = rawPts.slice(-n);
+    cur.pts.push({
+      x: recent.reduce((sum, p) => sum + p.x, 0) / n,
+      y: recent.reduce((sum, p) => sum + p.y, 0) / n
+    });
+  }
   draw();
 }
 
@@ -1641,6 +1794,15 @@ function activateTool(t) {
 document.querySelectorAll('[data-tool]').forEach(btn => {
   btn.addEventListener('click', () => {
     const t = btn.dataset.tool;
+    // Tap pen again while pen is active → open pen settings popover
+    if (t === 'pen' && tool === 'pen') {
+      const pop = document.getElementById('pen-pop');
+      const rect = btn.getBoundingClientRect();
+      pop.style.left = rect.left + 'px';
+      pop.style.top  = (rect.bottom + 6) + 'px';
+      pop.classList.toggle('open');
+      return;
+    }
     activateTool(t);
     if (t === 'select') toast('Draw a rectangle to select a region for AI');
     if (t === 'lasso')  toast('Tap or drag to select objects • Drag to move • Handles to resize • Del to delete');
@@ -1668,9 +1830,28 @@ document.querySelectorAll('.shape-opt').forEach(btn => {
   });
 });
 
-// Close popover on outside click
+// Close popovers on outside click
 document.addEventListener('click', () => {
   document.getElementById('shapes-pop').classList.remove('open');
+  document.getElementById('pen-pop').classList.remove('open');
+});
+
+// Pen tip style selection
+document.querySelectorAll('.pp-tip').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    penStyle = btn.dataset.tip;
+    document.querySelectorAll('.pp-tip').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    document.getElementById('pen-pop').classList.remove('open');
+    toast('Tip: ' + btn.dataset.tip.charAt(0).toUpperCase() + btn.dataset.tip.slice(1));
+  });
+});
+
+// Pen stability slider
+document.getElementById('pp-smooth').addEventListener('input', e => {
+  penSmoothing = +e.target.value;
+  document.getElementById('pp-smooth-val').textContent = penSmoothing;
 });
 
 // Color swatches
@@ -1847,7 +2028,7 @@ document.getElementById('ks-btn').addEventListener('click', () => {
 document.getElementById('b-page').addEventListener('click', () => {
   const model = document.getElementById('ms').value;
   if (!VISION_MODELS.includes(model)) { toast('Switch to a vision model to analyze images'); return; }
-  askAI('Please read and summarize everything written or drawn on this page of notes.', captureFullPage());
+  askAI('Analyze this page of handwritten notes. Identify all topics, concepts, equations, or problems present. Summarize the key ideas, solve any math or problems you see, and explain any concepts clearly. Act as a tutor helping me understand and review this material.', captureFullPage());
 });
 
 document.getElementById('b-rgn').addEventListener('click', () => {
@@ -1859,7 +2040,7 @@ document.getElementById('b-rgn').addEventListener('click', () => {
   }
   const model = document.getElementById('ms').value;
   if (!VISION_MODELS.includes(model)) { toast('Switch to a vision model to analyze images'); return; }
-  askAI('Please carefully analyze and explain what is written or drawn in this selected region.', captured);
+  askAI('Analyze this selected region of my handwritten notes. If there is a math equation or problem, solve it step by step. If there is a concept or topic, explain it clearly. If there is a diagram, describe what it represents. Be concise, direct, and educational.', captured);
   captured = null; clearSel(); updateRgnBtn();
 });
 
@@ -1894,7 +2075,7 @@ async function askAI(userMsg, imgB64) {
 
   const apiMsgs = [{
     role: 'system',
-    content: 'You are an intelligent AI assistant embedded in Inkwell, a handwriting note-taking app. When the user shares images of their handwritten notes or drawings, analyze them carefully — read handwriting, identify diagrams, explain concepts. Be clear, concise, and insightful.'
+    content: 'You are an expert AI tutor embedded in Inkwell, a handwriting note-taking app. When given images of handwritten notes or drawings: (1) Read all text carefully. (2) If math equations or problems are present, solve them step by step. (3) If a concept or topic is written, explain it clearly and concisely. (4) If diagrams are drawn, explain what they represent. Do not just describe what you see — explain, solve, and teach. Be like a knowledgeable friend who gives direct, helpful answers.'
   }];
   for (const h of chatHist.slice(-8)) {
     apiMsgs.push({ role: h.role, content: h.text });

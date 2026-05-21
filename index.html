@@ -9,7 +9,6 @@
 *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --paper:   #FDFBF7;
   --ink:     #1B1D2E;
   --chrome:  #1B1D2E;
   --chrome2: #252738;
@@ -26,7 +25,7 @@
 
 html, body {
   width: 100%; height: 100%; overflow: hidden;
-  background: var(--paper);
+  background: #E5E5EA; /* Desk background */
   font-family: 'DM Sans', system-ui, sans-serif;
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
@@ -55,18 +54,16 @@ html, body {
 .sep {
   width: 1px; height: 20px;
   background: rgba(255,255,255,0.12);
-  margin: 0 2px; flex-shrink: 0;
+  margin: 0 4px; flex-shrink: 0;
 }
 
 .tb {
   width: 34px; height: 34px; border-radius: 8px;
   border: none; background: transparent;
   color: rgba(255,255,255,0.55);
-  cursor: pointer; font-size: 16px;
-  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
   position: relative; flex-shrink: 0;
   transition: background .15s, color .15s;
-  font-family: inherit;
 }
 .tb:hover { background: rgba(255,255,255,0.1); color: white; }
 .tb.on { background: rgba(255,255,255,0.14); color: white; }
@@ -76,11 +73,9 @@ html, body {
   width: 14px; height: 2.5px; border-radius: 2px;
   background: var(--blue);
 }
-[data-tool="select"].on::after,
-[data-tool="lasso"].on::after  { background: var(--purple); }
+[data-tool="select"].on::after { background: var(--purple); }
 [data-tool="highlighter"].on::after { background: var(--amber); }
 [data-tool="eraser"].on::after { background: var(--muted); }
-#b-shapes.on::after            { background: var(--green); }
 
 .spacer { flex: 1; }
 
@@ -90,439 +85,134 @@ html, body {
   width: 19px; height: 19px; border-radius: 50%;
   cursor: pointer; border: 2.5px solid transparent;
   transition: transform .15s, border-color .15s; flex-shrink: 0;
+  position: relative;
 }
 .csw:hover { transform: scale(1.2); }
 .csw.on { border-color: white; transform: scale(1.1); }
+#custom-csw { background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red); overflow: hidden; }
+#custom-color { position: absolute; inset: -5px; opacity: 0; cursor: pointer; width: 30px; height: 30px; }
 
-/* Size */
-#sz-wrap { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
-.sz-lbl { font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: .5px; }
-#sz { width: 70px; accent-color: var(--blue); }
+/* Size Slider */
+#sz-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 8px; }
+.sz-lbl { font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: .5px; margin-right: 2px; }
+.sz-btn { background: transparent; border: none; color: white; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 4px; }
+.sz-btn:hover { background: rgba(255,255,255,0.15); }
+#sz { width: 60px; accent-color: var(--blue); }
+#sz-val { color: white; font-size: 11.5px; font-weight: 600; font-family: monospace; width: 18px; text-align: center; }
 
-/* AI Button */
-#ai-btn {
-  display: flex; align-items: center; gap: 6px;
-  height: 32px; padding: 0 13px; border-radius: 8px;
-  border: none;
-  background: linear-gradient(135deg, #7C3AED 0%, #4361EE 100%);
-  color: white; font-size: 12.5px; font-weight: 600;
-  font-family: inherit; cursor: pointer; white-space: nowrap;
-  flex-shrink: 0; transition: opacity .15s, transform .1s;
-}
-#ai-btn:hover { opacity: .88; }
-#ai-btn:active { transform: scale(.97); }
-
-/* Download PDF Button */
-#dl-btn {
+/* AI & Action Buttons */
+.action-btn {
   display: flex; align-items: center; gap: 5px;
   height: 32px; padding: 0 11px; border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.18);
   background: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.75); font-size: 12px; font-weight: 500;
+  color: rgba(255,255,255,0.85); font-size: 12px; font-weight: 500;
   font-family: inherit; cursor: pointer; white-space: nowrap;
-  flex-shrink: 0; transition: background .15s, color .15s, border-color .15s;
+  flex-shrink: 0; transition: background .15s, border-color .15s;
 }
-#dl-btn:hover { background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.3); }
-#dl-btn:active { transform: scale(.97); }
-#dl-btn.loading { opacity: .6; pointer-events: none; }
+.action-btn:hover { background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.3); }
+.action-btn:active { transform: scale(.97); }
+#ai-btn { background: linear-gradient(135deg, #7C3AED 0%, #4361EE 100%); border: none; color: white; font-weight: 600; padding: 0 13px; }
+#ai-btn:hover { opacity: .9; }
 
-/* ── SHAPES POPOVER ───────────────────────────── */
-#shapes-pop {
-  position: fixed;
-  background: var(--chrome2);
-  border-radius: 12px;
-  padding: 6px;
-  display: none;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  z-index: 250;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.07);
+/* ── SETTINGS MENUS ───────────────────────────── */
+.popover {
+  position: absolute; top: 50px; background: white; border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15); padding: 12px; z-index: 250;
+  display: none; flex-direction: column; gap: 10px; width: 220px;
+  border: 1px solid var(--border);
 }
-#shapes-pop.open { display: grid; }
-
-.shape-opt {
-  width: 46px; height: 46px;
-  border: none; background: transparent;
-  color: rgba(255,255,255,0.6);
-  border-radius: 8px; cursor: pointer;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 3px; font-size: 9px; font-weight: 500;
-  letter-spacing: .3px;
-  transition: background .15s, color .15s;
-  font-family: inherit; text-transform: uppercase;
-}
-.shape-opt:hover { background: rgba(255,255,255,0.1); color: white; }
-.shape-opt.on {
-  background: rgba(34,197,94,0.18);
-  color: var(--green);
-}
-
-/* ── PEN SETTINGS POPOVER ───────────────────── */
-#pen-pop {
-  position: fixed;
-  background: var(--chrome2);
-  border-radius: 12px;
-  padding: 10px;
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-  z-index: 250;
-  width: 210px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.07);
-}
-#pen-pop.open { display: flex; }
-.pp-label {
-  font-size: 10px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: .6px;
-  color: rgba(255,255,255,0.4); margin-bottom: 4px;
-}
-.pp-tips { display: flex; gap: 5px; }
-.pp-tip {
-  flex: 1; height: 50px; border: 1.5px solid transparent;
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.55);
-  border-radius: 8px; cursor: pointer;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 4px; font-size: 9px; font-weight: 600;
-  letter-spacing: .4px; text-transform: uppercase;
-  transition: background .15s, color .15s, border-color .15s;
-  font-family: inherit;
-}
-.pp-tip:hover { background: rgba(255,255,255,0.12); color: white; }
-.pp-tip.on { background: rgba(67,97,238,0.2); color: var(--blue); border-color: rgba(67,97,238,0.5); }
-.pp-smooth-row { display: flex; flex-direction: column; gap: 5px; }
-.pp-smooth-hdr { display: flex; justify-content: space-between; align-items: center; }
-#pp-smooth-val { color: white; font-size: 11px; font-weight: 600; }
-#pp-smooth { width: 100%; accent-color: var(--blue); cursor: pointer; }
-
-/* ── OBJECT CONTEXT BAR ──────────────────────── */
-#obj-ctx-bar {
-  position: fixed;
-  display: none;
-  align-items: center;
-  gap: 2px;
-  background: var(--chrome2);
-  border-radius: 9px;
-  padding: 4px;
-  z-index: 180;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.07);
-  pointer-events: all;
-  transform: translateX(-50%);
-}
-.ctx-btn {
-  width: 30px; height: 30px;
-  border: none; background: transparent;
-  color: rgba(255,255,255,0.65);
-  border-radius: 6px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: background .15s, color .15s;
-}
-.ctx-btn:hover { background: rgba(255,255,255,0.1); color: white; }
-.ctx-btn.danger:hover { background: rgba(239,68,68,0.2); color: var(--red); }
-.ctx-sep {
-  width: 1px; height: 18px;
-  background: rgba(255,255,255,0.1);
-  margin: 0 1px;
-}
+.popover.show { display: flex; }
+.pop-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pop-lbl { font-size: 12px; font-weight: 600; color: var(--ink); }
+.pop-sel { flex: 1; padding: 5px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; font-family: inherit; outline: none; }
+.pop-rng { flex: 1; accent-color: var(--blue); }
+#page-color-pick { width: 30px; height: 24px; border: none; cursor: pointer; padding: 0; background: none; }
 
 /* ── CANVAS AREA ──────────────────────────────── */
-#area {
-  position: fixed; top: var(--th); left: 0; right: 0; bottom: 0;
-  overflow: hidden; background: var(--paper);
-}
-#cv {
-  position: absolute; top: 0; left: 0;
-  touch-action: none; cursor: crosshair; display: block;
+#area { position: fixed; top: var(--th); left: 0; right: 0; bottom: 0; overflow: hidden; background: #E5E5EA; }
+#bg-cv, #cv { position: absolute; top: 0; left: 0; touch-action: none; display: block; }
+#bg-cv { z-index: 1; pointer-events: none; }
+#cv { z-index: 2; cursor: crosshair; }
+
+/* ── SELECTION BOX ────────────────────────────── */
+#sel {
+  position: fixed; border: 2px dashed var(--purple); background: rgba(124,58,237,0.07);
+  pointer-events: none; z-index: 100; display: none; border-radius: 4px;
 }
 
-/* ── SELECTION BOX (AI region) ────────────────── */
-#sel {
-  position: fixed;
-  border: 2px dashed var(--purple);
-  background: rgba(124,58,237,0.07);
-  pointer-events: none; z-index: 100;
-  display: none; border-radius: 4px;
-  box-shadow: 0 0 0 1px rgba(124,58,237,0.15);
+/* ── CURSOR PREVIEW ───────────────────────────── */
+#cur-prev {
+  position: fixed; border-radius: 50%; pointer-events: none; z-index: 90; display: none;
+  transform: translate(-50%,-50%); transition: width .1s, height .1s;
 }
 
 /* ── AI PANEL ─────────────────────────────────── */
 #panel {
-  position: fixed; top: var(--th); right: 0;
-  width: var(--pw); bottom: 0;
-  background: #FEFEFE;
-  box-shadow: -2px 0 28px rgba(0,0,0,0.1);
-  border-left: 1px solid var(--border);
-  display: flex; flex-direction: column;
-  transform: translateX(100%);
-  transition: transform .28s cubic-bezier(.4,0,.2,1);
-  z-index: 150;
+  position: fixed; top: var(--th); right: 0; width: var(--pw); bottom: 0;
+  background: #FEFEFE; box-shadow: -2px 0 28px rgba(0,0,0,0.1);
+  border-left: 1px solid var(--border); display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1); z-index: 150;
 }
 #panel.open { transform: translateX(0); }
-
-/* Panel Header */
-#ph {
-  padding: 13px 14px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 8px;
-  background: white;
-}
+#ph { padding: 13px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; background: white; }
 .ph-icon { display: flex; align-items: center; color: var(--purple); }
 .pt { font-size: 14px; font-weight: 600; flex: 1; }
-#cls {
-  width: 26px; height: 26px; border-radius: 6px;
-  border: none; background: #F0F0F4; cursor: pointer;
-  color: var(--muted);
-  display: flex; align-items: center; justify-content: center;
-}
+#cls { width: 26px; height: 26px; border-radius: 6px; border: none; background: #F0F0F4; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 #cls:hover { background: #E4E4EC; }
-
-/* API Key */
-#ks {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  background: #FAFAFA;
-}
-.sl {
-  font-size: 10px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: .6px;
-  color: var(--muted); margin-bottom: 6px;
-}
+#ks, #mr { padding: 10px 14px; border-bottom: 1px solid var(--border); background: #FAFAFA; display: flex; flex-direction: column; gap: 6px; }
+.sl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
 .kr { display: flex; gap: 6px; }
-#ki {
-  flex: 1; height: 33px; padding: 0 10px;
-  border: 1.5px solid var(--border); border-radius: 8px;
-  font-size: 12px; font-family: 'Courier New', monospace;
-  color: var(--ink); background: white; outline: none;
-  -webkit-user-select: text; user-select: text;
-}
-#ki:focus { border-color: var(--blue); }
-#ks-btn {
-  height: 33px; padding: 0 12px; border-radius: 8px;
-  border: none; background: var(--blue); color: white;
-  font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
-}
-#ks-btn:hover { opacity: .9; }
-
-/* Model Row */
-#mr {
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 8px;
-}
-.sli { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); white-space: nowrap; }
-#ms {
-  flex: 1; height: 29px; border: 1.5px solid var(--border);
-  border-radius: 6px; font-size: 11.5px; font-family: inherit;
-  color: var(--ink); background: white; padding: 0 6px; outline: none;
-}
-#ms:focus { border-color: var(--blue); }
-
-/* Quick Actions */
-#qa {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  display: flex; gap: 8px;
-}
-.qb {
-  flex: 1; padding: 9px 6px; border-radius: 10px;
-  border: 1.5px solid var(--border); background: white;
-  font-size: 11.5px; font-weight: 500; font-family: inherit;
-  color: var(--ink); cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 5px;
-  transition: all .15s; line-height: 1.2;
-}
-.qb .qi {
-  display: flex; align-items: center; justify-content: center;
-  color: var(--muted);
-}
-.qb .qi svg { width: 20px; height: 20px; transition: color .15s; }
+#ki, #ms { height: 33px; padding: 0 10px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 12px; font-family: inherit; color: var(--ink); background: white; outline: none; width: 100%; }
+#ki { font-family: 'Courier New', monospace; }
+#ki:focus, #ms:focus { border-color: var(--blue); }
+#ks-btn { height: 33px; padding: 0 12px; border-radius: 8px; border: none; background: var(--blue); color: white; font-size: 12px; font-weight: 600; cursor: pointer; }
+#qa { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; }
+.qb { flex: 1; padding: 9px 6px; border-radius: 10px; border: 1.5px solid var(--border); background: white; font-size: 11.5px; font-weight: 500; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: all .15s; }
+.qb svg { width: 20px; height: 20px; color: var(--muted); transition: color .15s; }
 .qb:hover { border-color: var(--blue); color: var(--blue); }
-.qb:hover .qi { color: var(--blue); }
+.qb:hover svg { color: var(--blue); }
 .qb.rdy { border-color: var(--purple); color: var(--purple); background: #F9F5FF; }
-.qb.rdy .qi { color: var(--purple); }
-
-/* Chat */
-#msgs {
-  flex: 1; overflow-y: auto;
-  padding: 12px 12px;
-  display: flex; flex-direction: column; gap: 9px;
-  scroll-behavior: smooth;
-}
-.empty-hint {
-  color: var(--muted); font-size: 13px;
-  text-align: center; padding-top: 28px;
-  line-height: 1.6;
-}
-.empty-hint .hint-icon {
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 10px; color: var(--purple);
-}
-
-.bub {
-  max-width: 90%; font-size: 13px; line-height: 1.56;
-  padding: 9px 13px; border-radius: 14px; word-break: break-word;
-}
+.qb.rdy svg { color: var(--purple); }
+#msgs { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 9px; scroll-behavior: smooth; }
+.bub { max-width: 90%; font-size: 13px; line-height: 1.56; padding: 9px 13px; border-radius: 14px; word-break: break-word; }
 .bub.u { align-self: flex-end; background: var(--blue); color: white; border-bottom-right-radius: 4px; }
 .bub.a { align-self: flex-start; background: #F2F2F6; color: var(--ink); border-bottom-left-radius: 4px; white-space: pre-wrap; }
-.bub.e { align-self: flex-start; background: #FFF0F0; color: var(--red); border-bottom-left-radius: 4px; font-size: 12px; }
-
-/* Typing */
-.typing { display: flex; gap: 5px; align-items: center; padding: 12px 14px; background: #F2F2F6; border-radius: 14px; border-bottom-left-radius: 4px; align-self: flex-start; }
-.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: bop 1.1s infinite; }
-.dot:nth-child(2) { animation-delay: .18s; }
-.dot:nth-child(3) { animation-delay: .36s; }
-@keyframes bop { 0%,80%,100% { transform:scale(.6); opacity:.4; } 40% { transform:scale(1); opacity:1; } }
-
-/* Chat Input */
-#cf {
-  padding: 10px 10px;
-  border-top: 1px solid var(--border);
-  display: flex; gap: 7px; align-items: flex-end;
-  background: white;
-}
-#ci {
-  flex: 1; min-height: 36px; max-height: 88px;
-  padding: 8px 11px;
-  border: 1.5px solid var(--border); border-radius: 10px;
-  font-size: 13px; font-family: inherit; color: var(--ink);
-  background: #FAFAFA; resize: none; outline: none; line-height: 1.4;
-  -webkit-user-select: text; user-select: text;
-}
+.bub.e { align-self: flex-start; background: #FFF0F0; color: var(--red); border-bottom-left-radius: 4px; }
+#cf { padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 7px; align-items: flex-end; background: white; }
+#ci { flex: 1; min-height: 36px; max-height: 88px; padding: 8px 11px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; color: var(--ink); background: #FAFAFA; resize: none; outline: none; line-height: 1.4; }
 #ci:focus { border-color: var(--blue); background: white; }
-#sb {
-  width: 36px; height: 36px; border-radius: 10px;
-  border: none; background: var(--blue); color: white;
-  cursor: pointer; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  transition: opacity .15s;
-}
-#sb:hover { opacity: .9; }
+#sb { width: 36px; height: 36px; border-radius: 10px; border: none; background: var(--blue); color: white; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 
 /* ── TOAST ────────────────────────────────────── */
-#toast {
-  position: fixed; bottom: 20px; left: 50%;
-  transform: translateX(-50%) translateY(8px);
-  background: rgba(27,29,46,.92); backdrop-filter: blur(8px);
-  color: white; padding: 8px 18px; border-radius: 20px;
-  font-size: 12.5px; font-weight: 500;
-  opacity: 0; transition: opacity .24s, transform .24s;
-  pointer-events: none; z-index: 300; white-space: nowrap;
-}
+#toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(8px); background: rgba(27,29,46,.92); backdrop-filter: blur(8px); color: white; padding: 8px 18px; border-radius: 20px; font-size: 12.5px; font-weight: 500; opacity: 0; transition: opacity .24s, transform .24s; pointer-events: none; z-index: 300; white-space: nowrap; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-/* ── CURSOR PREVIEW ───────────────────────────── */
-#cur-prev {
-  position: fixed;
-  border-radius: 50%;
-  pointer-events: none; z-index: 90;
-  display: none;
-  transform: translate(-50%,-50%);
-  transition: width .1s, height .1s;
-}
 
 @media (max-width: 600px) {
   :root { --pw: 100vw; }
-  #sz-wrap, .sz-lbl { display: none; }
-  .logo { font-size: 14px; }
-  #dl-btn span.dl-label { display: none; }
-  .tb-label { display: none; }
+  #sz-wrap { display: none; }
+  .logo { font-size: 15px; }
+  .action-btn span { display: none; }
 }
 </style>
 </head>
 <body>
 
-<!-- ═══ TOOLBAR ═══ -->
 <div id="toolbar">
   <span class="logo">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 20h9"/>
-      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-    </svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
     Inkwell
   </span>
   <div class="sep"></div>
 
-  <!-- Undo -->
-  <button class="tb" id="b-undo" title="Undo (⌘Z)">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="1 4 1 10 7 10"/>
-      <path d="M3.51 15a9 9 0 1 0 .49-3.73"/>
-    </svg>
-  </button>
-  <!-- Redo -->
-  <button class="tb" id="b-redo" title="Redo (⌘⇧Z)">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="23 4 23 10 17 10"/>
-      <path d="M20.49 15a9 9 0 1 1-.49-3.73"/>
-    </svg>
-  </button>
+  <button class="tb" id="b-undo" title="Undo (⌘Z)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
+  <button class="tb" id="b-redo" title="Redo (⌘⇧Z)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
   <div class="sep"></div>
 
-  <!-- Pen -->
-  <button class="tb on" data-tool="pen" title="Pen (tap again for settings)">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-    </svg>
-  </button>
-  <!-- Highlighter -->
-  <button class="tb" data-tool="highlighter" title="Highlighter">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 17h4l10-10-4-4L3 13v4z"/>
-      <path d="M14.5 5.5l4 4"/>
-      <line x1="3" y1="21" x2="21" y2="21"/>
-    </svg>
-  </button>
-  <!-- Eraser -->
-  <button class="tb" data-tool="eraser" title="Eraser">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M20 20H7L3 16l11-11 6 6-4 4"/>
-      <path d="M6 20L18 8"/>
-    </svg>
-  </button>
-  <!-- Select Region (AI) -->
-  <button class="tb" data-tool="select" title="Select Region for AI">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="3" width="13" height="13" rx="1" stroke-dasharray="3.5 2"/>
-      <path d="M16 16l5 5"/><path d="M21 16l-5 5"/>
-    </svg>
-  </button>
-  <div class="sep"></div>
-
-  <!-- Lasso / Object Select -->
-  <button class="tb" data-tool="lasso" title="Select & Move Objects (Lasso)">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 3a2 2 0 0 0-2 2"/>
-      <path d="M19 3a2 2 0 0 1 2 2"/>
-      <path d="M21 19a2 2 0 0 1-2 2"/>
-      <path d="M5 21a2 2 0 0 1-2-2"/>
-      <path d="M9 3h1"/><path d="M9 21h1"/>
-      <path d="M14 3h1"/><path d="M14 21h1"/>
-      <path d="M3 9v1"/><path d="M21 9v1"/>
-      <path d="M3 14v1"/><path d="M21 14v1"/>
-    </svg>
-  </button>
-
-  <!-- Shapes -->
-  <button class="tb" id="b-shapes" title="Draw Shapes">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1"/>
-      <circle cx="17.5" cy="6.5" r="3.5"/>
-      <path d="M12.5 17.5l3-5 3 5z"/>
-      <rect x="3" y="14" width="7" height="7" rx="3.5"/>
-    </svg>
-  </button>
-
-  <!-- Import Image -->
-  <button class="tb" id="b-img" title="Import Image">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2"/>
-      <circle cx="8.5" cy="8.5" r="1.5"/>
-      <polyline points="21 15 16 10 5 21"/>
-    </svg>
-  </button>
-  <input type="file" id="img-input" accept="image/*" style="display:none">
+  <button class="tb on" data-tool="pen" title="Pen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></button>
+  <button class="tb" data-tool="highlighter" title="Highlighter"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11l5-5c1.1-1.1 1.1-3 0-4.1-1.1-1.1-3-1.1-4.1 0l-5 5"/><path d="M12 15l-9 6h18"/><path d="M3 15h6v-6h-6v6z"/></svg></button>
+  <button class="tb" data-tool="eraser" title="Eraser"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21L2 16l9-9 11 11-5 5H7z"/><path d="M7 21l4-4"/><path d="M11 7l4 4"/></svg></button>
+  <button class="tb" data-tool="select" title="Select Region"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4 4"/></svg></button>
   <div class="sep"></div>
 
   <div id="colors">
@@ -531,168 +221,93 @@ html, body {
     <div class="csw"    style="background:#EF4444" data-color="#EF4444"></div>
     <div class="csw"    style="background:#22C55E" data-color="#22C55E"></div>
     <div class="csw"    style="background:#F59E0B" data-color="#F59E0B"></div>
-    <div class="csw"    style="background:#8B5CF6" data-color="#8B5CF6"></div>
+    <div class="csw" id="custom-csw" title="Custom Color">
+      <input type="color" id="custom-color" value="#8B5CF6">
+    </div>
   </div>
   <div class="sep"></div>
 
   <div id="sz-wrap">
     <span class="sz-lbl">Size</span>
+    <button class="sz-btn" id="sz-dec">−</button>
     <input type="range" id="sz" min="1" max="24" value="3">
+    <button class="sz-btn" id="sz-inc">+</button>
+    <span id="sz-val">3</span>
   </div>
+  
+  <button class="tb" id="b-pen-settings" title="Pen Settings" style="margin-left:5px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 
   <div class="spacer"></div>
 
-  <!-- Clear -->
-  <button class="tb" id="b-clr" title="Clear canvas">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="3 6 5 6 21 6"/>
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-    </svg>
+  <button class="action-btn" id="b-page-settings" title="Page Settings">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+    <span>Page</span>
   </button>
 
-  <!-- Download PDF -->
-  <button id="dl-btn" title="Download as PDF">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-      <polyline points="7 10 12 15 17 10"/>
-      <line x1="12" y1="15" x2="12" y2="3"/>
-    </svg>
-    <span class="dl-label">PDF</span>
+  <button class="tb" id="b-clr" title="Clear canvas"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+
+  <button class="action-btn" id="dl-btn" title="Download as PDF">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <span>PDF</span>
   </button>
 
-  <!-- AI Button -->
-  <button id="ai-btn">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2c0 0 1.6 6.4 6 8-4.4 1.6-6 8-6 8s-1.6-6.4-6-8c4.4-1.6 6-8 6-8z"/>
-      <path d="M5 4c0 0 .9 3.5 3 4.5-2.1.9-3 4.5-3 4.5s-.9-3.5-3-4.5C4.1 7.5 5 4 5 4z" opacity=".6"/>
-    </svg>
-    Ask AI
+  <button class="action-btn" id="ai-btn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z"/></svg>
+    <span>Ask AI</span>
   </button>
 </div>
 
-<!-- ═══ SHAPES POPOVER ═══ -->
-<div id="shapes-pop">
-  <!-- Rect -->
-  <button class="shape-opt" data-shape="rect" title="Rectangle">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="6" width="18" height="12" rx="1"/>
-    </svg>
-    Rect
-  </button>
-  <!-- Circle -->
-  <button class="shape-opt" data-shape="circle" title="Ellipse/Circle">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <ellipse cx="12" cy="12" rx="9" ry="7"/>
-    </svg>
-    Circle
-  </button>
-  <!-- Line -->
-  <button class="shape-opt" data-shape="line" title="Straight Line">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-      <line x1="4" y1="20" x2="20" y2="4"/>
-    </svg>
-    Line
-  </button>
-  <!-- Arrow -->
-  <button class="shape-opt" data-shape="arrow" title="Arrow">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="5" y1="19" x2="19" y2="5"/>
-      <polyline points="11 5 19 5 19 13"/>
-    </svg>
-    Arrow
-  </button>
-</div>
-
-<!-- ═══ PEN SETTINGS POPOVER ═══ -->
-<div id="pen-pop">
-  <div>
-    <div class="pp-label">Tip Style</div>
-    <div class="pp-tips">
-      <button class="pp-tip on" data-tip="round">
-        <svg width="20" height="12" viewBox="0 0 20 12" fill="none">
-          <path d="M2 10 C5 2 15 2 18 4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-        </svg>
-        Round
-      </button>
-      <button class="pp-tip" data-tip="chisel">
-        <svg width="20" height="12" viewBox="0 0 20 12" fill="currentColor">
-          <path d="M2 11 L6 7 L18 2 L14 6 Z"/>
-        </svg>
-        Chisel
-      </button>
-      <button class="pp-tip" data-tip="tapered">
-        <svg width="20" height="12" viewBox="0 0 20 12" fill="currentColor">
-          <path d="M2 9 C7 6 14 4 18 2 L18 4 C14 6 7 9 3 11 Z"/>
-        </svg>
-        Fountain
-      </button>
-    </div>
+<div id="pen-menu" class="popover" style="left: 310px;">
+  <div class="pop-row">
+    <span class="pop-lbl">Shape</span>
+    <select id="pen-shape" class="pop-sel">
+      <option value="round">Round</option>
+      <option value="square">Square</option>
+    </select>
   </div>
-  <div class="pp-smooth-row">
-    <div class="pp-smooth-hdr">
-      <div class="pp-label">Stability</div>
-      <span id="pp-smooth-val">3</span>
-    </div>
-    <input type="range" id="pp-smooth" min="1" max="5" value="3">
+  <div class="pop-row">
+    <span class="pop-lbl">Stability</span>
+    <input type="range" id="pen-stability" class="pop-rng" min="0" max="0.95" step="0.05" value="0.6">
   </div>
 </div>
 
-<!-- ═══ OBJECT CONTEXT BAR ═══ -->
-<div id="obj-ctx-bar">
-  <!-- Duplicate -->
-  <button class="ctx-btn" id="ctx-dup" title="Duplicate">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="9" y="9" width="13" height="13" rx="2"/>
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-    </svg>
-  </button>
-  <!-- Bring forward -->
-  <button class="ctx-btn" id="ctx-fwd" title="Bring Forward">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="12 19 12 5"/><polyline points="5 12 12 5 19 12"/>
-    </svg>
-  </button>
-  <!-- Send back -->
-  <button class="ctx-btn" id="ctx-bck" title="Send Backward">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="12 5 12 19"/><polyline points="19 12 12 19 5 12"/>
-    </svg>
-  </button>
-  <div class="ctx-sep"></div>
-  <!-- Delete -->
-  <button class="ctx-btn danger" id="ctx-del" title="Delete (Del)">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="3 6 5 6 21 6"/>
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-    </svg>
-  </button>
+<div id="page-menu" class="popover" style="right: 170px;">
+  <div class="pop-row">
+    <span class="pop-lbl">Size</span>
+    <select id="page-size" class="pop-sel">
+      <option value="inf">Infinite Canvas</option>
+      <option value="a4">A4 Portrait</option>
+      <option value="letter">US Letter</option>
+    </select>
+  </div>
+  <div class="pop-row">
+    <span class="pop-lbl">Pattern</span>
+    <select id="page-pattern" class="pop-sel">
+      <option value="none">Blank</option>
+      <option value="ruled" selected>Ruled</option>
+      <option value="grid">Grid</option>
+      <option value="dots">Dotted</option>
+    </select>
+  </div>
+  <div class="pop-row">
+    <span class="pop-lbl">Color</span>
+    <input type="color" id="page-color-pick" value="#FDFBF7">
+  </div>
 </div>
 
-<!-- ═══ CANVAS ═══ -->
-<div id="area"><canvas id="cv"></canvas></div>
+<div id="area">
+  <canvas id="bg-cv"></canvas>
+  <canvas id="cv"></canvas>
+</div>
 
-<!-- ═══ SELECTION BOX (AI) ═══ -->
 <div id="sel"></div>
-
-<!-- ═══ CURSOR PREVIEW ═══ -->
 <div id="cur-prev"></div>
 
-<!-- ═══ AI PANEL ═══ -->
 <div id="panel">
   <div id="ph">
-    <span class="ph-icon">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2c0 0 1.6 6.4 6 8-4.4 1.6-6 8-6 8s-1.6-6.4-6-8c4.4-1.6 6-8 6-8z"/>
-        <path d="M5 4c0 0 .9 3.5 3 4.5-2.1.9-3 4.5-3 4.5s-.9-3.5-3-4.5C4.1 7.5 5 4 5 4z" opacity=".5"/>
-      </svg>
-    </span>
+    <span class="ph-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z"/></svg></span>
     <span class="pt">AI Assistant</span>
-    <button id="cls">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-        <line x1="18" y1="6" x2="6" y2="18"/>
-        <line x1="6" y1="6" x2="18" y2="18"/>
-      </svg>
-    </button>
+    <button id="cls"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   </div>
 
   <div id="ks">
@@ -704,614 +319,293 @@ html, body {
   </div>
 
   <div id="mr">
-    <span class="sli">Model</span>
+    <span class="sl">Vision Model</span>
     <select id="ms">
       <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B (Vision ✦)</option>
       <option value="llama-3.2-11b-vision-preview">Llama 3.2 11B Vision</option>
       <option value="llama-3.2-90b-vision-preview">Llama 3.2 90B Vision</option>
-      <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Text only)</option>
-      <option value="llama-3.1-8b-instant">Llama 3.1 8B (Fast, text only)</option>
     </select>
   </div>
 
   <div id="qa">
     <button class="qb" id="b-page">
-      <span class="qi">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/>
-        </svg>
-      </span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       Summarize Page
     </button>
     <button class="qb" id="b-rgn">
-      <span class="qi">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 7V4h3"/><path d="M17 4h3v3"/>
-          <path d="M20 17v3h-3"/><path d="M7 20H4v-3"/>
-          <circle cx="12" cy="12" r="3"/>
-        </svg>
-      </span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h3"/><path d="M17 4h3v3"/><path d="M20 17v3h-3"/><path d="M7 20H4v-3"/><circle cx="12" cy="12" r="3"/></svg>
       Analyze Region
     </button>
   </div>
 
-  <div id="msgs">
-    <div class="empty-hint">
-      <div class="hint-icon">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2c0 0 1.6 6.4 6 8-4.4 1.6-6 8-6 8s-1.6-6.4-6-8c4.4-1.6 6-8 6-8z"/>
-          <path d="M5 4c0 0 .9 3.5 3 4.5-2.1.9-3 4.5-3 4.5s-.9-3.5-3-4.5C4.1 7.5 5 4 5 4z" opacity=".45"/>
-        </svg>
-      </div>
-      Ask me to summarize your notes,<br>explain a concept, or analyze<br>a selected region.
-    </div>
-  </div>
+  <div id="msgs"></div>
 
   <div id="cf">
     <textarea id="ci" placeholder="Ask about your notes…" rows="1"></textarea>
-    <button id="sb">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="19" x2="12" y2="5"/>
-        <polyline points="5 12 12 5 19 12"/>
-      </svg>
-    </button>
+    <button id="sb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
   </div>
 </div>
 
-<!-- ═══ TOAST ═══ -->
 <div id="toast"></div>
 
-<!-- jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 // ════════════════════════════════════════════════════════
-// CANVAS ENGINE
+// CORE SETUP
 // ════════════════════════════════════════════════════════
+const area = document.getElementById('area');
+const bgCv = document.getElementById('bg-cv');
+const bgCtx= bgCv.getContext('2d');
 const cv   = document.getElementById('cv');
 const ctx  = cv.getContext('2d');
-const area = document.getElementById('area');
 const selEl= document.getElementById('sel');
 const cpEl = document.getElementById('cur-prev');
 
 let dpr = window.devicePixelRatio || 1;
-
-// Viewport
 let vx = 0, vy = 0, vs = 1;
 
-// Strokes (pen/highlighter/eraser)
+// Stroke memory
 let strokes = [];
-let cur = null;
+let redos   = [];
+let cur     = null;
 let penDown = false;
 
-// Objects (shapes + images)
-let objects = [];
-let objIdCounter = 0;
-
-// Unified history
-let history  = []; // {type, data}
-let histFuture = [];
-
-// Current tool
+// Tool state
 let tool  = 'pen';
 let color = '#1B1D2E';
 let size  = 3;
 
-// Pen style settings
-let penStyle     = 'round'; // 'round' | 'chisel' | 'tapered'
-let penSmoothing = 3;        // 1–5
-let rawPts = [];             // raw pointer positions for stabiliser
-
-// Pointer tracking
+// Pointer / Touch tracking
 const ptrs = new Map();
 let pinch = { dist: 0, vx: 0, vy: 0, vs: 0, mx: 0, my: 0 };
 let pan   = { cx: 0, cy: 0, vx: 0, vy: 0 };
 let inTouch = false;
+let lastPtRaw = null; // Used for stabilization
 
-// AI selection
+// Selection
 let selActive = false;
 let selStart  = { x: 0, y: 0 };
 let selRect   = null;
 let captured  = null;
 
-// Lasso / object select state
-let selectedIds  = new Set();
-let lassoState   = null; // 'draw'|'drag'|'resize'
-let lassoStart   = null;
-let lassoRect    = null;
-let dragStart    = null;
-let resizeStart  = null;
-let resizeHandle = null;
-let resizeObjId  = null;
-let touchSelStart = null;
-
-// Shape drawing state
-let isDrawingShape = false;
-let shapeStart     = null;
-let shapePreview   = null;
+// Settings State
+const pageOpts = { size: 'inf', pattern: 'ruled', color: '#FDFBF7' }; // a4=794x1123, letter=816x1056
+const penOpts  = { shape: 'round', stability: 0.6 };
 
 // ════════════════════════════════════════════════════════
-// RESIZE CANVAS
+// RESIZE & COORDINATES
 // ════════════════════════════════════════════════════════
 function resize() {
   dpr = window.devicePixelRatio || 1;
   const W = area.clientWidth, H = area.clientHeight;
-  cv.width  = Math.round(W * dpr);
-  cv.height = Math.round(H * dpr);
-  cv.style.width  = W + 'px';
-  cv.style.height = H + 'px';
+  bgCv.width = cv.width = Math.round(W * dpr);
+  bgCv.height = cv.height = Math.round(H * dpr);
+  bgCv.style.width = cv.style.width = W + 'px';
+  bgCv.style.height = cv.style.height = H + 'px';
   draw();
 }
 window.addEventListener('resize', resize);
 resize();
 
-// ════════════════════════════════════════════════════════
-// COORDINATE HELPERS
-// ════════════════════════════════════════════════════════
 function areaRect() { return area.getBoundingClientRect(); }
-
-function s2c(sx, sy) { // screen → canvas
-  return { x: (sx - vx) / vs, y: (sy - vy) / vs };
-}
-function c2s(cx, cy) { // canvas → screen
-  return { x: cx * vs + vx, y: cy * vs + vy };
-}
-
-function evXY(e) {
-  const r = areaRect();
-  return { sx: e.clientX - r.left, sy: e.clientY - r.top };
-}
-
-// ════════════════════════════════════════════════════════
-// OBJECT HELPERS
-// ════════════════════════════════════════════════════════
-function getObjBbox(obj) {
-  let {x, y, w, h} = obj;
-  if (w < 0) { x = x + w; w = -w; }
-  if (h < 0) { y = y + h; h = -h; }
-  return {x, y, w, h};
-}
-
-function getHandlePositions(bbox, pad) {
-  const {x, y, w, h} = bbox;
-  const l = x - pad, r = x + w + pad;
-  const t = y - pad, b = y + h + pad;
-  const mx = (l + r) / 2, my = (t + b) / 2;
-  return [
-    {x: l,  y: t,  id: 'nw'}, {x: mx, y: t,  id: 'n'},  {x: r, y: t,  id: 'ne'},
-    {x: r,  y: my, id: 'e' },
-    {x: r,  y: b,  id: 'se'}, {x: mx, y: b,  id: 's'},   {x: l, y: b,  id: 'sw'},
-    {x: l,  y: my, id: 'w' }
-  ];
-}
-
-function hitTestObjects(sx, sy) {
-  const cx = (sx - vx) / vs, cy = (sy - vy) / vs;
-  for (let i = objects.length - 1; i >= 0; i--) {
-    const b = getObjBbox(objects[i]);
-    const pad = 4 / vs;
-    if (cx >= b.x - pad && cx <= b.x + b.w + pad &&
-        cy >= b.y - pad && cy <= b.y + b.h + pad) return i;
-  }
-  return -1;
-}
-
-function hitTestHandle(sx, sy, obj) {
-  const cx = (sx - vx) / vs, cy = (sy - vy) / vs;
-  const bbox = getObjBbox(obj);
-  const pad = 6 / vs;
-  const handles = getHandlePositions(bbox, pad);
-  const thresh = 9 / vs;
-  for (const h of handles) {
-    if (Math.hypot(cx - h.x, cy - h.y) < thresh) return h.id;
-  }
+function s2c(sx, sy) { return { x: (sx - vx) / vs, y: (sy - vy) / vs }; }
+function evXY(e) { const r = areaRect(); return { sx: e.clientX - r.left, sy: e.clientY - r.top }; }
+function getPageBounds() {
+  if (pageOpts.size === 'a4') return { w: 794, h: 1123 };
+  if (pageOpts.size === 'letter') return { w: 816, h: 1056 };
   return null;
 }
 
-function getHandleCursor(h) {
-  switch (h) {
-    case 'nw': case 'se': return 'nwse-resize';
-    case 'ne': case 'sw': return 'nesw-resize';
-    case 'n':  case 's':  return 'ns-resize';
-    case 'e':  case 'w':  return 'ew-resize';
-    default: return 'pointer';
-  }
-}
-
 // ════════════════════════════════════════════════════════
-// UNIFIED UNDO / REDO
-// ════════════════════════════════════════════════════════
-function pushHistory(entry) {
-  history.push(entry);
-  histFuture = [];
-}
-
-function undo() {
-  const entry = history.pop();
-  if (!entry) { toast('Nothing to undo'); return; }
-  histFuture.push(entry);
-  applyUndo(entry);
-  draw(); updateContextBar(); toast('Undo');
-}
-
-function redo() {
-  const entry = histFuture.pop();
-  if (!entry) { toast('Nothing to redo'); return; }
-  history.push(entry);
-  applyRedo(entry);
-  draw(); updateContextBar(); toast('Redo');
-}
-
-function applyUndo(e) {
-  switch (e.type) {
-    case 'stroke':
-      strokes.pop(); break;
-    case 'addObject':
-      objects.splice(objects.findIndex(o => o.id === e.data.id), 1);
-      selectedIds.delete(e.data.id); break;
-    case 'deleteObjects':
-      for (const saved of [...e.data].reverse())
-        objects.splice(saved.index, 0, saved.obj);
-      break;
-  }
-}
-
-function applyRedo(e) {
-  switch (e.type) {
-    case 'stroke':
-      strokes.push(e.data); break;
-    case 'addObject':
-      objects.push(e.data); break;
-    case 'deleteObjects':
-      for (const saved of [...e.data].sort((a,b) => b.index - a.index))
-        objects.splice(saved.index, 1);
-      break;
-  }
-}
-
-// ════════════════════════════════════════════════════════
-// RENDER
+// DRAWING ENGINE
 // ════════════════════════════════════════════════════════
 function draw() {
   const W = cv.clientWidth, H = cv.clientHeight;
+  const bounds = getPageBounds();
+  
+  // 1. Render Background Layer (Immutable bounds & patterns)
+  bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  bgCtx.clearRect(0, 0, W, H);
+  
+  if (bounds) {
+    // Fixed Page Bounds (A4 / Letter)
+    bgCtx.save();
+    bgCtx.translate(vx, vy); bgCtx.scale(vs, vs);
+    
+    // Drop shadow around page
+    bgCtx.shadowColor = 'rgba(0,0,0,0.15)';
+    bgCtx.shadowBlur = 30; bgCtx.shadowOffsetY = 10;
+    bgCtx.fillStyle = pageOpts.color;
+    bgCtx.fillRect(0, 0, bounds.w, bounds.h);
+    bgCtx.shadowColor = 'transparent'; // reset
+    
+    drawPattern(bgCtx, 0, 0, bounds.w, bounds.h);
+    bgCtx.restore();
+  } else {
+    // Infinite Canvas
+    bgCtx.fillStyle = pageOpts.color;
+    bgCtx.fillRect(0, 0, W, H);
+    
+    bgCtx.save();
+    bgCtx.translate(vx, vy); bgCtx.scale(vs, vs);
+    const sX = -vx/vs, sY = -vy/vs, eX = sX + W/vs, eY = sY + H/vs;
+    drawPattern(bgCtx, sX, sY, eX, eY);
+    bgCtx.restore();
+  }
+
+  // 2. Render Ink Layer
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  // Paper
-  ctx.fillStyle = '#FDFBF7';
-  ctx.fillRect(0, 0, W, H);
-
-  // Ruled lines
-  drawLines(W, H);
-
-  // Viewport transform
+  ctx.clearRect(0, 0, W, H);
   ctx.save();
-  ctx.translate(vx, vy);
-  ctx.scale(vs, vs);
+  ctx.translate(vx, vy); ctx.scale(vs, vs);
 
-  // Strokes
-  for (const st of strokes) renderStroke(st);
-  if (cur?.pts.length) renderStroke(cur);
-
-  // Objects
-  for (const obj of objects) renderObject(obj);
-  if (shapePreview) renderObject(shapePreview);
-
-  // Selection overlay
-  renderSelectionOverlay();
+  for (const st of strokes) renderStroke(ctx, st);
+  if (cur?.pts.length) renderStroke(ctx, cur);
 
   ctx.restore();
-
-  // Update floating context bar
-  updateContextBar();
 }
 
-function drawLines(W, H) {
-  const sp = 28 * vs;
-  const oy = ((vy % sp) + sp) % sp;
-  ctx.strokeStyle = 'rgba(67,97,238,0.065)';
-  ctx.lineWidth = 1;
-  for (let y = oy - sp; y < H + sp; y += sp) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+function drawPattern(c, sx, sy, ex, ey) {
+  if (pageOpts.pattern === 'none') return;
+  c.strokeStyle = 'rgba(67,97,238,0.08)'; c.lineWidth = 1;
+  c.fillStyle = 'rgba(67,97,238,0.15)';
+  
+  if (pageOpts.pattern === 'ruled') {
+    const sp = 32;
+    const sY = Math.floor(sy / sp) * sp;
+    for (let y = sY; y < ey; y += sp) {
+      if(y <= 0 && getPageBounds()) continue;
+      c.beginPath(); c.moveTo(sx, y); c.lineTo(ex, y); c.stroke();
+    }
+    // Margin line
+    c.strokeStyle = 'rgba(239,68,68,0.15)';
+    c.beginPath(); c.moveTo(60, Math.max(sy,0)); c.lineTo(60, ey); c.stroke();
+  } 
+  else if (pageOpts.pattern === 'grid') {
+    const sp = 24;
+    const sY = Math.floor(sy / sp) * sp, sX = Math.floor(sx / sp) * sp;
+    c.beginPath();
+    for (let y = sY; y < ey; y += sp) { c.moveTo(sx, y); c.lineTo(ex, y); }
+    for (let x = sX; x < ex; x += sp) { c.moveTo(x, sy); c.lineTo(x, ey); }
+    c.stroke();
   }
-  const mx = vx + 55 * vs;
-  if (mx > 0 && mx < W) {
-    ctx.strokeStyle = 'rgba(239,68,68,0.1)';
-    ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx, H); ctx.stroke();
+  else if (pageOpts.pattern === 'dots') {
+    const sp = 24;
+    const sY = Math.floor(sy / sp) * sp, sX = Math.floor(sx / sp) * sp;
+    for (let y = sY; y < ey; y += sp) {
+      for (let x = sX; x < ex; x += sp) {
+        c.beginPath(); c.arc(x, y, 1.2, 0, Math.PI*2); c.fill();
+      }
+    }
   }
 }
 
-// ════════════════════════════════════════════════════════
-// STROKE RENDERING — with tip styles
-// ════════════════════════════════════════════════════════
-function renderStroke(st) {
+function renderStroke(c, st) {
   const pts = st.pts;
   if (!pts.length) return;
-  ctx.save();
-  ctx.globalCompositeOperation = 'source-over';
+
+  c.save();
+  c.lineJoin = st.shape === 'round' ? 'round' : 'bevel';
+  c.lineCap = st.shape;
+  c.globalCompositeOperation = 'source-over';
 
   if (st.tool === 'eraser') {
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.fillStyle = 'rgba(0,0,0,1)';
-    ctx.lineWidth = st.size * 2.5;
-    if (pts.length === 1) {
-      ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill();
-    } else {
-      _smoothPath(pts); ctx.stroke();
-    }
+    c.globalCompositeOperation = 'destination-out';
+    c.strokeStyle = 'rgba(0,0,0,1)';
+    c.fillStyle = 'rgba(0,0,0,1)';
+    c.lineWidth = st.size * 2.5;
   } else if (st.tool === 'highlighter') {
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    ctx.strokeStyle = hexA(st.color, 0.28); ctx.fillStyle = hexA(st.color, 0.28);
-    ctx.lineWidth = st.size * 4.5;
-    if (pts.length === 1) {
-      ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill();
-    } else {
-      _smoothPath(pts); ctx.stroke();
-    }
-  } else if (st.penStyle === 'chisel') {
-    _drawChisel(st, pts);
-  } else if (st.penStyle === 'tapered') {
-    _drawTapered(st, pts);
+    c.strokeStyle = hexA(st.color, 0.3);
+    c.fillStyle = hexA(st.color, 0.3);
+    c.lineWidth = st.size * 4.5;
   } else {
-    // Round (default)
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    ctx.strokeStyle = st.color; ctx.fillStyle = st.color;
-    ctx.lineWidth = st.size;
-    if (pts.length === 1) {
-      ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill();
-    } else {
-      _smoothPath(pts); ctx.stroke();
-    }
+    c.strokeStyle = st.color;
+    c.fillStyle = st.color;
+    c.lineWidth = st.size;
   }
 
-  ctx.restore();
-}
-
-// Shared smooth quadratic path builder
-function _smoothPath(pts) {
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length - 1; i++) {
-    const mx = (pts[i].x + pts[i+1].x) / 2;
-    const my = (pts[i].y + pts[i+1].y) / 2;
-    ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
-  }
-  ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
-}
-
-// Chisel tip — shear transform gives a calligraphy / italic pen feel
-function _drawChisel(st, pts) {
-  ctx.strokeStyle = st.color; ctx.fillStyle = st.color;
-  ctx.lineJoin = 'miter'; ctx.lineCap = 'square';
-  ctx.save();
-  ctx.transform(1, 0, -0.25, 1, 0, 0); // horizontal shear = chisel tilt
-  ctx.lineWidth = st.size;
   if (pts.length === 1) {
-    ctx.fillRect(pts[0].x - st.size / 2, pts[0].y - st.size / 2, st.size, st.size);
+    c.beginPath();
+    if(st.shape === 'round') c.arc(pts.x, pts.y, c.lineWidth/2, 0, Math.PI*2);
+    else c.rect(pts.x - c.lineWidth/2, pts.y - c.lineWidth/2, c.lineWidth, c.lineWidth);
+    c.fill();
   } else {
-    _smoothPath(pts); ctx.stroke();
-  }
-  ctx.restore();
-}
-
-// Fountain / tapered tip — stroke tapers at start and end
-function _drawTapered(st, pts) {
-  if (pts.length === 1) {
-    ctx.fillStyle = st.color;
-    ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, st.size * 0.25, 0, Math.PI * 2); ctx.fill();
-    return;
-  }
-  const n = pts.length;
-  const minW = Math.max(0.5, st.size * 0.12);
-  const maxW = st.size;
-  const inEnd    = Math.max(1, Math.floor(n * 0.15));
-  const outStart = Math.max(inEnd + 1, Math.floor(n * 0.82));
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.strokeStyle = st.color;
-  for (let i = 1; i < n; i++) {
-    let w;
-    if      (i <= inEnd)     w = minW + (maxW - minW) * (i / inEnd);
-    else if (i >= outStart)  w = minW + (maxW - minW) * ((n - 1 - i) / Math.max(1, n - 1 - outStart));
-    else                     w = maxW;
-    ctx.beginPath();
-    ctx.lineWidth = Math.max(0.5, w);
-    ctx.moveTo(pts[i-1].x, pts[i-1].y);
-    ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.stroke();
-  }
-}
-
-function renderObject(obj) {
-  ctx.save();
-  ctx.strokeStyle = obj.color || '#1B1D2E';
-  ctx.lineWidth   = obj.strokeWidth || 2;
-  ctx.lineJoin = 'round';
-  ctx.lineCap  = 'round';
-
-  switch (obj.type) {
-    case 'rect': {
-      ctx.beginPath();
-      ctx.rect(obj.x, obj.y, obj.w, obj.h);
-      ctx.stroke();
-      break;
+    c.beginPath(); c.moveTo(pts.x, pts.y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i].x + pts[i+1].x) / 2;
+      const my = (pts[i].y + pts[i+1].y) / 2;
+      c.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
     }
-    case 'circle': {
-      const ecx = obj.x + obj.w / 2, ecy = obj.y + obj.h / 2;
-      const rx = Math.abs(obj.w / 2), ry = Math.abs(obj.h / 2);
-      ctx.beginPath();
-      ctx.ellipse(ecx, ecy, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2);
-      ctx.stroke();
-      break;
-    }
-    case 'line': {
-      ctx.beginPath();
-      ctx.moveTo(obj.x, obj.y);
-      ctx.lineTo(obj.x + obj.w, obj.y + obj.h);
-      ctx.stroke();
-      break;
-    }
-    case 'arrow': {
-      const x1 = obj.x, y1 = obj.y;
-      const x2 = obj.x + obj.w, y2 = obj.y + obj.h;
-      const len = Math.hypot(obj.w, obj.h);
-      if (len < 2) break;
-      const headLen = Math.max(10, Math.min(len * 0.22, 28));
-      const angle = Math.atan2(y2 - y1, x2 - x1);
-      // Shaft
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-      // Head
-      ctx.fillStyle = obj.color || '#1B1D2E';
-      ctx.beginPath();
-      ctx.moveTo(x2, y2);
-      ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI/6),
-                 y2 - headLen * Math.sin(angle - Math.PI/6));
-      ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI/6),
-                 y2 - headLen * Math.sin(angle + Math.PI/6));
-      ctx.closePath();
-      ctx.fill();
-      break;
-    }
-    case 'image': {
-      if (obj.imgEl && obj.imgEl.complete && obj.imgEl.naturalWidth > 0) {
-        ctx.drawImage(obj.imgEl, obj.x, obj.y, obj.w, obj.h);
-      }
-      break;
-    }
+    c.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+    c.stroke();
   }
-  ctx.restore();
-}
-
-function renderSelectionOverlay() {
-  if (selectedIds.size === 0 && !lassoRect) return;
-
-  ctx.save();
-
-  // Draw individual object selections
-  for (const id of selectedIds) {
-    const obj = objects.find(o => o.id === id);
-    if (!obj) continue;
-    const bbox = getObjBbox(obj);
-    const pad = 6 / vs;
-    const hRad = 5 / vs;
-    const lw = 1.5 / vs;
-
-    // Dashed border
-    ctx.strokeStyle = '#7C3AED';
-    ctx.lineWidth = lw;
-    ctx.setLineDash([5/vs, 3/vs]);
-    ctx.strokeRect(bbox.x - pad, bbox.y - pad, bbox.w + pad*2, bbox.h + pad*2);
-    ctx.setLineDash([]);
-
-    // Handles
-    const handles = getHandlePositions(bbox, pad);
-    ctx.fillStyle = 'white';
-    ctx.strokeStyle = '#7C3AED';
-    ctx.lineWidth = lw;
-    for (const h of handles) {
-      ctx.beginPath();
-      ctx.arc(h.x, h.y, hRad, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-  }
-
-  // Lasso rect
-  if (lassoRect) {
-    ctx.strokeStyle = '#4361EE';
-    ctx.lineWidth = 1.5 / vs;
-    ctx.setLineDash([5/vs, 3/vs]);
-    ctx.fillStyle = 'rgba(67,97,238,0.07)';
-    ctx.fillRect(lassoRect.x, lassoRect.y, lassoRect.w, lassoRect.h);
-    ctx.strokeRect(lassoRect.x, lassoRect.y, lassoRect.w, lassoRect.h);
-    ctx.setLineDash([]);
-  }
-
-  ctx.restore();
+  c.restore();
 }
 
 function hexA(hex, a) {
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
+  if(!hex.startsWith('#')) return hex;
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
   return `rgba(${r},${g},${b},${a})`;
 }
 
 // ════════════════════════════════════════════════════════
-// CONTEXT BAR (for selected objects)
+// STROKE LOGIC & STABILIZATION
 // ════════════════════════════════════════════════════════
-function updateContextBar() {
-  const bar = document.getElementById('obj-ctx-bar');
-  if (selectedIds.size === 0 || tool !== 'lasso') {
-    bar.style.display = 'none';
-    return;
-  }
+function startStroke(e) {
+  penDown = true;
+  const { sx, sy } = evXY(e);
+  const pt = s2c(sx, sy);
+  lastPtRaw = pt; // For stabilizer
+  cur = { tool, color, size, shape: penOpts.shape, pts: [pt] };
+}
 
-  const r = areaRect();
-  let minX = Infinity, minY = Infinity, maxX = -Infinity;
+function continueStroke(e) {
+  if (!penDown || !cur) return;
+  const { sx, sy } = evXY(e);
+  const targetPt = s2c(sx, sy);
+  
+  // Apply linear interpolation stabilizer
+  const s = parseFloat(penOpts.stability);
+  const finalX = (lastPtRaw.x * s) + (targetPt.x * (1 - s));
+  const finalY = (lastPtRaw.y * s) + (targetPt.y * (1 - s));
+  
+  const finalPt = { x: finalX, y: finalY };
+  cur.pts.push(finalPt);
+  lastPtRaw = finalPt;
+  
+  draw();
+}
 
-  for (const id of selectedIds) {
-    const obj = objects.find(o => o.id === id);
-    if (!obj) continue;
-    const bbox = getObjBbox(obj);
-    const sx = r.left + bbox.x * vs + vx;
-    const sy = r.top + bbox.y * vs + vy;
-    const ex = sx + bbox.w * vs;
-    minX = Math.min(minX, sx);
-    maxX = Math.max(maxX, ex);
-    minY = Math.min(minY, sy);
-  }
-
-  const barX = (minX + maxX) / 2;
-  const barY = minY - 46;
-
-  bar.style.display = 'flex';
-  bar.style.left = barX + 'px';
-  bar.style.top  = Math.max(r.top + 4, barY) + 'px';
+function endStroke() {
+  if (!penDown) return;
+  penDown = false;
+  if (cur?.pts.length) { strokes.push(cur); redos = []; }
+  cur = null; lastPtRaw = null;
 }
 
 // ════════════════════════════════════════════════════════
 // POINTER EVENTS
 // ════════════════════════════════════════════════════════
-cv.addEventListener('pointerdown',   onDown,   { passive: false });
-cv.addEventListener('pointermove',   onMove,   { passive: false });
-cv.addEventListener('pointerup',     onUp,     { passive: false });
-cv.addEventListener('pointercancel', onCancel, { passive: false });
-
-const SHAPE_TOOLS = new Set(['rect','circle','line','arrow']);
+cv.addEventListener('pointerdown', onDown, { passive: false });
+cv.addEventListener('pointermove', onMove, { passive: false });
+cv.addEventListener('pointerup', onUp, { passive: false });
+cv.addEventListener('pointercancel', onUp, { passive: false });
 
 function onDown(e) {
   e.preventDefault();
+  closeMenus();
   ptrs.set(e.pointerId, { cx: e.clientX, cy: e.clientY, type: e.pointerType });
-
   if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
     cv.setPointerCapture(e.pointerId);
-    if (tool === 'select')             startSel(e);
-    else if (tool === 'lasso')         startLasso(e);
-    else if (SHAPE_TOOLS.has(tool))    startShape(e);
-    else                               startStroke(e);
+    if (tool === 'select') startSel(e);
+    else startStroke(e);
   } else if (e.pointerType === 'touch') {
     const tp = getTouches();
-    if (tp.length === 1) {
-      // Lasso: support touch tap to select
-      if (tool === 'lasso') {
-        touchSelStart = { time: Date.now(), cx: e.clientX, cy: e.clientY };
-      }
-      pan = { cx: e.clientX, cy: e.clientY, vx, vy };
-      inTouch = true;
-    } else if (tp.length === 2) {
+    if (tp.length === 1) { pan = { cx: e.clientX, cy: e.clientY, vx, vy }; inTouch = true; } 
+    else if (tp.length === 2) {
       const [a, b] = tp;
-      const dist = Math.hypot(a.cx - b.cx, a.cy - b.cy);
-      const r = areaRect();
-      pinch = { dist, vx, vy, vs,
-        mx: (a.cx + b.cx)/2 - r.left,
-        my: (a.cy + b.cy)/2 - r.top
-      };
+      pinch = { dist: Math.hypot(a.cx-b.cx, a.cy-b.cy), vx, vy, vs, mx: (a.cx+b.cx)/2 - areaRect().left, my: (a.cy+b.cy)/2 - areaRect().top };
       inTouch = true;
     }
   }
@@ -1320,29 +614,19 @@ function onDown(e) {
 function onMove(e) {
   e.preventDefault();
   ptrs.set(e.pointerId, { cx: e.clientX, cy: e.clientY, type: e.pointerType });
-
   if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
     showCursor(e);
-    if (tool === 'select' && selActive)      updateSel(e);
-    else if (tool === 'lasso')               updateLasso(e);
-    else if (SHAPE_TOOLS.has(tool) && isDrawingShape) updateShape(e);
-    else if (penDown)                        continueStroke(e);
+    if (tool === 'select' && selActive) updateSel(e);
+    else if (penDown) continueStroke(e);
   } else if (e.pointerType === 'touch' && inTouch) {
     const tp = getTouches();
     if (tp.length === 1) {
-      const dx = e.clientX - pan.cx, dy = e.clientY - pan.cy;
-      vx = pan.vx + dx; vy = pan.vy + dy;
-      draw();
+      vx = pan.vx + (e.clientX - pan.cx); vy = pan.vy + (e.clientY - pan.cy); draw();
     } else if (tp.length >= 2) {
       const [a, b] = tp;
-      const nd  = Math.hypot(a.cx - b.cx, a.cy - b.cy);
-      const nv  = Math.max(0.12, Math.min(12, pinch.vs * (nd / pinch.dist)));
-      const r   = areaRect();
-      const cmx = (a.cx + b.cx)/2 - r.left;
-      const cmy = (a.cy + b.cy)/2 - r.top;
-      const cvX = (pinch.mx - pinch.vx) / pinch.vs;
-      const cvY = (pinch.my - pinch.vy) / pinch.vs;
-      vs = nv; vx = cmx - cvX * nv; vy = cmy - cvY * nv;
+      const nv = Math.max(0.12, Math.min(12, pinch.vs * (Math.hypot(a.cx-b.cx, a.cy-b.cy) / pinch.dist)));
+      const cmx = (a.cx+b.cx)/2 - areaRect().left, cmy = (a.cy+b.cy)/2 - areaRect().top;
+      vs = nv; vx = cmx - ((pinch.mx - pinch.vx) / pinch.vs) * nv; vy = cmy - ((pinch.my - pinch.vy) / pinch.vs) * nv;
       draw();
     }
   }
@@ -1352,784 +636,245 @@ function onUp(e) {
   e.preventDefault();
   if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
     hideCursor();
-    if (tool === 'select')             finishSel(e);
-    else if (tool === 'lasso')         endLasso(e);
-    else if (SHAPE_TOOLS.has(tool))    endShape(e);
-    else                               endStroke();
+    if (tool === 'select') finishSel(e);
+    else endStroke();
   } else if (e.pointerType === 'touch') {
-    // Lasso tap-to-select on touch
-    if (tool === 'lasso' && touchSelStart) {
-      const dt = Date.now() - touchSelStart.time;
-      const d  = Math.hypot(e.clientX - touchSelStart.cx, e.clientY - touchSelStart.cy);
-      if (dt < 300 && d < 12) {
-        const {sx, sy} = evXY(e);
-        const hitIdx = hitTestObjects(sx, sy);
-        if (hitIdx >= 0) {
-          selectedIds.clear();
-          selectedIds.add(objects[hitIdx].id);
-        } else {
-          selectedIds.clear();
-        }
-        draw(); updateContextBar();
-      }
-      touchSelStart = null;
-    }
-
-    inTouch = false;
-    ptrs.delete(e.pointerId);
+    inTouch = false; ptrs.delete(e.pointerId);
     const rem = getTouches();
-    if (rem.length === 1) {
-      pan = { cx: rem[0].cx, cy: rem[0].cy, vx, vy };
-      inTouch = true;
-    }
+    if (rem.length === 1) { pan = { cx: rem.cx, cy: rem.cy, vx, vy }; inTouch = true; }
     return;
   }
   ptrs.delete(e.pointerId);
 }
 
-function onCancel(e) {
-  ptrs.delete(e.pointerId);
-  endStroke(); isDrawingShape = false; shapePreview = null;
-  inTouch = false; hideCursor();
-}
+function getTouches() { return [...ptrs.values()].filter(p => p.type === 'touch'); }
 
-function getTouches() {
-  return [...ptrs.values()].filter(p => p.type === 'touch');
-}
-
-// ════════════════════════════════════════════════════════
-// CURSOR PREVIEW
-// ════════════════════════════════════════════════════════
+// Cursor Preview
 function showCursor(e) {
-  if (tool === 'select' || tool === 'lasso' || SHAPE_TOOLS.has(tool)) {
-    if (tool === 'lasso') updateLassoCursor(e);
-    return;
-  }
-  const r = areaRect();
-  const px = e.clientX, py = e.clientY;
+  if (tool === 'select') return;
+  const r = areaRect(), px = e.clientX, py = e.clientY;
   if (px < r.left || px > r.right || py < r.top || py > r.bottom) return;
-
+  
   let d, bg, border;
-  if (tool === 'eraser') {
-    d = size * 2.5 * vs; bg = 'rgba(255,255,255,0.7)'; border = '1.5px solid #aaa';
-  } else if (tool === 'highlighter') {
-    d = size * 4.5 * vs; bg = hexA(color, 0.3); border = 'none';
-  } else {
-    d = size * vs; bg = color; border = 'none';
-  }
+  if (tool === 'eraser') { d = size * 2.5 * vs; bg = 'rgba(255,255,255,0.7)'; border = '1.5px solid #aaa'; } 
+  else if (tool === 'highlighter') { d = size * 4.5 * vs; bg = hexA(color, 0.3); border = 'none'; } 
+  else { d = size * vs; bg = color; border = 'none'; }
   d = Math.max(4, Math.min(80, d));
-  cpEl.style.display = 'block';
-  cpEl.style.left = px + 'px'; cpEl.style.top = py + 'px';
+  
+  cpEl.style.display = 'block'; cpEl.style.left = px + 'px'; cpEl.style.top = py + 'px';
   cpEl.style.width = d + 'px'; cpEl.style.height = d + 'px';
-  cpEl.style.background = bg;
-  cpEl.style.border = border;
+  cpEl.style.background = bg; cpEl.style.border = border;
+  cpEl.style.borderRadius = penOpts.shape === 'round' ? '50%' : '0%';
 }
 function hideCursor() { cpEl.style.display = 'none'; }
 
-function updateLassoCursor(e) {
-  if (!e) return;
-  const {sx, sy} = evXY(e);
-  if (lassoState === 'drag')   { cv.style.cursor = 'move'; return; }
-  if (lassoState === 'resize') { cv.style.cursor = getHandleCursor(resizeHandle); return; }
-  // Hover test
-  for (const id of selectedIds) {
-    const obj = objects.find(o => o.id === id);
-    if (!obj) continue;
-    const h = hitTestHandle(sx, sy, obj);
-    if (h) { cv.style.cursor = getHandleCursor(h); return; }
-  }
-  if (hitTestObjects(sx, sy) >= 0) { cv.style.cursor = 'move'; return; }
-  cv.style.cursor = 'default';
-}
-
 // ════════════════════════════════════════════════════════
-// STROKE — with stabiliser + pen style
-// ════════════════════════════════════════════════════════
-function startStroke(e) {
-  penDown = true;
-  const { sx, sy } = evXY(e);
-  const pt = s2c(sx, sy);
-  rawPts = [pt];
-  cur = { tool, color, size, penStyle: tool === 'pen' ? penStyle : 'round', pts: [pt] };
-}
-
-function continueStroke(e) {
-  if (!penDown || !cur) return;
-  const { sx, sy } = evXY(e);
-  const raw = s2c(sx, sy);
-  rawPts.push(raw);
-  if (penSmoothing <= 1 || tool !== 'pen') {
-    cur.pts.push(raw);
-  } else {
-    const n = Math.min(rawPts.length, penSmoothing);
-    const recent = rawPts.slice(-n);
-    cur.pts.push({
-      x: recent.reduce((sum, p) => sum + p.x, 0) / n,
-      y: recent.reduce((sum, p) => sum + p.y, 0) / n
-    });
-  }
-  draw();
-}
-
-function endStroke() {
-  if (!penDown) return;
-  penDown = false;
-  if (cur?.pts.length) {
-    strokes.push(cur);
-    pushHistory({ type: 'stroke', data: cur });
-  }
-  cur = null;
-}
-
-// ════════════════════════════════════════════════════════
-// SHAPE DRAWING
-// ════════════════════════════════════════════════════════
-function startShape(e) {
-  const { sx, sy } = evXY(e);
-  const cx = (sx - vx) / vs, cy = (sy - vy) / vs;
-  isDrawingShape = true;
-  shapeStart = { cx, cy };
-  shapePreview = {
-    id: -1, type: tool,
-    x: cx, y: cy, w: 0, h: 0,
-    color, strokeWidth: size
-  };
-}
-
-function updateShape(e) {
-  if (!isDrawingShape || !shapePreview) return;
-  const { sx, sy } = evXY(e);
-  shapePreview.w = (sx - vx) / vs - shapeStart.cx;
-  shapePreview.h = (sy - vy) / vs - shapeStart.cy;
-  draw();
-}
-
-function endShape(e) {
-  if (!isDrawingShape || !shapePreview) return;
-  isDrawingShape = false;
-
-  if (Math.abs(shapePreview.w) > 4 || Math.abs(shapePreview.h) > 4) {
-    let obj = { ...shapePreview, id: objIdCounter++ };
-
-    // Normalize rect & circle to positive w/h
-    if (obj.type === 'rect' || obj.type === 'circle') {
-      const b = getObjBbox(obj);
-      obj.x = b.x; obj.y = b.y; obj.w = b.w; obj.h = b.h;
-    }
-
-    objects.push(obj);
-    pushHistory({ type: 'addObject', data: obj });
-  }
-
-  shapePreview = null;
-  draw();
-}
-
-// ════════════════════════════════════════════════════════
-// LASSO / OBJECT SELECT
-// ════════════════════════════════════════════════════════
-function startLasso(e) {
-  const { sx, sy } = evXY(e);
-
-  // 1. Check resize handles of selected objects
-  for (const id of selectedIds) {
-    const obj = objects.find(o => o.id === id);
-    if (!obj) continue;
-    const h = hitTestHandle(sx, sy, obj);
-    if (h) {
-      lassoState   = 'resize';
-      resizeHandle = h;
-      resizeObjId  = id;
-      const bbox   = getObjBbox(obj);
-      resizeStart  = {
-        cx: (sx - vx) / vs, cy: (sy - vy) / vs,
-        bbox: { ...bbox }
-      };
-      return;
-    }
-  }
-
-  // 2. Check object body
-  const hitIdx = hitTestObjects(sx, sy);
-  if (hitIdx >= 0) {
-    const hitObj = objects[hitIdx];
-    if (!selectedIds.has(hitObj.id)) {
-      selectedIds.clear();
-      selectedIds.add(hitObj.id);
-    }
-    lassoState = 'drag';
-    dragStart  = {
-      cx: (sx - vx) / vs, cy: (sy - vy) / vs,
-      snapshots: [...selectedIds].map(id => {
-        const o = objects.find(x => x.id === id);
-        return o ? { id, x: o.x, y: o.y } : null;
-      }).filter(Boolean)
-    };
-    draw(); updateContextBar();
-    return;
-  }
-
-  // 3. Start lasso rectangle
-  selectedIds.clear();
-  lassoState = 'draw';
-  const cx = (sx - vx) / vs, cy = (sy - vy) / vs;
-  lassoStart = { cx, cy };
-  lassoRect  = null;
-  draw(); updateContextBar();
-}
-
-function updateLasso(e) {
-  const { sx, sy } = evXY(e);
-  const cx = (sx - vx) / vs, cy = (sy - vy) / vs;
-
-  if (lassoState === 'draw') {
-    const x = Math.min(lassoStart.cx, cx);
-    const y = Math.min(lassoStart.cy, cy);
-    const w = Math.abs(cx - lassoStart.cx);
-    const h = Math.abs(cy - lassoStart.cy);
-    lassoRect = { x, y, w, h };
-    draw();
-  } else if (lassoState === 'drag') {
-    const dx = cx - dragStart.cx;
-    const dy = cy - dragStart.cy;
-    for (const snap of dragStart.snapshots) {
-      const obj = objects.find(o => o.id === snap.id);
-      if (obj) { obj.x = snap.x + dx; obj.y = snap.y + dy; }
-    }
-    draw(); updateContextBar();
-  } else if (lassoState === 'resize') {
-    const obj = objects.find(o => o.id === resizeObjId);
-    if (obj) { applyResize(obj, cx, cy); draw(); updateContextBar(); }
-  }
-
-  // Update cursor hint
-  updateLassoCursor(e);
-}
-
-function endLasso(e) {
-  if (lassoState === 'draw' && lassoRect) {
-    for (const obj of objects) {
-      const b = getObjBbox(obj);
-      // Select if object overlaps lasso (even partially)
-      if (b.x < lassoRect.x + lassoRect.w &&
-          b.x + b.w > lassoRect.x &&
-          b.y < lassoRect.y + lassoRect.h &&
-          b.y + b.h > lassoRect.y) {
-        selectedIds.add(obj.id);
-      }
-    }
-    lassoRect = null;
-  }
-
-  lassoState = null; resizeHandle = null; resizeObjId = null;
-  resizeStart = null; dragStart = null;
-  draw(); updateContextBar();
-}
-
-function applyResize(obj, cx, cy) {
-  const snap = resizeStart.bbox;
-  const dx   = cx - resizeStart.cx;
-  const dy   = cy - resizeStart.cy;
-
-  let nx = snap.x, ny = snap.y, nw = snap.w, nh = snap.h;
-
-  switch (resizeHandle) {
-    case 'nw': nx = snap.x + dx; ny = snap.y + dy; nw = snap.w - dx; nh = snap.h - dy; break;
-    case 'n' :                   ny = snap.y + dy;                    nh = snap.h - dy; break;
-    case 'ne':                   ny = snap.y + dy; nw = snap.w + dx;  nh = snap.h - dy; break;
-    case 'e' :                                     nw = snap.w + dx;                    break;
-    case 'se':                                     nw = snap.w + dx;  nh = snap.h + dy; break;
-    case 's' :                                                         nh = snap.h + dy; break;
-    case 'sw': nx = snap.x + dx;                  nw = snap.w - dx;   nh = snap.h + dy; break;
-    case 'w' : nx = snap.x + dx;                  nw = snap.w - dx;                    break;
-  }
-
-  const minSize = 10;
-  if (nw < minSize) { if (nx !== snap.x) nx = snap.x + snap.w - minSize; nw = minSize; }
-  if (nh < minSize) { if (ny !== snap.y) ny = snap.y + snap.h - minSize; nh = minSize; }
-
-  obj.x = nx; obj.y = ny; obj.w = nw; obj.h = nh;
-}
-
-// ════════════════════════════════════════════════════════
-// DELETE / DUPLICATE / Z-ORDER
-// ════════════════════════════════════════════════════════
-function deleteSelected() {
-  if (!selectedIds.size) return;
-  const idxs = [...selectedIds]
-    .map(id => objects.findIndex(o => o.id === id))
-    .filter(i => i >= 0)
-    .sort((a, b) => b - a);
-  const deleted = idxs.map(idx => ({ index: idx, obj: objects[idx] }));
-  for (const { index } of deleted) objects.splice(index, 1);
-  pushHistory({ type: 'deleteObjects', data: deleted });
-  selectedIds.clear();
-  draw(); updateContextBar();
-  toast(`Deleted ${deleted.length} object${deleted.length > 1 ? 's' : ''}`);
-}
-
-function duplicateSelected() {
-  if (!selectedIds.size) return;
-  const newIds = new Set();
-  for (const id of selectedIds) {
-    const obj = objects.find(o => o.id === id);
-    if (!obj) continue;
-    const copy = { ...obj, id: objIdCounter++, x: obj.x + 16, y: obj.y + 16 };
-    if (obj.imgEl) copy.imgEl = obj.imgEl; // share same img element
-    objects.push(copy);
-    pushHistory({ type: 'addObject', data: copy });
-    newIds.add(copy.id);
-  }
-  selectedIds.clear();
-  for (const id of newIds) selectedIds.add(id);
-  draw(); updateContextBar();
-  toast('Duplicated');
-}
-
-function bringForward() {
-  for (const id of selectedIds) {
-    const idx = objects.findIndex(o => o.id === id);
-    if (idx < objects.length - 1) {
-      [objects[idx], objects[idx+1]] = [objects[idx+1], objects[idx]];
-    }
-  }
-  draw();
-}
-
-function sendBackward() {
-  for (const id of selectedIds) {
-    const idx = objects.findIndex(o => o.id === id);
-    if (idx > 0) {
-      [objects[idx-1], objects[idx]] = [objects[idx], objects[idx-1]];
-    }
-  }
-  draw();
-}
-
-// Context bar buttons
-document.getElementById('ctx-del').addEventListener('click', deleteSelected);
-document.getElementById('ctx-dup').addEventListener('click', duplicateSelected);
-document.getElementById('ctx-fwd').addEventListener('click', bringForward);
-document.getElementById('ctx-bck').addEventListener('click', sendBackward);
-
-// ════════════════════════════════════════════════════════
-// IMAGE IMPORT
-// ════════════════════════════════════════════════════════
-document.getElementById('b-img').addEventListener('click', () => {
-  document.getElementById('img-input').click();
-});
-
-document.getElementById('img-input').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = () => {
-    const r = areaRect();
-    const viewW = r.width / vs, viewH = r.height / vs;
-    const maxW = viewW * 0.65, maxH = viewH * 0.65;
-    let w = img.naturalWidth, h = img.naturalHeight;
-    if (w > maxW || h > maxH) {
-      const scale = Math.min(maxW / w, maxH / h);
-      w *= scale; h *= scale;
-    }
-    // Center in viewport
-    const vcx = -vx / vs + viewW / 2;
-    const vcy = -vy / vs + viewH / 2;
-    const obj = {
-      id: objIdCounter++,
-      type: 'image',
-      x: vcx - w / 2, y: vcy - h / 2,
-      w, h,
-      imgEl: img,
-      color: '#000', strokeWidth: 0
-    };
-    objects.push(obj);
-    pushHistory({ type: 'addObject', data: obj });
-
-    // Switch to lasso and select the image
-    activateTool('lasso');
-    selectedIds.clear();
-    selectedIds.add(obj.id);
-    draw(); updateContextBar();
-    toast('Image imported — drag to reposition, handles to resize');
-  };
-  img.src = url;
-  e.target.value = '';
-});
-
-// ════════════════════════════════════════════════════════
-// TOOL ACTIVATION HELPER
-// ════════════════════════════════════════════════════════
-function activateTool(t) {
-  tool = t;
-  const isShape = SHAPE_TOOLS.has(t);
-
-  document.querySelectorAll('[data-tool]').forEach(b => b.classList.remove('on'));
-  document.querySelectorAll('.shape-opt').forEach(s => s.classList.remove('on'));
-  document.getElementById('b-shapes').classList.remove('on');
-
-  if (isShape) {
-    document.getElementById('b-shapes').classList.add('on');
-    const opt = document.querySelector(`.shape-opt[data-shape="${t}"]`);
-    if (opt) opt.classList.add('on');
-  } else {
-    const btn = document.querySelector(`[data-tool="${t}"]`);
-    if (btn) btn.classList.add('on');
-  }
-
-  // Cursor
-  if (t === 'eraser')        cv.style.cursor = 'cell';
-  else if (t === 'lasso')    cv.style.cursor = 'default';
-  else if (isShape)          cv.style.cursor = 'crosshair';
-  else                       cv.style.cursor = 'crosshair';
-
-  // Deselect objects when leaving lasso
-  if (t !== 'lasso') { selectedIds.clear(); updateContextBar(); draw(); }
-}
-
-// ════════════════════════════════════════════════════════
-// TOOL CONTROLS
-// ════════════════════════════════════════════════════════
-document.querySelectorAll('[data-tool]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const t = btn.dataset.tool;
-    // Tap pen again while pen is active → open pen settings popover
-    if (t === 'pen' && tool === 'pen') {
-      const pop = document.getElementById('pen-pop');
-      const rect = btn.getBoundingClientRect();
-      pop.style.left = rect.left + 'px';
-      pop.style.top  = (rect.bottom + 6) + 'px';
-      pop.classList.toggle('open');
-      return;
-    }
-    activateTool(t);
-    if (t === 'select') toast('Draw a rectangle to select a region for AI');
-    if (t === 'lasso')  toast('Tap or drag to select objects • Drag to move • Handles to resize • Del to delete');
-  });
-});
-
-// Shapes button → open popover
-document.getElementById('b-shapes').addEventListener('click', (e) => {
-  e.stopPropagation();
-  const pop = document.getElementById('shapes-pop');
-  const rect = document.getElementById('b-shapes').getBoundingClientRect();
-  pop.style.left = rect.left + 'px';
-  pop.style.top  = (rect.bottom + 6) + 'px';
-  pop.classList.toggle('open');
-});
-
-// Shape option clicked
-document.querySelectorAll('.shape-opt').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const t = btn.dataset.shape;
-    document.getElementById('shapes-pop').classList.remove('open');
-    activateTool(t);
-    toast(`Draw a ${t} — drag to create`);
-  });
-});
-
-// Close popovers on outside click
-document.addEventListener('click', () => {
-  document.getElementById('shapes-pop').classList.remove('open');
-  document.getElementById('pen-pop').classList.remove('open');
-});
-
-// Pen tip style selection
-document.querySelectorAll('.pp-tip').forEach(btn => {
-  btn.addEventListener('click', e => {
-    e.stopPropagation();
-    penStyle = btn.dataset.tip;
-    document.querySelectorAll('.pp-tip').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
-    document.getElementById('pen-pop').classList.remove('open');
-    toast('Tip: ' + btn.dataset.tip.charAt(0).toUpperCase() + btn.dataset.tip.slice(1));
-  });
-});
-
-// Pen stability slider
-document.getElementById('pp-smooth').addEventListener('input', e => {
-  penSmoothing = +e.target.value;
-  document.getElementById('pp-smooth-val').textContent = penSmoothing;
-});
-
-// Color swatches
-document.querySelectorAll('.csw').forEach(sw => {
-  sw.addEventListener('click', () => {
-    color = sw.dataset.color;
-    document.querySelectorAll('.csw').forEach(s => s.classList.remove('on'));
-    sw.classList.add('on');
-    if (tool === 'eraser') activateTool('pen');
-  });
-});
-
-// Size slider
-document.getElementById('sz').addEventListener('input', e => {
-  size = +e.target.value;
-});
-
-// Wheel zoom
-area.addEventListener('wheel', e => {
-  e.preventDefault();
-  const r = areaRect();
-  const cx = e.clientX - r.left, cy = e.clientY - r.top;
-  const delta = e.deltaY < 0 ? 1.12 : 1/1.12;
-  const nv = Math.max(0.12, Math.min(12, vs * delta));
-  vx = cx - (cx - vx) * (nv / vs);
-  vy = cy - (cy - vy) * (nv / vs);
-  vs = nv; draw();
-}, { passive: false });
-
-// ════════════════════════════════════════════════════════
-// UNDO / REDO / CLEAR — keyboard & buttons
-// ════════════════════════════════════════════════════════
-document.getElementById('b-undo').addEventListener('click', undo);
-document.getElementById('b-redo').addEventListener('click', redo);
-
-document.getElementById('b-clr').addEventListener('click', () => {
-  if (!strokes.length && !objects.length) return;
-  if (!confirm('Clear the canvas? This cannot be undone.')) return;
-  strokes = []; objects = []; history = []; histFuture = [];
-  cur = null; penDown = false; selectedIds.clear();
-  selRect = null; captured = null; clearSel(); updateRgnBtn();
-  isDrawingShape = false; shapePreview = null;
-  draw(); updateContextBar();
-});
-
-document.addEventListener('keydown', e => {
-  const mod = e.metaKey || e.ctrlKey;
-  if (mod && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); return; }
-  if (mod && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); return; }
-  if (e.key === 'Escape') {
-    selActive = false; clearSel();
-    selectedIds.clear(); lassoRect = null; lassoState = null;
-    draw(); updateContextBar();
-  }
-  if ((e.key === 'Delete' || e.key === 'Backspace') &&
-      !e.target.matches('input, textarea, select')) {
-    deleteSelected();
-  }
-});
-
-// ════════════════════════════════════════════════════════
-// AI SELECTION TOOL (existing — unchanged)
+// SELECTION & CAPTURE LOGIC
 // ════════════════════════════════════════════════════════
 function startSel(e) {
-  selActive = true;
-  const r = areaRect();
+  selActive = true; const r = areaRect();
   selStart = { x: e.clientX - r.left, y: e.clientY - r.top };
   selRect = null; captured = null; clearSel(); updateRgnBtn();
 }
-
 function updateSel(e) {
   if (!selActive) return;
-  const r = areaRect();
-  const cx = e.clientX - r.left, cy = e.clientY - r.top;
+  const r = areaRect(), cx = e.clientX - r.left, cy = e.clientY - r.top;
   const x = Math.min(selStart.x, cx), y = Math.min(selStart.y, cy);
   const w = Math.abs(cx - selStart.x), h = Math.abs(cy - selStart.y);
   selRect = { sx: x, sy: y, sw: w, sh: h };
   selEl.style.display = 'block';
-  selEl.style.left   = (r.left + x) + 'px';
-  selEl.style.top    = (r.top  + y) + 'px';
-  selEl.style.width  = w + 'px';
-  selEl.style.height = h + 'px';
+  selEl.style.left = (r.left + x) + 'px'; selEl.style.top = (r.top + y) + 'px';
+  selEl.style.width = w + 'px'; selEl.style.height = h + 'px';
 }
-
 function finishSel(e) {
   selActive = false;
   if (selRect && selRect.sw > 8 && selRect.sh > 8) {
-    captured = captureRegion(selRect);
-    updateRgnBtn();
+    captured = captureRegion(selRect); updateRgnBtn();
     toast('Region selected — tap Analyze Region in AI panel');
   } else clearSel();
 }
-
 function clearSel() { selEl.style.display = 'none'; selRect = null; }
 
-function captureRegion(rect) {
+function getCompositeCanvas(rect = null) {
   const tmp = document.createElement('canvas');
-  tmp.width  = Math.round(rect.sw);
-  tmp.height = Math.round(rect.sh);
+  let sx = 0, sy = 0, sw = cv.width / dpr, sh = cv.height / dpr;
+  
+  if (rect) { sx = rect.sx; sy = rect.sy; sw = rect.sw; sh = rect.sh; }
+  
+  tmp.width = Math.round(sw); tmp.height = Math.round(sh);
   const tc = tmp.getContext('2d');
-  tc.drawImage(cv, rect.sx * dpr, rect.sy * dpr, rect.sw * dpr, rect.sh * dpr, 0, 0, rect.sw, rect.sh);
-  return tmp.toDataURL('image/jpeg', 0.88).split(',')[1];
+  
+  // Draw Background layer then Ink layer
+  tc.drawImage(bgCv, sx * dpr, sy * dpr, sw * dpr, sh * dpr, 0, 0, sw, sh);
+  tc.drawImage(cv, sx * dpr, sy * dpr, sw * dpr, sh * dpr, 0, 0, sw, sh);
+  return tmp;
 }
 
-function captureFullPage() {
-  return cv.toDataURL('image/jpeg', 0.85).split(',')[1];
-}
-
-function updateRgnBtn() {
-  document.getElementById('b-rgn').classList.toggle('rdy', !!captured);
-}
+function captureRegion(rect) { return getCompositeCanvas(rect).toDataURL('image/jpeg', 0.88).split(','); }
+function captureFullPage() { return getCompositeCanvas().toDataURL('image/jpeg', 0.85).split(','); }
+function updateRgnBtn() { document.getElementById('b-rgn').classList.toggle('rdy', !!captured); }
 
 // ════════════════════════════════════════════════════════
-// DOWNLOAD AS PDF
+// DOWNLOAD PDF
 // ════════════════════════════════════════════════════════
-document.getElementById('dl-btn').addEventListener('click', downloadAsPDF);
-
-async function downloadAsPDF() {
-  const btn = document.getElementById('dl-btn');
-  if (typeof window.jspdf === 'undefined') { toast('PDF library still loading, please retry'); return; }
-  btn.classList.add('loading');
+document.getElementById('dl-btn').addEventListener('click', async () => {
+  if (typeof window.jspdf === 'undefined') { toast('PDF library loading...'); return; }
   toast('Preparing PDF…');
   await new Promise(r => setTimeout(r, 80));
+
   try {
     const { jsPDF } = window.jspdf;
-    const cw = cv.clientWidth, ch = cv.clientHeight;
-    const imgData = cv.toDataURL('image/jpeg', 0.95);
+    const bounds = getPageBounds();
+    let exportRect = null;
+    
+    // If bound size, export just the page bounds mapped through view matrix
+    if (bounds) {
+      exportRect = { sx: vx, sy: vy, sw: bounds.w * vs, sh: bounds.h * vs };
+    }
+    
+    const comp = getCompositeCanvas(exportRect);
+    const imgData = comp.toDataURL('image/jpeg', 0.95);
+    
+    const cw = comp.width; const ch = comp.height;
     const PX_TO_MM = 0.2646;
     const pdfW = Math.round(cw * PX_TO_MM);
     const pdfH = Math.round(ch * PX_TO_MM);
-    const orientation = cw >= ch ? 'landscape' : 'portrait';
-    const pdf = new jsPDF({ orientation, unit: 'mm', format: [pdfW, pdfH], compress: true });
+
+    const pdf = new jsPDF({ orientation: cw >= ch ? 'landscape' : 'portrait', unit: 'mm', format: [pdfW, pdfH], compress: true });
     pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH, undefined, 'FAST');
-    const now = new Date();
-    const stamp = now.getFullYear() + '-' +
-      String(now.getMonth() + 1).padStart(2,'0') + '-' +
-      String(now.getDate()).padStart(2,'0');
+    
+    const stamp = new Date().toISOString().slice(0,10);
     pdf.save(`inkwell-notes-${stamp}.pdf`);
     toast('Notes downloaded as PDF');
   } catch (err) {
-    console.error(err);
-    toast('PDF export failed — please try again');
-  } finally {
-    btn.classList.remove('loading');
+    console.error(err); toast('PDF export failed');
   }
-}
+});
 
 // ════════════════════════════════════════════════════════
-// AI PANEL
+// UI EVENT LISTENERS
 // ════════════════════════════════════════════════════════
-const VISION_MODELS = [
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'llama-3.2-11b-vision-preview',
-  'llama-3.2-90b-vision-preview'
-];
-
-let groqKey  = localStorage.getItem('inkwell_key') || '';
-let chatHist = [];
-
-if (groqKey) document.getElementById('ki').value = groqKey;
-
-document.getElementById('ai-btn').addEventListener('click', () => {
-  document.getElementById('panel').classList.add('open');
+document.getElementById('b-undo').addEventListener('click', () => { if(strokes.length) { redos.push(strokes.pop()); draw(); toast('Undo'); }});
+document.getElementById('b-redo').addEventListener('click', () => { if(redos.length) { strokes.push(redos.pop()); draw(); toast('Redo'); }});
+document.getElementById('b-clr').addEventListener('click', () => {
+  if(!confirm('Clear the canvas?')) return;
+  strokes=[]; redos=[]; cur=null; penDown=false; clearSel(); updateRgnBtn(); draw();
 });
-document.getElementById('cls').addEventListener('click', () => {
-  document.getElementById('panel').classList.remove('open');
+
+document.querySelectorAll('[data-tool]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    tool = btn.dataset.tool;
+    document.querySelectorAll('[data-tool]').forEach(b => b.classList.remove('on')); btn.classList.add('on');
+    cv.style.cursor = tool === 'eraser' ? 'cell' : 'crosshair';
+    if(tool === 'select') toast('Draw a rectangle to select region');
+  });
 });
+
+document.querySelectorAll('.csw').forEach(sw => {
+  sw.addEventListener('click', (e) => {
+    if(e.target.id === 'custom-color') return; // let input handle it
+    color = sw.dataset.color || document.getElementById('custom-color').value;
+    document.querySelectorAll('.csw').forEach(s => s.classList.remove('on'));
+    sw.classList.add('on');
+    if(tool === 'eraser') document.querySelector('[data-tool="pen"]').click();
+  });
+});
+
+document.getElementById('custom-color').addEventListener('input', (e) => {
+  color = e.target.value;
+  document.querySelectorAll('.csw').forEach(s => s.classList.remove('on'));
+  document.getElementById('custom-csw').classList.add('on');
+  if(tool === 'eraser') document.querySelector('[data-tool="pen"]').click();
+});
+
+// Size Buttons
+const szEl = document.getElementById('sz');
+const szVal = document.getElementById('sz-val');
+function updateSize(v) { size = v; szEl.value = v; szVal.textContent = v; }
+szEl.addEventListener('input', e => updateSize(+e.target.value));
+document.getElementById('sz-dec').addEventListener('click', () => updateSize(Math.max(1, size-1)));
+document.getElementById('sz-inc').addEventListener('click', () => updateSize(Math.min(24, size+1)));
+
+// Popovers
+function closeMenus() { document.querySelectorAll('.popover').forEach(p => p.classList.remove('show')); }
+document.getElementById('b-pen-settings').addEventListener('click', (e) => { e.stopPropagation(); closeMenus(); document.getElementById('pen-menu').classList.toggle('show'); });
+document.getElementById('b-page-settings').addEventListener('click', (e) => { e.stopPropagation(); closeMenus(); document.getElementById('page-menu').classList.toggle('show'); });
+area.addEventListener('click', closeMenus);
+
+// Pen Options
+document.getElementById('pen-shape').addEventListener('change', e => penOpts.shape = e.target.value);
+document.getElementById('pen-stability').addEventListener('input', e => penOpts.stability = parseFloat(e.target.value));
+
+// Page Options
+document.getElementById('page-size').addEventListener('change', e => { pageOpts.size = e.target.value; vx=0; vy=0; vs=1; draw(); });
+document.getElementById('page-pattern').addEventListener('change', e => { pageOpts.pattern = e.target.value; draw(); });
+document.getElementById('page-color-pick').addEventListener('input', e => { pageOpts.color = e.target.value; draw(); });
+
+// Wheel Pan/Zoom
+area.addEventListener('wheel', e => {
+  e.preventDefault(); const r = areaRect(), cx = e.clientX - r.left, cy = e.clientY - r.top;
+  if(e.ctrlKey) {
+    const nv = Math.max(0.12, Math.min(12, vs * (e.deltaY < 0 ? 1.12 : 1/1.12)));
+    vx = cx - (cx - vx) * (nv / vs); vy = cy - (cy - vy) * (nv / vs); vs = nv;
+  } else { vx -= e.deltaX; vy -= e.deltaY; }
+  draw();
+}, { passive: false });
+
+// ════════════════════════════════════════════════════════
+// AI ASSISTANT
+// ════════════════════════════════════════════════════════
+let groqKey = localStorage.getItem('inkwell_key') || '';
+if(groqKey) document.getElementById('ki').value = groqKey;
+
+document.getElementById('ai-btn').addEventListener('click', () => document.getElementById('panel').classList.add('open'));
+document.getElementById('cls').addEventListener('click', () => document.getElementById('panel').classList.remove('open'));
 document.getElementById('ks-btn').addEventListener('click', () => {
-  groqKey = document.getElementById('ki').value.trim();
-  localStorage.setItem('inkwell_key', groqKey);
-  toast('API key saved');
+  groqKey = document.getElementById('ki').value.trim(); localStorage.setItem('inkwell_key', groqKey); toast('API key saved');
 });
 
-document.getElementById('b-page').addEventListener('click', () => {
-  const model = document.getElementById('ms').value;
-  if (!VISION_MODELS.includes(model)) { toast('Switch to a vision model to analyze images'); return; }
-  askAI('Analyze this page of handwritten notes. Identify all topics, concepts, equations, or problems present. Summarize the key ideas, solve any math or problems you see, and explain any concepts clearly. Act as a tutor helping me understand and review this material.', captureFullPage());
-});
-
+document.getElementById('b-page').addEventListener('click', () => askAI('Summarize the contents of this page.', captureFullPage()));
 document.getElementById('b-rgn').addEventListener('click', () => {
-  if (!captured) {
-    document.getElementById('panel').classList.remove('open');
-    activateTool('select');
-    toast('Draw a rectangle on the canvas to select a region');
-    return;
-  }
-  const model = document.getElementById('ms').value;
-  if (!VISION_MODELS.includes(model)) { toast('Switch to a vision model to analyze images'); return; }
-  askAI('Analyze this selected region of my handwritten notes. If there is a math equation or problem, solve it step by step. If there is a concept or topic, explain it clearly. If there is a diagram, describe what it represents. Be concise, direct, and educational.', captured);
+  if(!captured) { document.querySelector('[data-tool="select"]').click(); return; }
+  askAI('Explain what is written or drawn in this selected region.', captured);
   captured = null; clearSel(); updateRgnBtn();
 });
 
 document.getElementById('sb').addEventListener('click', sendChat);
-document.getElementById('ci').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-});
-document.getElementById('ci').addEventListener('input', function () {
-  this.style.height = 'auto';
-  this.style.height = Math.min(this.scrollHeight, 88) + 'px';
-});
-
-function sendChat() {
-  const inp = document.getElementById('ci');
-  const msg = inp.value.trim();
-  if (!msg) return;
-  inp.value = ''; inp.style.height = '';
-  askAI(msg, null);
-}
+document.getElementById('ci').addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }});
+function sendChat() { const inp = document.getElementById('ci'); const msg = inp.value.trim(); if(!msg) return; inp.value = ''; askAI(msg, null); }
 
 async function askAI(userMsg, imgB64) {
-  if (!groqKey) { toast('Enter your Groq API key first'); return; }
-  const model = document.getElementById('ms').value;
-  const msgs  = document.getElementById('msgs');
-  const hint  = msgs.querySelector('.empty-hint');
-  if (hint) hint.remove();
-  addBub('u', userMsg);
+  if(!groqKey) return toast('Enter Groq API key first');
+  const msgs = document.getElementById('msgs');
+  msgs.innerHTML += `<div class="bub u">${userMsg}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+
   const tyEl = document.createElement('div');
-  tyEl.className = 'typing';
-  tyEl.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+  tyEl.className = 'bub a'; tyEl.textContent = 'Thinking...';
   msgs.appendChild(tyEl); msgs.scrollTop = msgs.scrollHeight;
 
-  const apiMsgs = [{
-    role: 'system',
-    content: 'You are an expert AI tutor embedded in Inkwell, a handwriting note-taking app. When given images of handwritten notes or drawings: (1) Read all text carefully. (2) If math equations or problems are present, solve them step by step. (3) If a concept or topic is written, explain it clearly and concisely. (4) If diagrams are drawn, explain what they represent. Do not just describe what you see — explain, solve, and teach. Be like a knowledgeable friend who gives direct, helpful answers.'
-  }];
-  for (const h of chatHist.slice(-8)) {
-    apiMsgs.push({ role: h.role, content: h.text });
-  }
-  if (imgB64) {
-    apiMsgs.push({
-      role: 'user',
-      content: [
-        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imgB64}` } },
-        { type: 'text', text: userMsg }
-      ]
-    });
-  } else {
-    apiMsgs.push({ role: 'user', content: userMsg });
-  }
-
+  const content = imgB64 ? [ {type:'image_url', image_url:{url:`data:image/jpeg;base64,${imgB64}`}}, {type:'text', text:userMsg} ] : userMsg;
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-      body: JSON.stringify({ model, messages: apiMsgs, max_tokens: 1024, temperature: 0.6 })
+      body: JSON.stringify({
+        model: document.getElementById('ms').value,
+        messages: [{role:'system', content:'You are a note-taking AI assistant.'}, {role:'user', content}],
+        max_tokens: 1024
+      })
     });
     const data = await res.json();
-    tyEl.remove();
-    if (!res.ok) { addBub('e', 'Error: ' + (data.error?.message || `HTTP ${res.status}`)); return; }
-    const reply = data.choices[0].message.content;
-    addBub('a', reply);
-    chatHist.push({ role: 'user', text: userMsg });
-    chatHist.push({ role: 'assistant', text: reply });
-  } catch (err) {
-    tyEl.remove();
-    addBub('e', 'Network error: ' + err.message);
-  }
+    tyEl.textContent = res.ok ? data.choices.message.content : `Error: ${data.error?.message}`;
+    if(!res.ok) tyEl.classList.replace('a','e');
+  } catch(e) { tyEl.textContent = 'Network Error'; tyEl.classList.replace('a','e'); }
 }
 
-function addBub(type, text) {
-  const msgs = document.getElementById('msgs');
-  const el = document.createElement('div');
-  el.className = 'bub ' + type;
-  el.textContent = text;
-  msgs.appendChild(el);
-  msgs.scrollTop = msgs.scrollHeight;
-  return el;
-}
-
-// ════════════════════════════════════════════════════════
-// TOAST
-// ════════════════════════════════════════════════════════
 let toastT;
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastT);
-  toastT = setTimeout(() => t.classList.remove('show'), 2800);
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600);
 }
 </script>
 </body>

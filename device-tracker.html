@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#04080C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SENTINEL — Device Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+/* ==============================
+   TOKENS
+============================== */
+:root {
+  --bg:        #04080C;
+  --bg2:       #070E14;
+  --surface:   #0A1520;
+  --surface2:  #0E1D2C;
+  --border:    #112233;
+  --border2:   #1A3044;
+
+  --cyan:      #00F5FF;
+  --green:     #00FF88;
+  --amber:     #FFB800;
+  --red:       #FF2D55;
+  --violet:    #BF5FFF;
+
+  --text:      #B8D8E8;
+  --text-dim:  #3A6070;
+  --text-mid:  #6A9AAA;
+
+  --glow-c: rgba(0,245,255,0.18);
+  --glow-g: rgba(0,255,136,0.18);
+  --glow-a: rgba(255,184,0,0.18);
+  --glow-r: rgba(255,45,85,0.18);
+
+  --r: 10px;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: 'Syne', sans-serif;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:var(--font-sans); overflow:hidden; }
+
+/* ==============================
+   SETUP SCREEN
+============================== */
+#setup-screen {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+  gap: 0;
+}
+
+/* Animated grid bg */
+#setup-screen::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+#setup-screen::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, rgba(0,245,255,0.06) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.setup-inner {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 360px;
+  display: flex; flex-direction: column; align-items: center; gap: 32px;
+}
+
+.brand {
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.brand-icon {
+  font-size: 32px;
+  filter: drop-shadow(0 0 12px var(--cyan));
+  animation: float 4s ease-in-out infinite;
+}
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+.brand-name {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 8px;
+  color: var(--cyan);
+  text-shadow: 0 0 12px var(--cyan), 0 0 40px rgba(0,245,255,0.3);
+}
+.brand-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+/* Mode tabs */
+.mode-tabs {
+  display: flex;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.mode-tab {
+  flex: 1; padding: 11px 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none; background: none;
+  text-transform: uppercase;
+}
+.mode-tab.active {
+  background: var(--surface2);
+  color: var(--cyan);
+  text-shadow: 0 0 8px var(--cyan);
+  border-bottom: 2px solid var(--cyan);
+}
+
+/* Form */
+.setup-form {
+  width: 100%;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+.field-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.field-wrap {
+  position: relative;
+}
+
+.field-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 13px 16px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 2px;
+  outline: none;
+  transition: all 0.2s;
+  caret-color: var(--cyan);
+  text-transform: uppercase;
+}
+.field-input:focus {
+  border-color: rgba(0,245,255,0.4);
+  box-shadow: 0 0 0 3px rgba(0,245,255,0.08), 0 0 16px rgba(0,245,255,0.06);
+}
+.field-input::placeholder { color: var(--text-dim); font-weight: 300; text-transform: none; letter-spacing: 1px; }
+
+/* Firebase config fields */
+.config-section {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.config-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--amber);
+  text-shadow: 0 0 6px var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.config-row {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.config-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+  caret-color: var(--cyan);
+}
+.config-input:focus { border-color: rgba(0,245,255,0.3); }
+
+.config-hint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  line-height: 1.5;
+}
+.config-hint a { color: var(--amber); text-decoration: none; }
+
+/* Primary button */
+.btn-primary {
+  width: 100%;
+  padding: 15px;
+  background: var(--cyan);
+  border: none;
+  border-radius: var(--r);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: #04080C;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 0 20px rgba(0,245,255,0.3);
+  text-transform: uppercase;
+}
+.btn-primary:active { transform: scale(0.97); box-shadow: 0 0 30px rgba(0,245,255,0.5); }
+.btn-primary.green-btn {
+  background: var(--green);
+  box-shadow: 0 0 20px rgba(0,255,136,0.3);
+}
+.btn-primary:disabled {
+  opacity: 0.4; cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ==============================
+   TRACKER SCREEN
+============================== */
+#tracker-screen {
+  position: fixed; inset: 0; z-index: 50;
+  display: none; flex-direction: column;
+  background: var(--bg);
+}
+
+.tracker-header {
+  padding: 16px 18px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(4,8,12,0.98) 0%, transparent);
+  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+}
+.tracker-id {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--green);
+  text-shadow: 0 0 10px var(--green);
+}
+.tracker-status {
+  display: flex; align-items: center; gap: 8px;
+}
+.t-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: t-pulse 1.5s ease-in-out infinite;
+}
+.t-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.t-dot.error { background: var(--red); animation: none; }
+@keyframes t-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+.t-status-txt {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+}
+
+#tracker-map {
+  position: absolute; inset: 0;
+  filter: brightness(0.55) saturate(0.35) hue-rotate(175deg);
+}
+.leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.8) saturate(0.5); }
+.leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+
+/* Scanlines */
+.scanlines {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 5;
+  background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,245,255,0.012) 2px,rgba(0,245,255,0.012) 4px);
+}
+.vignette {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 6;
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(4,8,12,0.88) 100%);
+}
+
+/* Stats panel */
+.tracker-stats {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
+  padding: 0 14px 20px;
+  background: linear-gradient(to top, rgba(4,8,12,0.99) 65%, transparent);
+  padding-top: 40px;
+}
+.stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px; margin-bottom: 12px;
+}
+.stat-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.stat-cell-val {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cyan);
+  text-shadow: 0 0 8px var(--cyan);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stat-cell-lbl {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+.tracker-log {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  height: 52px;
+  overflow: hidden;
+  position: relative;
+}
+.log-line {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--text-mid);
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.log-line:first-child { color: var(--green); }
+.log-cursor { display: inline-block; background: var(--cyan); width: 6px; height: 11px; vertical-align: middle; animation: blink 1s step-end infinite; margin-left: 2px; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.stop-btn {
+  position: absolute; top: 14px; right: 14px; z-index: 12;
+  background: none;
+  border: 1px solid rgba(255,45,85,0.4);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--red);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.stop-btn:active { background: rgba(255,45,85,0.1); }
+
+/* ==============================
+   DASHBOARD SCREEN
+============================== */
+#dashboard-screen {
+  position: fixed; inset: 0; z-index: 50;
+  display: none; flex-direction: column;
+  background: var(--bg);
+}
+
+#dashboard-map {
+  position: absolute; inset: 0;
+}
+
+.dash-header {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+  padding: 14px 18px 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(4,8,12,0.97) 0%, transparent);
+}
+.dash-title {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: var(--cyan);
+  text-shadow: 0 0 10px var(--cyan);
+}
+.dash-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.dash-count span {
+  color: var(--green);
+  text-shadow: 0 0 6px var(--green);
+}
+
+/* Device list panel */
+.device-panel {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
+  padding: 0 12px 16px;
+  background: linear-gradient(to top, rgba(4,8,12,0.99) 60%, transparent);
+  padding-top: 36px;
+}
+
+.device-list {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.device-list::-webkit-scrollbar { display: none; }
+
+.device-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.device-card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+}
+.device-card.stale::before { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.device-card:active { background: rgba(0,245,255,0.05); }
+
+.dev-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px var(--cyan));
+}
+.dev-info { flex: 1; min-width: 0; }
+.dev-id {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--cyan);
+  text-shadow: 0 0 6px rgba(0,245,255,0.4);
+}
+.dev-coords {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dev-meta {
+  text-align: right;
+  flex-shrink: 0;
+}
+.dev-time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.dev-acc {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.no-devices {
+  text-align: center;
+  padding: 20px 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+}
+
+.back-btn {
+  position: absolute; top: 14px; right: 14px; z-index: 12;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-mid);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.back-btn:active { color: var(--cyan); border-color: rgba(0,245,255,0.3); }
+
+/* ==============================
+   TOAST
+============================== */
+#toast {
+  position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+  z-index: 200;
+  padding: 8px 18px;
+  border-radius: 30px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+  background: var(--surface);
+  border: 1px solid rgba(0,245,255,0.3);
+  color: var(--cyan);
+  box-shadow: 0 0 20px rgba(0,245,255,0.15);
+}
+#toast.show { opacity: 1; }
+#toast.err { border-color: rgba(255,45,85,0.4); color: var(--red); box-shadow: 0 0 20px rgba(255,45,85,0.15); }
+
+/* Refresh btn */
+.refresh-btn {
+  background: none; border: none;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s;
+  line-height: 1;
+}
+.refresh-btn:active { color: var(--cyan); }
+
+</style>
+</head>
+<body>
+
+<!-- ==================== SETUP SCREEN ==================== -->
+<div id="setup-screen">
+  <div class="setup-inner">
+
+    <div class="brand">
+      <div class="brand-icon">◈</div>
+      <div class="brand-name">SENTINEL</div>
+      <div class="brand-sub">Personal Device Tracker</div>
+    </div>
+
+    <!-- Mode Tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="switchSetupMode('tracker')" id="tab-tracker">◉ TRACKER</button>
+      <button class="mode-tab" onclick="switchSetupMode('dashboard')" id="tab-dashboard">⊞ DASHBOARD</button>
+    </div>
+
+    <!-- TRACKER FORM -->
+    <div class="setup-form" id="form-tracker">
+      <div>
+        <label class="field-label">Device Code</label>
+        <div class="field-wrap">
+          <input class="field-input" id="device-id-input" type="text" maxlength="12"
+            placeholder="e.g. PHONE-01" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-title">⚠ Firebase Config (One-time Setup)</div>
+        <div class="config-row">
+          <label class="field-label" style="margin-bottom:0">Database URL</label>
+          <input class="config-input" id="fb-url" type="text"
+            placeholder="https://your-app.firebaseio.com">
+        </div>
+        <div class="config-row">
+          <label class="field-label" style="margin-bottom:0">API Key</label>
+          <input class="config-input" id="fb-key" type="text"
+            placeholder="AIza...">
+        </div>
+        <div class="config-hint">
+          Free setup at <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> →
+          Create project → Realtime Database → Rules: set read/write to <code style="color:var(--cyan)">"auth"==null</code>
+        </div>
+      </div>
+
+      <button class="btn-primary green-btn" onclick="startTracking()" id="start-track-btn">
+        START BROADCASTING
+      </button>
+    </div>
+
+    <!-- DASHBOARD FORM -->
+    <div class="setup-form" id="form-dashboard" style="display:none">
+      <div>
+        <label class="field-label">Dashboard Password (optional)</label>
+        <div class="field-wrap">
+          <input class="field-input" id="dash-pass-input" type="password"
+            placeholder="leave blank to skip" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-title">⚠ Firebase Config</div>
+        <div class="config-row">
+          <label class="field-label" style="margin-bottom:0">Database URL</label>
+          <input class="config-input" id="fb-url-dash" type="text"
+            placeholder="https://your-app.firebaseio.com">
+        </div>
+        <div class="config-row">
+          <label class="field-label" style="margin-bottom:0">API Key</label>
+          <input class="config-input" id="fb-key-dash" type="text"
+            placeholder="AIza...">
+        </div>
+        <div class="config-hint">Same Firebase project as your tracker devices.</div>
+      </div>
+
+      <button class="btn-primary" onclick="openDashboard()" id="open-dash-btn">
+        OPEN DASHBOARD
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== TRACKER SCREEN ==================== -->
+<div id="tracker-screen">
+  <div id="tracker-map"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="tracker-header">
+    <div class="tracker-id" id="t-device-label">—</div>
+    <div class="tracker-status">
+      <div class="t-dot" id="t-dot"></div>
+      <div class="t-status-txt" id="t-status-txt">INIT</div>
+    </div>
+  </div>
+
+  <button class="stop-btn" onclick="stopTracking()">✕ STOP</button>
+
+  <div class="tracker-stats">
+    <div class="stats-grid">
+      <div class="stat-cell">
+        <div class="stat-cell-val" id="t-lat">—</div>
+        <div class="stat-cell-lbl">Latitude</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-cell-val" id="t-lng">—</div>
+        <div class="stat-cell-lbl">Longitude</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-cell-val" id="t-acc">—</div>
+        <div class="stat-cell-lbl">Accuracy</div>
+      </div>
+    </div>
+    <div class="tracker-log" id="tracker-log">
+      <div class="log-line">System ready...<span class="log-cursor"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DASHBOARD SCREEN ==================== -->
+<div id="dashboard-screen">
+  <div id="dashboard-map"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="dash-header">
+    <div class="dash-title">◈ SENTINEL</div>
+    <div class="dash-count"><span id="online-count">0</span> ONLINE</div>
+  </div>
+
+  <button class="back-btn" onclick="closeDashboard()">← BACK</button>
+
+  <div class="device-panel">
+    <div class="device-list" id="device-list">
+      <div class="no-devices">Waiting for devices...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ============================================================
+//  CONFIG PERSISTENCE
+// ============================================================
+const LS = {
+  save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+};
+
+// Pre-fill saved config
+window.addEventListener('DOMContentLoaded', () => {
+  const cfg = LS.load('sentinel_cfg');
+  if (cfg) {
+    if (cfg.url) { document.getElementById('fb-url').value = cfg.url; document.getElementById('fb-url-dash').value = cfg.url; }
+    if (cfg.key) { document.getElementById('fb-key').value = cfg.key; document.getElementById('fb-key-dash').value = cfg.key; }
+  }
+  const lastId = LS.load('sentinel_last_id');
+  if (lastId) document.getElementById('device-id-input').value = lastId;
+});
+
+// ============================================================
+//  STATE
+// ============================================================
+const S = {
+  mode: 'tracker',
+  deviceId: '',
+  firebaseUrl: '',
+  firebaseKey: '',
+  watchId: null,
+  pushInterval: null,
+  trackerMap: null,
+  trackerMarker: null,
+  dashMap: null,
+  dashMarkers: {},
+  dashStream: null,
+  currentPos: null,
+  logLines: [],
+};
+
+// ============================================================
+//  SETUP UI
+// ============================================================
+function switchSetupMode(m) {
+  S.mode = m;
+  document.getElementById('tab-tracker').classList.toggle('active', m === 'tracker');
+  document.getElementById('tab-dashboard').classList.toggle('active', m === 'dashboard');
+  document.getElementById('form-tracker').style.display = m === 'tracker' ? 'flex' : 'none';
+  document.getElementById('form-dashboard').style.display = m === 'dashboard' ? 'flex' : 'none';
+}
+
+// ============================================================
+//  FIREBASE HELPERS (REST API — no SDK needed)
+// ============================================================
+function fbSet(path, data) {
+  const url = `${S.firebaseUrl}/${path}.json?auth=${S.firebaseKey}`;
+  return fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
+
+function fbGet(path) {
+  const url = `${S.firebaseUrl}/${path}.json?auth=${S.firebaseKey}`;
+  return fetch(url).then(r => r.json());
+}
+
+// Server-Sent Events stream for real-time updates
+function fbStream(path, onData) {
+  const url = `${S.firebaseUrl}/${path}.json?auth=${S.firebaseKey}`;
+  const es = new EventSource(url);
+  es.addEventListener('put', e => {
+    try { onData(JSON.parse(e.data)); } catch {}
+  });
+  es.addEventListener('patch', e => {
+    try { onData({ patch: true, ...JSON.parse(e.data) }); } catch {}
+  });
+  es.onerror = () => { addLog('Stream error — reconnecting...', false); };
+  return es;
+}
+
+// ============================================================
+//  TRACKER MODE
+// ============================================================
+function startTracking() {
+  const id = document.getElementById('device-id-input').value.trim().toUpperCase();
+  const url = document.getElementById('fb-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('fb-key').value.trim();
+
+  if (!id) { showToast('ENTER DEVICE CODE', true); return; }
+  if (!url || !key) { showToast('ENTER FIREBASE CONFIG', true); return; }
+  if (!navigator.geolocation) { showToast('GPS NOT SUPPORTED', true); return; }
+
+  S.deviceId = id;
+  S.firebaseUrl = url;
+  S.firebaseKey = key;
+
+  LS.save('sentinel_cfg', { url, key });
+  LS.save('sentinel_last_id', id);
+
+  // Show tracker screen
+  document.getElementById('setup-screen').style.display = 'none';
+  const ts = document.getElementById('tracker-screen');
+  ts.style.display = 'flex';
+  document.getElementById('t-device-label').textContent = id;
+
+  // Init map
+  S.trackerMap = L.map('tracker-map', {
+    zoomControl: false, attributionControl: false,
+    tap: true, touchZoom: true,
+  }).setView([20, 0], 2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
+    .addTo(S.trackerMap);
+
+  addLog(`Device ${id} initialized`);
+  addLog('Acquiring GPS signal...');
+  setTrackerStatus('acquiring', 'ACQUIRING');
+
+  S.watchId = navigator.geolocation.watchPosition(
+    onTrackerPosition,
+    onTrackerError,
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
+  );
+}
+
+async function onTrackerPosition(pos) {
+  const { latitude: lat, longitude: lng, accuracy, altitude, speed } = pos.coords;
+  S.currentPos = { lat, lng, accuracy };
+
+  // Update UI
+  document.getElementById('t-lat').textContent = lat.toFixed(5);
+  document.getElementById('t-lng').textContent = lng.toFixed(5);
+  document.getElementById('t-acc').textContent = `±${Math.round(accuracy)}m`;
+  setTrackerStatus('live', 'LIVE');
+
+  // Update map
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="width:18px;height:18px;border-radius:50%;background:#00F5FF;border:2px solid #04080C;box-shadow:0 0 0 4px rgba(0,245,255,0.25),0 0 18px rgba(0,245,255,0.7);animation:tp 2s infinite"></div>
+           <style>@keyframes tp{0%,100%{box-shadow:0 0 0 4px rgba(0,245,255,0.25),0 0 18px rgba(0,245,255,0.7)}50%{box-shadow:0 0 0 10px rgba(0,245,255,0.08),0 0 28px rgba(0,245,255,0.9)}}</style>`,
+    iconSize: [18, 18], iconAnchor: [9, 9],
+  });
+
+  if (!S.trackerMarker) {
+    S.trackerMarker = L.marker([lat, lng], { icon }).addTo(S.trackerMap);
+    S.trackerMap.setView([lat, lng], 16, { animate: true });
+  } else {
+    S.trackerMarker.setLatLng([lat, lng]);
+    S.trackerMap.panTo([lat, lng], { animate: true, duration: 1 });
+  }
+
+  // Push to Firebase
+  const payload = {
+    lat, lng,
+    accuracy: Math.round(accuracy),
+    altitude: altitude ? Math.round(altitude) : null,
+    speed: speed ? Math.round(speed * 3.6) : 0,
+    ts: Date.now(),
+    label: S.deviceId,
+  };
+
+  try {
+    await fbSet(`devices/${S.deviceId}`, payload);
+    addLog(`↑ ${lat.toFixed(5)}, ${lng.toFixed(5)} | ±${Math.round(accuracy)}m`);
+  } catch (e) {
+    addLog('Push failed — check config', false);
+    setTrackerStatus('error', 'SYNC ERR');
+  }
+}
+
+function onTrackerError(err) {
+  const msgs = { 1: 'Permission denied', 2: 'GPS unavailable', 3: 'GPS timeout' };
+  addLog(`GPS error: ${msgs[err.code] || 'Unknown'}`, false);
+  setTrackerStatus('error', 'GPS ERR');
+}
+
+function setTrackerStatus(type, label) {
+  const dot = document.getElementById('t-dot');
+  dot.className = 't-dot';
+  if (type === 'live') dot.classList.add('live');
+  else if (type === 'error') dot.classList.add('error');
+  document.getElementById('t-status-txt').textContent = label;
+}
+
+function addLog(msg, ok = true) {
+  S.logLines.unshift({ msg, ok });
+  if (S.logLines.length > 3) S.logLines.pop();
+  const el = document.getElementById('tracker-log');
+  el.innerHTML = S.logLines.map((l, i) =>
+    `<div class="log-line" style="${i===0 ? (l.ok ? 'color:var(--green)' : 'color:var(--red)') : ''}">${
+      i === 0 ? '> ' : '  '
+    }${l.msg}${i === 0 ? '<span class="log-cursor"></span>' : ''}</div>`
+  ).join('');
+}
+
+function stopTracking() {
+  if (S.watchId) navigator.geolocation.clearWatch(S.watchId);
+  // Mark offline
+  if (S.deviceId) {
+    fbSet(`devices/${S.deviceId}/online`, false).catch(() => {});
+  }
+  document.getElementById('tracker-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+  showToast('TRACKING STOPPED');
+}
+
+// ============================================================
+//  DASHBOARD MODE
+// ============================================================
+function openDashboard() {
+  const url = document.getElementById('fb-url-dash').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('fb-key-dash').value.trim();
+
+  if (!url || !key) { showToast('ENTER FIREBASE CONFIG', true); return; }
+
+  S.firebaseUrl = url;
+  S.firebaseKey = key;
+  LS.save('sentinel_cfg', { url, key });
+
+  document.getElementById('setup-screen').style.display = 'none';
+  const ds = document.getElementById('dashboard-screen');
+  ds.style.display = 'flex';
+
+  // Init map
+  S.dashMap = L.map('dashboard-map', {
+    zoomControl: false, attributionControl: false,
+    tap: true, touchZoom: true,
+  }).setView([20, 0], 3);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
+    .addTo(S.dashMap);
+
+  // Apply dark tile style
+  document.querySelectorAll('#dashboard-map .leaflet-tile-pane').forEach(el => {
+    el.style.filter = 'invert(1) hue-rotate(180deg) brightness(0.8) saturate(0.5)';
+  });
+  setTimeout(() => {
+    document.querySelectorAll('#dashboard-map .leaflet-tile').forEach(el => {
+      el.style.filter = 'invert(1) hue-rotate(180deg) brightness(0.8) saturate(0.5)';
+    });
+  }, 500);
+
+  // Initial fetch + stream
+  fetchAllDevices();
+  S.dashStream = fbStream('devices', onDeviceUpdate);
+
+  showToast('DASHBOARD CONNECTED');
+}
+
+async function fetchAllDevices() {
+  try {
+    const data = await fbGet('devices');
+    if (!data) { renderDeviceList({}); return; }
+    renderDeviceList(data);
+  } catch {
+    showToast('FETCH ERROR', true);
+  }
+}
+
+function onDeviceUpdate(event) {
+  if (!event || !event.data) return;
+  const devices = event.data;
+  if (devices && typeof devices === 'object') {
+    renderDeviceList(devices);
+  }
+}
+
+function renderDeviceList(devices) {
+  const list = document.getElementById('device-list');
+  const keys = Object.keys(devices || {});
+  const now = Date.now();
+
+  document.getElementById('online-count').textContent = keys.length;
+
+  if (!keys.length) {
+    list.innerHTML = '<div class="no-devices">No devices tracked yet</div>';
+    return;
+  }
+
+  // Update/create markers
+  keys.forEach(id => {
+    const d = devices[id];
+    if (!d || !d.lat) return;
+    const stale = (now - d.ts) > 120000; // >2 min = stale
+
+    const html = `<div style="
+      width:14px;height:14px;border-radius:50%;
+      background:${stale ? '#FFB800' : '#00FF88'};
+      border:2px solid #04080C;
+      box-shadow:0 0 0 3px ${stale ? 'rgba(255,184,0,0.2)' : 'rgba(0,255,136,0.2)'},0 0 14px ${stale ? 'rgba(255,184,0,0.6)' : 'rgba(0,255,136,0.7)'};
+    "></div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${stale ? '#FFB800' : '#00FF88'};text-shadow:0 0 4px ${stale ? '#FFB800' : '#00FF88'};margin-top:2px;letter-spacing:1px;white-space:nowrap">${id}</div>`;
+
+    const icon = L.divIcon({
+      className: '', html,
+      iconSize: [14, 28], iconAnchor: [7, 7],
+    });
+
+    if (S.dashMarkers[id]) {
+      S.dashMarkers[id].setLatLng([d.lat, d.lng]);
+    } else {
+      S.dashMarkers[id] = L.marker([d.lat, d.lng], { icon }).addTo(S.dashMap);
+    }
+  });
+
+  // Remove stale markers
+  Object.keys(S.dashMarkers).forEach(id => {
+    if (!devices[id]) {
+      S.dashMarkers[id].remove();
+      delete S.dashMarkers[id];
+    }
+  });
+
+  // Render list
+  list.innerHTML = keys.map(id => {
+    const d = devices[id];
+    if (!d) return '';
+    const stale = (now - d.ts) > 120000;
+    const age = timeAgo(d.ts);
+    return `
+      <div class="device-card ${stale ? 'stale' : ''}" onclick="focusDevice('${id}')">
+        <div class="dev-icon">${getDeviceIcon(id)}</div>
+        <div class="dev-info">
+          <div class="dev-id">${id}</div>
+          <div class="dev-coords">${d.lat?.toFixed(5) ?? '—'}, ${d.lng?.toFixed(5) ?? '—'}</div>
+        </div>
+        <div class="dev-meta">
+          <div class="dev-time">${age}</div>
+          <div class="dev-acc">±${d.accuracy ?? '?'}m</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function focusDevice(id) {
+  const m = S.dashMarkers[id];
+  if (m) {
+    S.dashMap.flyTo(m.getLatLng(), 15, { duration: 1 });
+    m.openPopup?.();
+  }
+}
+
+function closeDashboard() {
+  if (S.dashStream) S.dashStream.close();
+  Object.values(S.dashMarkers).forEach(m => m.remove());
+  S.dashMarkers = {};
+  if (S.dashMap) { S.dashMap.remove(); S.dashMap = null; }
+  document.getElementById('dashboard-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+}
+
+// ============================================================
+//  UTILITIES
+// ============================================================
+function getDeviceIcon(id) {
+  const u = id.toLowerCase();
+  if (u.includes('phone') || u.includes('mobile') || u.includes('mob')) return '📱';
+  if (u.includes('tab') || u.includes('ipad')) return '📟';
+  if (u.includes('lap') || u.includes('pc') || u.includes('mac')) return '💻';
+  if (u.includes('watch')) return '⌚';
+  if (u.includes('car') || u.includes('bike') || u.includes('vehicle')) return '🚗';
+  return '◈';
+}
+
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 10) return 'LIVE';
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  return `${Math.floor(s/3600)}h ago`;
+}
+
+let _toast;
+function showToast(msg, err = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (err ? ' err' : '');
+  clearTimeout(_toast);
+  _toast = setTimeout(() => { el.className = ''; }, 2500);
+}
+
+// Auto-refresh dashboard every 15s
+setInterval(() => {
+  if (document.getElementById('dashboard-screen').style.display === 'flex') {
+    fetchAllDevices();
+  }
+}, 15000);
+</script>
+</body>
+</html>

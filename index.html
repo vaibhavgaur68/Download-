@@ -3,832 +3,844 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>STARK INDUSTRIES — SUIT DIAGNOSTICS v7.3</title>
+<title>STARK INTEL — Threat Assessment Board</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=IBM+Plex+Mono:wght@300;400;600&display=swap');
 
   :root {
-    --gold: #c8960c;
+    --bg: #050a0f;
+    --surface: rgba(5, 18, 30, 0.85);
+    --border: rgba(0, 200, 255, 0.2);
+    --gold: #d4a017;
     --gold-bright: #ffcc00;
-    --gold-dim: #7a5c00;
-    --red: #c0392b;
-    --red-bright: #ff4136;
-    --cyan: #00d4ff;
-    --cyan-dim: #007a99;
-    --bg: #03080f;
-    --panel: rgba(0, 30, 50, 0.7);
-    --border: rgba(0, 212, 255, 0.25);
-    --text: #a8d8ea;
-    --text-dim: #3a6070;
-    --green: #00ff88;
-    --green-dim: #006633;
+    --cyan: #00c8ff;
+    --cyan-dim: rgba(0,200,255,0.15);
+    --red: #ff3b30;
+    --red-dim: rgba(255,59,48,0.15);
+    --orange: #ff8c00;
+    --green: #00e676;
+    --text: #9ecfdf;
+    --text-muted: #3a6070;
+    --text-bright: #e0f4ff;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
     background: var(--bg);
+    font-family: 'IBM Plex Mono', monospace;
     color: var(--text);
-    font-family: 'Share Tech Mono', monospace;
     min-height: 100vh;
     overflow-x: hidden;
-    position: relative;
   }
 
-  /* Scanline overlay */
+  /* Grid BG */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 212, 255, 0.015) 2px,
-      rgba(0, 212, 255, 0.015) 4px
-    );
+    background-image:
+      linear-gradient(rgba(0,200,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
     pointer-events: none;
-    z-index: 1000;
   }
 
-  /* Radial glow background */
+  /* Scanlines */
   body::after {
     content: '';
     position: fixed;
     inset: 0;
-    background:
-      radial-gradient(ellipse 60% 40% at 50% 0%, rgba(0,100,180,0.12) 0%, transparent 70%),
-      radial-gradient(ellipse 40% 30% at 10% 100%, rgba(200,150,12,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 30% at 90% 100%, rgba(192,57,43,0.08) 0%, transparent 60%);
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 3px,
+      rgba(0,200,255,0.012) 3px, rgba(0,200,255,0.012) 4px
+    );
     pointer-events: none;
-    z-index: 0;
+    z-index: 999;
   }
 
-  .container {
-    position: relative;
-    z-index: 1;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-
-  /* HEADER */
-  header {
+  /* ── HEADER ── */
+  .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding: 16px 28px;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 16px;
-    margin-bottom: 24px;
+    position: sticky;
+    top: 0;
+    background: rgba(5,10,15,0.95);
+    backdrop-filter: blur(12px);
+    z-index: 100;
   }
 
-  .logo-block {
+  .header-left {
     display: flex;
     align-items: center;
     gap: 16px;
   }
 
-  .arc-mini {
-    width: 48px; height: 48px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 40% 40%, #ffffff, var(--cyan), var(--cyan-dim));
-    box-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,212,255,0.4);
-    animation: arcPulse 2s ease-in-out infinite;
-    flex-shrink: 0;
-  }
-
-  @keyframes arcPulse {
-    0%,100% { box-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,212,255,0.4); }
-    50% { box-shadow: 0 0 30px var(--cyan), 0 0 60px rgba(0,212,255,0.6), 0 0 80px rgba(0,212,255,0.2); }
-  }
-
-  .logo-text h1 {
+  .si-badge {
+    background: var(--gold);
+    color: #000;
     font-family: 'Orbitron', sans-serif;
-    font-size: 1.1rem;
+    font-size: 0.55rem;
     font-weight: 900;
-    color: var(--gold-bright);
-    letter-spacing: 4px;
+    letter-spacing: 3px;
+    padding: 5px 10px;
     text-transform: uppercase;
   }
 
-  .logo-text p {
-    font-size: 0.65rem;
-    color: var(--text-dim);
+  .header-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .header-subtitle {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    margin-top: 2px;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .threat-index {
+    text-align: right;
+  }
+
+  .threat-index-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .threat-index-label {
+    font-size: 0.55rem;
+    color: var(--text-muted);
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-top: 2px;
   }
 
-  .header-status {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-  }
-
-  .status-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.65rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
-
-  .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-    animation: blink 1.5s ease-in-out infinite;
-  }
-
-  .dot.amber { background: var(--gold-bright); box-shadow: 0 0 8px var(--gold-bright); }
-  .dot.red { background: var(--red-bright); box-shadow: 0 0 8px var(--red-bright); }
-
-  @keyframes blink {
-    0%,100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  .time-display {
+  .global-timer {
     font-family: 'Orbitron', sans-serif;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: var(--cyan);
     letter-spacing: 2px;
-  }
-
-  /* GRID LAYOUT */
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: auto auto auto;
-    gap: 16px;
-  }
-
-  /* PANEL BASE */
-  .panel {
-    background: var(--panel);
     border: 1px solid var(--border);
-    padding: 20px;
-    position: relative;
-    backdrop-filter: blur(8px);
+    padding: 6px 12px;
+  }
+
+  .add-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: 1px solid var(--cyan);
+    background: var(--cyan-dim);
+    color: var(--cyan);
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .add-btn:hover {
+    background: rgba(0,200,255,0.25);
+    box-shadow: 0 0 12px rgba(0,200,255,0.3);
+  }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .stat-cell {
+    flex: 1;
+    padding: 10px 20px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 120px;
+  }
+
+  .stat-cell:last-child { border-right: none; }
+
+  .stat-icon {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  .stat-cell .val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .stat-cell .lbl {
+    font-size: 0.55rem;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* ── BOARD ── */
+  .board {
+    display: flex;
+    gap: 0;
+    padding: 0;
+    height: calc(100vh - 130px);
     overflow: hidden;
   }
 
-  .panel::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
-    opacity: 0.6;
+  /* ── COLUMN ── */
+  .col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    min-width: 220px;
+    overflow: hidden;
   }
 
-  .panel-title {
+  .col:last-child { border-right: none; }
+
+  .col-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .col-header::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .col[data-status="identified"] .col-header::before { background: var(--cyan); }
+  .col[data-status="assessing"] .col-header::before { background: var(--orange); }
+  .col[data-status="active"] .col-header::before { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .col[data-status="neutralized"] .col-header::before { background: var(--green); }
+
+  .col-title {
     font-family: 'Orbitron', sans-serif;
     font-size: 0.6rem;
     font-weight: 700;
     letter-spacing: 3px;
     text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
   }
 
-  .panel-title::before {
-    content: '▶';
-    color: var(--cyan);
-    font-size: 0.5rem;
+  .col[data-status="identified"] .col-title { color: var(--cyan); }
+  .col[data-status="assessing"] .col-title { color: var(--orange); }
+  .col[data-status="active"] .col-title { color: var(--red); }
+  .col[data-status="neutralized"] .col-title { color: var(--green); }
+
+  .col-count {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid;
   }
 
-  /* ARC REACTOR PANEL */
-  .arc-reactor-panel {
-    grid-column: 2;
-    grid-row: 1 / 3;
+  .col[data-status="identified"] .col-count { border-color: var(--cyan); color: var(--cyan); }
+  .col[data-status="assessing"] .col-count { border-color: var(--orange); color: var(--orange); }
+  .col[data-status="active"] .col-count { border-color: var(--red); color: var(--red); }
+  .col[data-status="neutralized"] .col-count { border-color: var(--green); color: var(--green); }
+
+  .cards-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 30px;
+    gap: 10px;
   }
 
-  .arc-reactor {
+  .cards-area::-webkit-scrollbar { width: 4px; }
+  .cards-area::-webkit-scrollbar-track { background: transparent; }
+  .cards-area::-webkit-scrollbar-thumb { background: var(--border); }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    cursor: grab;
     position: relative;
-    width: 220px; height: 220px;
-    margin: 0 auto 24px;
+    transition: all 0.15s;
+    backdrop-filter: blur(6px);
   }
 
-  .arc-ring {
+  .card::before {
+    content: '';
     position: absolute;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    border-top-color: var(--cyan);
-    border-right-color: var(--cyan);
+    top: 0; left: 0;
+    width: 3px; height: 100%;
   }
 
-  .arc-ring-1 { inset: 0; animation: spin 3s linear infinite; opacity: 0.9; }
-  .arc-ring-2 { inset: 15px; animation: spin 5s linear infinite reverse; border-top-color: var(--gold); border-right-color: var(--gold); opacity: 0.7; }
-  .arc-ring-3 { inset: 30px; animation: spin 8s linear infinite; border-top-color: var(--cyan); border-right-color: transparent; border-bottom-color: var(--cyan); opacity: 0.5; }
-  .arc-ring-4 { inset: 45px; animation: spin 12s linear infinite reverse; border-color: var(--gold-dim); opacity: 0.4; }
+  .card[data-level="critical"]::before { background: var(--red); box-shadow: 2px 0 8px var(--red); }
+  .card[data-level="high"]::before { background: var(--orange); }
+  .card[data-level="medium"]::before { background: var(--gold-bright); }
+  .card[data-level="low"]::before { background: var(--green); }
 
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .arc-core {
-    position: absolute;
-    inset: 65px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 40% 35%, rgba(255,255,255,0.9), var(--cyan) 30%, rgba(0,80,120,0.8));
-    box-shadow:
-      0 0 30px var(--cyan),
-      0 0 60px rgba(0,212,255,0.5),
-      0 0 100px rgba(0,212,255,0.2),
-      inset 0 0 20px rgba(255,255,255,0.3);
-    animation: coreGlow 2s ease-in-out infinite;
+  .card:hover {
+    border-color: rgba(0,200,255,0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0,200,255,0.1);
   }
 
-  @keyframes coreGlow {
-    0%,100% { box-shadow: 0 0 30px var(--cyan), 0 0 60px rgba(0,212,255,0.5), 0 0 100px rgba(0,212,255,0.2), inset 0 0 20px rgba(255,255,255,0.3); }
-    50% { box-shadow: 0 0 40px var(--cyan), 0 0 80px rgba(0,212,255,0.7), 0 0 120px rgba(0,212,255,0.3), inset 0 0 30px rgba(255,255,255,0.5); }
+  .card:active { cursor: grabbing; }
+
+  .card.dragging {
+    opacity: 0.4;
+    transform: scale(0.97);
   }
 
-  .arc-power-label {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 2.2rem;
-    font-weight: 900;
-    color: var(--cyan);
-    text-align: center;
-    text-shadow: 0 0 20px var(--cyan);
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .card-id {
+    font-size: 0.55rem;
+    color: var(--text-muted);
     letter-spacing: 2px;
   }
 
-  .arc-power-sub {
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    letter-spacing: 3px;
+  .card-level {
+    font-size: 0.5rem;
+    letter-spacing: 2px;
+    padding: 2px 7px;
+    border: 1px solid;
     text-transform: uppercase;
-    text-align: center;
-    margin-top: 4px;
+    font-weight: 600;
   }
 
-  /* GAUGE BARS */
-  .gauge-row {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 8px;
+  .card[data-level="critical"] .card-level { border-color: var(--red); color: var(--red); background: rgba(255,59,48,0.1); }
+  .card[data-level="high"] .card-level { border-color: var(--orange); color: var(--orange); background: rgba(255,140,0,0.1); }
+  .card[data-level="medium"] .card-level { border-color: var(--gold-bright); color: var(--gold-bright); background: rgba(255,204,0,0.08); }
+  .card[data-level="low"] .card-level { border-color: var(--green); color: var(--green); background: rgba(0,230,118,0.08); }
+
+  .card-title {
+    font-size: 0.75rem;
+    color: var(--text-bright);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    line-height: 1.4;
   }
 
-  .gauge-item {}
+  .card-desc {
+    font-size: 0.6rem;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 10px;
+    opacity: 0.7;
+  }
 
-  .gauge-header {
+  .card-footer {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 5px;
-    font-size: 0.65rem;
-    letter-spacing: 1px;
-  }
-
-  .gauge-label { color: var(--text-dim); text-transform: uppercase; }
-  .gauge-value { color: var(--cyan); font-weight: bold; }
-
-  .gauge-track {
-    height: 6px;
-    background: rgba(0,212,255,0.08);
-    border: 1px solid rgba(0,212,255,0.15);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .gauge-fill {
-    height: 100%;
-    position: relative;
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .gauge-fill::after {
-    content: '';
-    position: absolute;
-    top: 0; right: 0;
-    width: 4px; height: 100%;
-    background: white;
-    box-shadow: 0 0 8px currentColor;
-    opacity: 0.8;
-  }
-
-  .gauge-fill.cyan { background: linear-gradient(90deg, rgba(0,212,255,0.3), var(--cyan)); box-shadow: 0 0 10px var(--cyan); color: var(--cyan); }
-  .gauge-fill.gold { background: linear-gradient(90deg, rgba(200,150,12,0.3), var(--gold-bright)); box-shadow: 0 0 10px var(--gold)); color: var(--gold-bright); }
-  .gauge-fill.green { background: linear-gradient(90deg, rgba(0,255,136,0.3), var(--green)); box-shadow: 0 0 10px var(--green); color: var(--green); }
-  .gauge-fill.red { background: linear-gradient(90deg, rgba(255,65,54,0.3), var(--red-bright)); color: var(--red-bright); }
-
-  /* CIRCULAR METERS */
-  .circular-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-
-  .circ-meter {
-    display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
   }
 
-  .circ-svg { overflow: visible; }
-
-  .circ-bg { fill: none; stroke: rgba(0,212,255,0.1); stroke-width: 4; }
-  .circ-track { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1s ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
-  .circ-text-val { font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; fill: var(--cyan); text-anchor: middle; dominant-baseline: middle; }
-  .circ-text-lbl { font-family: 'Share Tech Mono', monospace; font-size: 5.5px; fill: var(--text-dim); text-anchor: middle; dominant-baseline: middle; letter-spacing: 1px; }
-
-  /* TIMELINE / LOG */
-  .log-panel { grid-column: 1 / -1; }
-
-  .log-entries {
+  .card-tags {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: 130px;
-    overflow: hidden;
-  }
-
-  .log-entry {
-    display: flex;
-    gap: 12px;
-    font-size: 0.65rem;
-    letter-spacing: 0.5px;
-    opacity: 0;
-    animation: fadeIn 0.5s forwards;
-    padding: 5px 8px;
-    border-left: 2px solid var(--border);
-  }
-
-  @keyframes fadeIn { to { opacity: 1; } }
-
-  .log-time { color: var(--text-dim); flex-shrink: 0; width: 70px; }
-  .log-tag { flex-shrink: 0; width: 60px; font-weight: bold; }
-  .log-tag.ok { color: var(--green); }
-  .log-tag.warn { color: var(--gold-bright); }
-  .log-tag.crit { color: var(--red-bright); }
-  .log-msg { color: var(--text); }
-
-  /* THREAT RING */
-  .threat-panel { grid-column: 3; grid-row: 1; }
-
-  .threat-level-display {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .threat-hex {
-    width: 80px; height: 90px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 8px 0;
-  }
-
-  .threat-hex::before, .threat-hex::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(255,65,54,0.08);
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    border: 1px solid var(--red-bright);
-  }
-
-  .threat-hex::after {
-    animation: hexPulse 2s ease-in-out infinite;
-    opacity: 0;
-  }
-
-  @keyframes hexPulse {
-    0% { transform: scale(1); opacity: 0.6; }
-    100% { transform: scale(1.4); opacity: 0; }
-  }
-
-  .threat-number {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.8rem;
-    font-weight: 900;
-    color: var(--red-bright);
-    text-shadow: 0 0 20px var(--red-bright);
-    z-index: 1;
-  }
-
-  .threat-label-row {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
+    gap: 4px;
     flex-wrap: wrap;
   }
 
-  .threat-badge {
-    font-size: 0.55rem;
-    letter-spacing: 2px;
-    padding: 3px 8px;
-    border: 1px solid;
+  .card-tag {
+    font-size: 0.48rem;
+    letter-spacing: 1px;
+    padding: 2px 5px;
+    background: rgba(0,200,255,0.06);
+    border: 1px solid rgba(0,200,255,0.15);
+    color: var(--text-muted);
     text-transform: uppercase;
   }
 
-  .threat-badge.low { border-color: var(--green); color: var(--green); }
-  .threat-badge.med { border-color: var(--gold-bright); color: var(--gold-bright); background: rgba(255,204,0,0.08); }
-  .threat-badge.high { border-color: var(--red-bright); color: var(--red-bright); background: rgba(255,65,54,0.08); }
-
-  /* GRID SPANS */
-  .span-full { grid-column: 1 / -1; }
-  .col-1 { grid-column: 1; }
-  .col-3 { grid-column: 3; }
-
-  /* MINI STATS ROW */
-  .mini-stats {
+  .card-meta {
     display: flex;
-    justify-content: space-between;
     gap: 8px;
-    margin-top: 12px;
+    align-items: center;
   }
 
-  .mini-stat {
-    flex: 1;
-    background: rgba(0,212,255,0.04);
-    border: 1px solid var(--border);
-    padding: 10px;
-    text-align: center;
-  }
-
-  .mini-stat-val {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--cyan);
-    text-shadow: 0 0 10px rgba(0,212,255,0.5);
-  }
-
-  .mini-stat-key {
+  .card-time {
     font-size: 0.55rem;
-    color: var(--text-dim);
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  .move-btns {
+    display: flex;
+    gap: 4px;
+  }
+
+  .move-btn {
+    font-size: 0.55rem;
+    padding: 3px 6px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .move-btn:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: var(--cyan-dim);
+  }
+
+  /* ── DROP ZONE ── */
+  .cards-area.drag-over {
+    background: rgba(0,200,255,0.04);
+    border: 1px dashed rgba(0,200,255,0.3);
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: #060f18;
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 480px;
+    padding: 28px;
+    position: relative;
+  }
+
+  .modal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--gold), var(--red));
+  }
+
+  .modal-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--text-bright);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-label {
+    font-size: 0.6rem;
     letter-spacing: 2px;
     text-transform: uppercase;
-    margin-top: 3px;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 6px;
   }
 
-  /* CORNER DECORATIONS */
-  .corner-tl, .corner-br {
-    position: absolute;
-    width: 10px; height: 10px;
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    background: rgba(0,200,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text-bright);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
     border-color: var(--cyan);
-    border-style: solid;
-    opacity: 0.6;
+    box-shadow: 0 0 8px rgba(0,200,255,0.15);
   }
-  .corner-tl { top: 4px; left: 4px; border-width: 1px 0 0 1px; }
-  .corner-br { bottom: 4px; right: 4px; border-width: 0 1px 1px 0; }
 
-  /* RADAR PANEL */
-  .radar-wrap {
+  .form-textarea { resize: vertical; min-height: 70px; }
+  .form-select option { background: #060f18; color: var(--text-bright); }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .modal-actions {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 8px 0;
+    gap: 10px;
+    margin-top: 20px;
   }
 
-  .radar-svg { overflow: visible; }
+  .btn-primary {
+    flex: 1;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: var(--cyan-dim);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
 
-  /* RESPONSIVE */
-  @media (max-width: 900px) {
-    .grid { grid-template-columns: 1fr 1fr; }
-    .arc-reactor-panel { grid-column: 1 / -1; grid-row: auto; }
-    .log-panel { grid-column: 1 / -1; }
+  .btn-primary:hover {
+    background: rgba(0,200,255,0.25);
+    box-shadow: 0 0 12px rgba(0,200,255,0.3);
+  }
+
+  .btn-cancel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-cancel:hover { border-color: var(--text-muted); color: var(--text); }
+
+  /* pulse on active col */
+  .col[data-status="active"] .col-header {
+    animation: colPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes colPulse {
+    0%,100% { background: transparent; }
+    50% { background: rgba(255,59,48,0.05); }
   }
 </style>
 </head>
 <body>
-<div class="container">
 
-  <!-- HEADER -->
-  <header>
-    <div class="logo-block">
-      <div class="arc-mini"></div>
-      <div class="logo-text">
-        <h1>Stark Industries</h1>
-        <p>Mark VII · Suit Diagnostics Interface · Build 7.3.2</p>
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="si-badge">SI</div>
+    <div>
+      <div class="header-title">Threat Assessment Board</div>
+      <div class="header-subtitle">JARVIS Strategic Intelligence · Clearance: Level 5</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="threat-index">
+      <div class="threat-index-val" id="globalThreat" style="color:var(--red)">—</div>
+      <div class="threat-index-label">Global Threat Index</div>
+    </div>
+    <div class="global-timer" id="liveTime">--:--:--</div>
+    <button class="add-btn" onclick="openModal()">+ New Threat</button>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar" id="statsBar">
+  <div class="stat-cell">
+    <div class="stat-icon" style="background:var(--red); box-shadow:0 0 6px var(--red)"></div>
+    <div><div class="val" id="statCritical" style="color:var(--red)">0</div><div class="lbl">Critical</div></div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-icon" style="background:var(--orange)"></div>
+    <div><div class="val" id="statHigh" style="color:var(--orange)">0</div><div class="lbl">High</div></div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-icon" style="background:var(--gold-bright)"></div>
+    <div><div class="val" id="statMedium" style="color:var(--gold-bright)">0</div><div class="lbl">Medium</div></div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-icon" style="background:var(--green)"></div>
+    <div><div class="val" id="statLow" style="color:var(--green)">0</div><div class="lbl">Low</div></div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-icon" style="background:var(--cyan)"></div>
+    <div><div class="val" id="statTotal" style="color:var(--cyan)">0</div><div class="lbl">Total Active</div></div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-icon" style="background:var(--text-muted)"></div>
+    <div><div class="val" id="statNeutralized" style="color:var(--green)">0</div><div class="lbl">Neutralized</div></div>
+  </div>
+</div>
+
+<!-- BOARD -->
+<div class="board" id="board">
+  <div class="col" data-status="identified">
+    <div class="col-header">
+      <div class="col-title">Identified</div>
+      <div class="col-count" id="cnt-identified">0</div>
+    </div>
+    <div class="cards-area" id="zone-identified"></div>
+  </div>
+  <div class="col" data-status="assessing">
+    <div class="col-header">
+      <div class="col-title">Assessing</div>
+      <div class="col-count" id="cnt-assessing">0</div>
+    </div>
+    <div class="cards-area" id="zone-assessing"></div>
+  </div>
+  <div class="col" data-status="active">
+    <div class="col-header">
+      <div class="col-title">Active Threat</div>
+      <div class="col-count" id="cnt-active">0</div>
+    </div>
+    <div class="cards-area" id="zone-active"></div>
+  </div>
+  <div class="col" data-status="neutralized">
+    <div class="col-header">
+      <div class="col-title">Neutralized</div>
+      <div class="col-count" id="cnt-neutralized">0</div>
+    </div>
+    <div class="cards-area" id="zone-neutralized"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title">▶ Log New Threat</div>
+    <div class="form-group">
+      <label class="form-label">Threat Name / Designation</label>
+      <input class="form-input" id="fTitle" type="text" placeholder="e.g. Hydra Strike Team Alpha" autocomplete="off"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Intel Summary</label>
+      <textarea class="form-textarea" id="fDesc" placeholder="Describe the threat origin, capability, and known intel..."></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Threat Level</label>
+        <select class="form-select" id="fLevel">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high" selected>High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Initial Status</label>
+        <select class="form-select" id="fStatus">
+          <option value="identified" selected>Identified</option>
+          <option value="assessing">Assessing</option>
+          <option value="active">Active Threat</option>
+        </select>
       </div>
     </div>
-    <div class="header-status">
-      <div class="status-pill"><div class="dot"></div> Systems Nominal</div>
-      <div class="status-pill"><div class="dot amber"></div> Weapons Offline</div>
-      <div class="status-pill"><div class="dot red"></div> Stealth: Off</div>
-      <div class="time-display" id="clockDisplay">--:--:--</div>
+    <div class="form-group">
+      <label class="form-label">Tags (comma separated)</label>
+      <input class="form-input" id="fTags" type="text" placeholder="e.g. HYDRA, NYC, armed" autocomplete="off"/>
     </div>
-  </header>
-
-  <!-- MAIN GRID -->
-  <div class="grid">
-
-    <!-- POWER / CPU Panel (col 1) -->
-    <div class="panel col-1">
-      <div class="corner-tl"></div><div class="corner-br"></div>
-      <div class="panel-title">System Resources</div>
-      <div class="gauge-row" id="sysGauges">
-        <div class="gauge-item">
-          <div class="gauge-header">
-            <span class="gauge-label">CPU Core Temp</span>
-            <span class="gauge-value" id="cpuVal">--°C</span>
-          </div>
-          <div class="gauge-track"><div class="gauge-fill cyan" id="cpuBar" style="width:0%"></div></div>
-        </div>
-        <div class="gauge-item">
-          <div class="gauge-header">
-            <span class="gauge-label">RAM Usage</span>
-            <span class="gauge-value" id="ramVal">-- GB</span>
-          </div>
-          <div class="gauge-track"><div class="gauge-fill gold" id="ramBar" style="width:0%"></div></div>
-        </div>
-        <div class="gauge-item">
-          <div class="gauge-header">
-            <span class="gauge-label">Arc Reactor Output</span>
-            <span class="gauge-value" id="arcVal">-- TJ</span>
-          </div>
-          <div class="gauge-track"><div class="gauge-fill green" id="arcBar" style="width:0%"></div></div>
-        </div>
-        <div class="gauge-item">
-          <div class="gauge-header">
-            <span class="gauge-label">Repulsor Charge</span>
-            <span class="gauge-value" id="repVal">--%</span>
-          </div>
-          <div class="gauge-track"><div class="gauge-fill cyan" id="repBar" style="width:0%"></div></div>
-        </div>
-        <div class="gauge-item">
-          <div class="gauge-header">
-            <span class="gauge-label">Suit Integrity</span>
-            <span class="gauge-value" id="intVal">--%</span>
-          </div>
-          <div class="gauge-track"><div class="gauge-fill green" id="intBar" style="width:0%"></div></div>
-        </div>
-        <div class="gauge-item">
-          <div class="gauge-header">
-            <span class="gauge-label">Thermal Shields</span>
-            <span class="gauge-value" id="thermVal">--%</span>
-          </div>
-          <div class="gauge-track"><div class="gauge-fill gold" id="thermBar" style="width:0%"></div></div>
-        </div>
-      </div>
-      <div class="mini-stats">
-        <div class="mini-stat"><div class="mini-stat-val" id="altVal">—</div><div class="mini-stat-key">Altitude</div></div>
-        <div class="mini-stat"><div class="mini-stat-val" id="spdVal">—</div><div class="mini-stat-key">Speed</div></div>
-        <div class="mini-stat"><div class="mini-stat-val" id="gVal">—</div><div class="mini-stat-key">G-Force</div></div>
-      </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="addThreat()">Log Threat</button>
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
     </div>
-
-    <!-- ARC REACTOR CENTER -->
-    <div class="panel arc-reactor-panel">
-      <div class="corner-tl"></div><div class="corner-br"></div>
-      <div class="panel-title" style="justify-content:center">Arc Reactor Core</div>
-      <div class="arc-reactor">
-        <div class="arc-ring arc-ring-1"></div>
-        <div class="arc-ring arc-ring-2"></div>
-        <div class="arc-ring arc-ring-3"></div>
-        <div class="arc-ring arc-ring-4"></div>
-        <div class="arc-core"></div>
-      </div>
-      <div class="arc-power-label" id="powerPct">—</div>
-      <div class="arc-power-sub">Terajoules per Second</div>
-    </div>
-
-    <!-- THREAT LEVEL -->
-    <div class="panel threat-panel">
-      <div class="corner-tl"></div><div class="corner-br"></div>
-      <div class="panel-title">Threat Analysis</div>
-      <div class="threat-level-display">
-        <div class="threat-hex">
-          <span class="threat-number" id="threatNum">2</span>
-        </div>
-        <div class="threat-label-row">
-          <span class="threat-badge low" id="tbLow">LOW</span>
-          <span class="threat-badge med" id="tbMed">MEDIUM</span>
-          <span class="threat-badge high" id="tbHigh">HIGH</span>
-        </div>
-        <div style="margin-top:12px; font-size:0.6rem; color:var(--text-dim); letter-spacing:2px; text-align:center; text-transform:uppercase;">
-          Targets Detected: <span id="targetCount" style="color:var(--red-bright)">0</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- CIRCULAR METERS -->
-    <div class="panel col-1">
-      <div class="corner-tl"></div><div class="corner-br"></div>
-      <div class="panel-title">Sub-Systems</div>
-      <div class="circular-grid" id="circGrid">
-        <!-- filled by JS -->
-      </div>
-    </div>
-
-    <!-- RADAR -->
-    <div class="panel col-3">
-      <div class="corner-tl"></div><div class="corner-br"></div>
-      <div class="panel-title">Proximity Radar</div>
-      <div class="radar-wrap">
-        <svg class="radar-svg" width="160" height="160" viewBox="0 0 160 160">
-          <defs>
-            <radialGradient id="radarGrad" cx="50%" cy="50%">
-              <stop offset="0%" stop-color="rgba(0,212,255,0.12)"/>
-              <stop offset="100%" stop-color="transparent"/>
-            </radialGradient>
-          </defs>
-          <circle cx="80" cy="80" r="75" fill="url(#radarGrad)" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
-          <circle cx="80" cy="80" r="50" fill="none" stroke="rgba(0,212,255,0.15)" stroke-width="1"/>
-          <circle cx="80" cy="80" r="25" fill="none" stroke="rgba(0,212,255,0.15)" stroke-width="1"/>
-          <line x1="80" y1="5" x2="80" y2="155" stroke="rgba(0,212,255,0.1)" stroke-width="1"/>
-          <line x1="5" y1="80" x2="155" y2="80" stroke="rgba(0,212,255,0.1)" stroke-width="1"/>
-          <!-- Sweep line -->
-          <line id="radarSweep" x1="80" y1="80" x2="80" y2="5" stroke="rgba(0,212,255,0.8)" stroke-width="1.5"/>
-          <!-- Blips rendered by JS -->
-          <g id="radarBlips"></g>
-          <!-- Center dot -->
-          <circle cx="80" cy="80" r="3" fill="var(--cyan)" filter="url(#glow)"/>
-          <defs>
-            <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          </defs>
-        </svg>
-      </div>
-    </div>
-
-    <!-- EVENT LOG -->
-    <div class="panel log-panel">
-      <div class="corner-tl"></div><div class="corner-br"></div>
-      <div class="panel-title">JARVIS System Log</div>
-      <div class="log-entries" id="logEntries"></div>
-    </div>
-
   </div>
 </div>
 
 <script>
   // ── CLOCK ──
-  function updateClock() {
-    const now = new Date();
-    document.getElementById('clockDisplay').textContent =
-      now.toTimeString().slice(0,8);
-  }
-  setInterval(updateClock, 1000);
-  updateClock();
-
-  // ── FAKE LIVE DATA ──
-  const state = {
-    cpu: 62, ram: 5.8, arc: 3.2, rep: 88, integrity: 94, therm: 76,
-    altitude: 4200, speed: 320, gforce: 3.1, power: 3.2,
-    threat: 2, targets: 0,
-    sub: [
-      { label: 'HUD', val: 98, color: '#00d4ff' },
-      { label: 'COMMS', val: 82, color: '#ffcc00' },
-      { label: 'JETS', val: 91, color: '#00ff88' },
-      { label: 'ARMOR', val: 94, color: '#00d4ff' },
-    ]
-  };
-
-  // Circular meters
-  function buildCirc(label, pct, color) {
-    const r = 28; const circ = 2 * Math.PI * r;
-    const offset = circ * (1 - pct / 100);
-    return `<div class="circ-meter">
-      <svg class="circ-svg" width="72" height="72" viewBox="0 0 72 72">
-        <circle class="circ-bg" cx="36" cy="36" r="${r}"/>
-        <circle class="circ-track" cx="36" cy="36" r="${r}"
-          stroke="${color}" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"/>
-        <text class="circ-text-val" x="36" y="33" fill="${color}">${pct}%</text>
-        <text class="circ-text-lbl" x="36" y="44">${label}</text>
-      </svg>
-    </div>`;
-  }
-
-  function renderCirc() {
-    document.getElementById('circGrid').innerHTML =
-      state.sub.map(s => buildCirc(s.label, s.val, s.color)).join('');
-  }
-  renderCirc();
-
-  // Gauge update
-  function setGauge(barId, valId, pct, displayText) {
-    document.getElementById(barId).style.width = pct + '%';
-    document.getElementById(valId).textContent = displayText;
-    const fill = document.getElementById(barId);
-    if (pct > 85) { fill.className = 'gauge-fill red'; }
-  }
-
-  function updateGauges() {
-    setGauge('cpuBar','cpuVal', Math.min(state.cpu,100), state.cpu.toFixed(0)+'°C');
-    setGauge('ramBar','ramVal', (state.ram/16)*100, state.ram.toFixed(1)+' GB');
-    setGauge('arcBar','arcVal', (state.arc/4)*100, state.arc.toFixed(2)+' TJ');
-    setGauge('repBar','repVal', state.rep, state.rep.toFixed(0)+'%');
-    setGauge('intBar','intVal', state.integrity, state.integrity.toFixed(0)+'%');
-    setGauge('thermBar','thermVal', state.therm, state.therm.toFixed(0)+'%');
-
-    document.getElementById('altVal').textContent = state.altitude.toFixed(0)+'m';
-    document.getElementById('spdVal').textContent = state.speed.toFixed(0)+'kph';
-    document.getElementById('gVal').textContent = state.gforce.toFixed(1)+'g';
-    document.getElementById('powerPct').textContent = state.power.toFixed(2)+' TJ/s';
-    document.getElementById('threatNum').textContent = state.threat;
-    document.getElementById('targetCount').textContent = state.targets;
-  }
-
-  // Fluctuate values
-  function fluctuate(val, min, max, delta) {
-    return Math.max(min, Math.min(max, val + (Math.random() - 0.5) * delta));
-  }
-
   function tick() {
-    state.cpu = fluctuate(state.cpu, 30, 95, 4);
-    state.ram = fluctuate(state.ram, 2, 14, 0.3);
-    state.arc = fluctuate(state.arc, 2.5, 4.0, 0.05);
-    state.rep = fluctuate(state.rep, 60, 100, 2);
-    state.integrity = fluctuate(state.integrity, 80, 100, 0.8);
-    state.therm = fluctuate(state.therm, 40, 95, 3);
-    state.altitude = fluctuate(state.altitude, 100, 10000, 80);
-    state.speed = fluctuate(state.speed, 0, 600, 20);
-    state.gforce = fluctuate(state.gforce, 0, 8, 0.2);
-    state.power = state.arc;
-    state.sub.forEach(s => { s.val = Math.round(fluctuate(s.val, 60, 100, 3)); });
-    renderCirc();
-    updateGauges();
+    document.getElementById('liveTime').textContent = new Date().toTimeString().slice(0,8);
   }
+  setInterval(tick, 1000); tick();
 
-  setInterval(tick, 1200);
-  updateGauges();
-
-  // ── RADAR SWEEP ──
-  let sweepAngle = 0;
-  const blips = Array.from({length: 5}, () => ({
-    angle: Math.random() * 360,
-    dist: 10 + Math.random() * 65,
-    alive: Math.random() > 0.4,
-    life: 0,
-  }));
-
-  function updateRadar() {
-    sweepAngle = (sweepAngle + 2) % 360;
-    const rad = sweepAngle * Math.PI / 180;
-    const x2 = 80 + 75 * Math.sin(rad);
-    const y2 = 80 - 75 * Math.cos(rad);
-    document.getElementById('radarSweep').setAttribute('x2', x2.toFixed(1));
-    document.getElementById('radarSweep').setAttribute('y2', y2.toFixed(1));
-
-    // Show blip when sweep passes it
-    let blipHtml = '';
-    blips.forEach((b, i) => {
-      const diff = (sweepAngle - b.angle + 360) % 360;
-      if (diff < 15) b.life = 40;
-      if (b.life > 0) {
-        b.life--;
-        const bx = 80 + b.dist * Math.sin(b.angle * Math.PI / 180);
-        const by = 80 - b.dist * Math.cos(b.angle * Math.PI / 180);
-        const op = b.life / 40;
-        blipHtml += `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="3" fill="#ff4136" opacity="${op.toFixed(2)}" filter="url(#glow)"/>`;
-      }
-      if (Math.random() < 0.002) {
-        b.angle = Math.random() * 360;
-        b.dist = 10 + Math.random() * 65;
-      }
-    });
-    document.getElementById('radarBlips').innerHTML = blipHtml;
-    state.targets = blips.filter(b => b.life > 0).length;
-  }
-
-  setInterval(updateRadar, 30);
-
-  // ── LOG SYSTEM ──
-  const logMessages = [
-    ['ok','JARVIS','All suit systems are operating within normal parameters.'],
-    ['warn','THERMAL','Suit temperature elevated — engaging coolant cycle.'],
-    ['ok','ARC','Reactor output stable at 3.2 TJ/s.'],
-    ['ok','COMMS','Secure uplink to Stark Tower established.'],
-    ['warn','WEAPONS','Repulsor charge below 90% — recharging.'],
-    ['ok','NAV','Flight path updated. Estimated arrival: 4 min.'],
-    ['crit','RADAR','Unidentified aircraft detected at bearing 037.'],
-    ['ok','JARVIS','Countermeasure algorithms loaded.'],
-    ['warn','HUD','Targeting overlay refresh rate reduced to 60fps.'],
-    ['ok','POWER','Arc reactor efficiency at 98.4%.'],
+  // ── DATA ──
+  const statuses = ['identified','assessing','active','neutralized'];
+  let threats = [
+    { id:'TH-001', title:'Unknown Aerial Contact', desc:'Unregistered aircraft detected approaching Stark Tower perimeter. Transponder signal masked.', level:'critical', status:'active', tags:['AIR','NYC'], time: timeAgo(2) },
+    { id:'TH-002', title:'Hydra Data Breach Attempt', desc:'Repeated intrusion attempts on JARVIS secondary server. Origin traced to Eastern Europe.', level:'high', status:'assessing', tags:['CYBER','HYDRA'], time: timeAgo(15) },
+    { id:'TH-003', title:'AIM Research Compound', desc:'Satellite imagery shows unusual energy signature from AIM lab, Mojave sector.', level:'high', status:'identified', tags:['AIM','SCIENCE'], time: timeAgo(40) },
+    { id:'TH-004', title:'Missing Stark Shipment', desc:'Container ship carrying prototype components failed scheduled check-in. Last ping: Atlantic.', level:'medium', status:'assessing', tags:['LOGISTICS'], time: timeAgo(90) },
+    { id:'TH-005', title:'Agent Brown — Compromised', desc:'Field operative Brown last reported infiltrating Ten Rings cell. Radio silence for 18 hours.', level:'medium', status:'identified', tags:['SHIELD','TEN RINGS'], time: timeAgo(120) },
+    { id:'TH-006', title:'Rogue Mark IV Sighting', desc:'Repulsor signature consistent with stolen Mark IV armor detected in Zurich financial district.', level:'critical', status:'identified', tags:['ARMOR','EUROPE'], time: timeAgo(5) },
+    { id:'TH-007', title:'Port Authority Bribed Officials', desc:'Two harbor inspectors placed on watch list following irregular container approvals.', level:'low', status:'identified', tags:['CORRUPTION'], time: timeAgo(200) },
+    { id:'TH-008', title:'Palladium Ring Operation', desc:'Attempted palladium theft thwarted. Three operatives apprehended; network still active.', level:'medium', status:'neutralized', tags:['RESOURCES'], time: timeAgo(360) },
+    { id:'TH-009', title:'Mandarin Broadcast Intercept', desc:'Encrypted broadcast matching Mandarin signature intercepted via comms array. Content decoded.', level:'high', status:'neutralized', tags:['MANDARIN','INTEL'], time: timeAgo(500) },
   ];
 
-  let logIndex = 0;
-  function addLog() {
-    const entries = document.getElementById('logEntries');
-    const [tag, src, msg] = logMessages[logIndex % logMessages.length];
-    logIndex++;
-    const now = new Date();
-    const ts = now.toTimeString().slice(0,8);
-    const entry = document.createElement('div');
-    entry.className = 'log-entry';
-    entry.innerHTML = `<span class="log-time">${ts}</span><span class="log-tag ${tag}">[${src}]</span><span class="log-msg">${msg}</span>`;
-    entries.insertBefore(entry, entries.firstChild);
-    if (entries.children.length > 5) entries.removeChild(entries.lastChild);
+  let dragId = null;
+
+  function timeAgo(minsAgo) {
+    const d = new Date(Date.now() - minsAgo * 60000);
+    return d.toTimeString().slice(0,5);
   }
 
-  setInterval(addLog, 3500);
-  addLog();
+  // ── RENDER ──
+  function render() {
+    statuses.forEach(st => {
+      const zone = document.getElementById('zone-' + st);
+      const items = threats.filter(t => t.status === st);
+      document.getElementById('cnt-' + st).textContent = items.length;
+      zone.innerHTML = '';
+      items.forEach(t => {
+        zone.appendChild(buildCard(t));
+      });
+    });
+    updateStats();
+    setupDrop();
+  }
+
+  function buildCard(t) {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.setAttribute('data-level', t.level);
+    div.setAttribute('data-id', t.id);
+    div.draggable = true;
+
+    const nextStIdx = statuses.indexOf(t.status) + 1;
+    const prevStIdx = statuses.indexOf(t.status) - 1;
+    const nextLabel = nextStIdx < statuses.length ? '→' : '';
+    const prevLabel = prevStIdx >= 0 ? '←' : '';
+
+    div.innerHTML = `
+      <div class="card-top">
+        <span class="card-id">${t.id}</span>
+        <span class="card-level">${t.level}</span>
+      </div>
+      <div class="card-title">${t.title}</div>
+      <div class="card-desc">${t.desc}</div>
+      <div class="card-footer">
+        <div class="card-tags">${t.tags.map(tg => `<span class="card-tag">${tg}</span>`).join('')}</div>
+        <div class="card-meta">
+          <span class="card-time">${t.time}</span>
+          <div class="move-btns">
+            ${prevLabel ? `<button class="move-btn" onclick="moveCard('${t.id}',-1)">${prevLabel}</button>` : ''}
+            ${nextLabel ? `<button class="move-btn" onclick="moveCard('${t.id}',1)">${nextLabel}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    div.addEventListener('dragstart', () => {
+      dragId = t.id;
+      setTimeout(() => div.classList.add('dragging'), 0);
+    });
+    div.addEventListener('dragend', () => {
+      div.classList.remove('dragging');
+      dragId = null;
+    });
+    return div;
+  }
+
+  function setupDrop() {
+    document.querySelectorAll('.cards-area').forEach(zone => {
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const colEl = zone.closest('.col');
+        const newStatus = colEl.getAttribute('data-status');
+        if (dragId) {
+          const t = threats.find(x => x.id === dragId);
+          if (t) { t.status = newStatus; render(); }
+        }
+      });
+    });
+  }
+
+  function moveCard(id, dir) {
+    const t = threats.find(x => x.id === id);
+    if (!t) return;
+    const idx = statuses.indexOf(t.status);
+    const newIdx = idx + dir;
+    if (newIdx >= 0 && newIdx < statuses.length) {
+      t.status = statuses[newIdx];
+      render();
+    }
+  }
+
+  function updateStats() {
+    const active = threats.filter(t => t.status !== 'neutralized');
+    document.getElementById('statCritical').textContent = threats.filter(t => t.level === 'critical' && t.status !== 'neutralized').length;
+    document.getElementById('statHigh').textContent = threats.filter(t => t.level === 'high' && t.status !== 'neutralized').length;
+    document.getElementById('statMedium').textContent = threats.filter(t => t.level === 'medium' && t.status !== 'neutralized').length;
+    document.getElementById('statLow').textContent = threats.filter(t => t.level === 'low' && t.status !== 'neutralized').length;
+    document.getElementById('statTotal').textContent = active.length;
+    document.getElementById('statNeutralized').textContent = threats.filter(t => t.status === 'neutralized').length;
+
+    // Global threat index (weighted)
+    const weights = { critical: 4, high: 3, medium: 2, low: 1 };
+    const score = active.reduce((s, t) => s + (weights[t.level] || 1), 0);
+    const el = document.getElementById('globalThreat');
+    el.textContent = score;
+    el.style.color = score >= 20 ? 'var(--red)' : score >= 12 ? 'var(--orange)' : score >= 6 ? 'var(--gold-bright)' : 'var(--green)';
+  }
+
+  // ── MODAL ──
+  let idCounter = 10;
+  function openModal() {
+    document.getElementById('modalOverlay').classList.add('open');
+    document.getElementById('fTitle').focus();
+  }
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    ['fTitle','fDesc','fTags'].forEach(id => document.getElementById(id).value = '');
+  }
+  function addThreat() {
+    const title = document.getElementById('fTitle').value.trim();
+    if (!title) { document.getElementById('fTitle').style.borderColor='var(--red)'; return; }
+    document.getElementById('fTitle').style.borderColor='';
+    const tags = document.getElementById('fTags').value.split(',').map(t=>t.trim().toUpperCase()).filter(Boolean);
+    threats.unshift({
+      id: 'TH-' + String(idCounter++).padStart(3,'0'),
+      title,
+      desc: document.getElementById('fDesc').value.trim() || 'Threat logged. Awaiting full intelligence report.',
+      level: document.getElementById('fLevel').value,
+      status: document.getElementById('fStatus').value,
+      tags: tags.length ? tags : ['UNTAGGED'],
+      time: new Date().toTimeString().slice(0,5),
+    });
+    closeModal();
+    render();
+  }
+
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  render();
 </script>
 </body>
 </html>

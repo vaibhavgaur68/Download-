@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#050A0E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>WAYFINDER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #050A0E;
+    --bg2: #080F15;
+    --surface: #0C1820;
+    --border: #0D2535;
+    --glow-cyan: #00EFFF;
+    --glow-green: #00FF9D;
+    --glow-orange: #FF6B35;
+    --glow-red: #FF3366;
+    --text: #C8E8F0;
+    --text-dim: #4A7A8A;
+    --panel: rgba(8,15,21,0.92);
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    font-family: 'Rajdhani', sans-serif;
+    overflow: hidden;
+    color: var(--text);
+  }
+
+  /* === MAP === */
+  #map {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    filter: brightness(0.6) saturate(0.4) hue-rotate(180deg);
+  }
+
+  /* Dark map tiles via filter */
+  .leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.85) saturate(0.6); }
+  .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+
+  /* === SCAN LINE OVERLAY === */
+  #scanlines {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,239,255,0.015) 2px,
+      rgba(0,239,255,0.015) 4px
+    );
+  }
+
+  /* === VIGNETTE === */
+  #vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(5,10,14,0.85) 100%);
+  }
+
+  /* === HEADER === */
+  #header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 20;
+    padding: 14px 18px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(5,10,14,0.97) 0%, transparent 100%);
+  }
+
+  #wordmark {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px;
+    letter-spacing: 5px;
+    color: var(--glow-cyan);
+    text-shadow: 0 0 10px var(--glow-cyan), 0 0 30px rgba(0,239,255,0.4);
+    animation: flicker 8s infinite;
+  }
+
+  @keyframes flicker {
+    0%,94%,96%,100% { opacity: 1; }
+    95% { opacity: 0.7; }
+  }
+
+  #status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--glow-green);
+    box-shadow: 0 0 8px var(--glow-green), 0 0 20px rgba(0,255,157,0.5);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  #status-dot.searching {
+    background: var(--glow-orange);
+    box-shadow: 0 0 8px var(--glow-orange), 0 0 20px rgba(255,107,53,0.5);
+  }
+  #status-dot.error {
+    background: var(--glow-red);
+    box-shadow: 0 0 8px var(--glow-red);
+    animation: none;
+  }
+
+  @keyframes pulse-dot {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.6; }
+  }
+
+  /* === CROSSHAIR === */
+  #crosshair {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    pointer-events: none;
+    width: 28px; height: 28px;
+  }
+  #crosshair::before, #crosshair::after {
+    content: '';
+    position: absolute;
+    background: var(--glow-cyan);
+    box-shadow: 0 0 6px var(--glow-cyan);
+    border-radius: 1px;
+  }
+  #crosshair::before {
+    width: 2px; height: 28px;
+    left: 50%; top: 0;
+    transform: translateX(-50%);
+  }
+  #crosshair::after {
+    width: 28px; height: 2px;
+    top: 50%; left: 0;
+    transform: translateY(-50%);
+  }
+  #crosshair-ring {
+    position: absolute;
+    inset: -8px;
+    border: 1px solid rgba(0,239,255,0.3);
+    border-radius: 50%;
+    animation: ring-spin 10s linear infinite;
+  }
+  @keyframes ring-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* === COORDS STRIP === */
+  #coords-strip {
+    position: fixed;
+    top: 58px; left: 0; right: 0;
+    z-index: 15;
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    pointer-events: none;
+  }
+  .coord-item {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: rgba(0,239,255,0.5);
+    letter-spacing: 1px;
+  }
+  .coord-item.active {
+    color: var(--glow-cyan);
+    text-shadow: 0 0 8px var(--glow-cyan);
+  }
+
+  /* === SEARCH PANEL === */
+  #search-panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 20;
+    padding: 0 14px 14px;
+    background: linear-gradient(to top, rgba(5,10,14,0.99) 70%, transparent 100%);
+    padding-top: 30px;
+  }
+
+  #search-box {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0 14px;
+    gap: 10px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  #search-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--glow-cyan), transparent);
+    animation: scan-line 4s ease-in-out infinite;
+  }
+  @keyframes scan-line {
+    0% { left: -60%; }
+    100% { left: 160%; }
+  }
+  #search-box:focus-within {
+    border-color: rgba(0,239,255,0.5);
+    box-shadow: 0 0 0 1px rgba(0,239,255,0.15), 0 0 20px rgba(0,239,255,0.08);
+  }
+  #search-icon {
+    color: var(--text-dim);
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  #dest-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 14px 0;
+    caret-color: var(--glow-cyan);
+  }
+  #dest-input::placeholder { color: var(--text-dim); font-weight: 400; }
+
+  #go-btn {
+    background: var(--glow-cyan);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: #050A0E;
+    font-weight: bold;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    box-shadow: 0 0 12px rgba(0,239,255,0.4);
+  }
+  #go-btn:active { transform: scale(0.95); box-shadow: 0 0 20px rgba(0,239,255,0.7); }
+
+  /* === SUGGESTIONS === */
+  #suggestions {
+    margin-top: 8px;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  #suggestions::-webkit-scrollbar { display: none; }
+  .suggestion-item {
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .suggestion-item:active {
+    background: rgba(0,239,255,0.08);
+    border-color: rgba(0,239,255,0.4);
+    color: var(--glow-cyan);
+  }
+  .sug-icon { color: var(--text-dim); font-size: 14px; flex-shrink: 0; }
+  .sug-text { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .sug-dist { color: var(--text-dim); font-size: 11px; font-family: 'Share Tech Mono', monospace; flex-shrink: 0; }
+
+  /* === ROUTE INFO CARD === */
+  #route-card {
+    position: fixed;
+    bottom: 110px; left: 14px; right: 14px;
+    z-index: 18;
+    background: var(--panel);
+    border: 1px solid rgba(0,239,255,0.2);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 30px rgba(0,239,255,0.1), inset 0 1px 0 rgba(0,239,255,0.1);
+    animation: card-in 0.3s ease-out;
+  }
+  @keyframes card-in {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  #route-card.active { display: flex; }
+
+  .route-dest {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--glow-cyan);
+    text-shadow: 0 0 8px rgba(0,239,255,0.4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.5px;
+  }
+  .route-stats {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+  .stat-box {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stat-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--glow-green);
+    text-shadow: 0 0 10px var(--glow-green);
+  }
+  .stat-lbl {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .stat-sep {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+  }
+
+  .route-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    padding: 10px 12px;
+    background: rgba(0,239,255,0.04);
+    border-radius: 8px;
+    border: 1px solid rgba(0,239,255,0.08);
+    line-height: 1.4;
+  }
+  .step-arrow {
+    font-size: 18px;
+    color: var(--glow-cyan);
+    flex-shrink: 0;
+    text-shadow: 0 0 8px var(--glow-cyan);
+  }
+
+  #cancel-btn {
+    align-self: flex-end;
+    background: none;
+    border: 1px solid rgba(255,51,102,0.3);
+    border-radius: 6px;
+    padding: 5px 12px;
+    color: var(--glow-red);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  #cancel-btn:active { background: rgba(255,51,102,0.1); }
+
+  /* === MY LOCATION BTN === */
+  #locate-btn {
+    position: fixed;
+    right: 16px;
+    bottom: 100px;
+    z-index: 19;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--glow-cyan);
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 0 12px rgba(0,239,255,0.15);
+  }
+  #locate-btn:active { transform: scale(0.9); box-shadow: 0 0 20px rgba(0,239,255,0.4); }
+  #locate-btn.navigating { bottom: 220px; }
+
+  /* === TOAST === */
+  #toast {
+    position: fixed;
+    top: 80px; left: 50%; transform: translateX(-50%);
+    z-index: 30;
+    background: var(--surface);
+    border: 1px solid rgba(0,239,255,0.3);
+    border-radius: 30px;
+    padding: 8px 18px;
+    font-size: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+    color: var(--glow-cyan);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    box-shadow: 0 0 20px rgba(0,239,255,0.15);
+  }
+  #toast.show { opacity: 1; }
+  #toast.error-toast {
+    border-color: rgba(255,51,102,0.4);
+    color: var(--glow-red);
+    box-shadow: 0 0 20px rgba(255,51,102,0.15);
+  }
+
+  /* === CUSTOM LEAFLET MARKERS === */
+  .user-marker-wrap {
+    width: 20px; height: 20px;
+    position: relative;
+  }
+  .user-marker-inner {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--glow-cyan);
+    border: 2px solid #050A0E;
+    box-shadow: 0 0 0 3px rgba(0,239,255,0.3), 0 0 15px rgba(0,239,255,0.6);
+    animation: user-pulse 2s ease-in-out infinite;
+  }
+  @keyframes user-pulse {
+    0%,100% { box-shadow: 0 0 0 3px rgba(0,239,255,0.3), 0 0 15px rgba(0,239,255,0.6); }
+    50% { box-shadow: 0 0 0 8px rgba(0,239,255,0.1), 0 0 25px rgba(0,239,255,0.8); }
+  }
+
+  .dest-marker-wrap {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px;
+  }
+  .dest-marker-pin {
+    width: 24px; height: 24px;
+    background: var(--glow-orange);
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 2px solid #050A0E;
+    box-shadow: 0 0 15px rgba(255,107,53,0.7);
+  }
+
+  /* Route line styling via Leaflet polyline */
+  .leaflet-interactive {
+    stroke: #00EFFF !important;
+    stroke-width: 4 !important;
+    stroke-opacity: 0.85 !important;
+  }
+
+  /* === ACCURACY RING (drawn on map center) === */
+  #acc-badge {
+    position: fixed;
+    bottom: 110px; left: 16px;
+    z-index: 19;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    display: none;
+  }
+  #acc-badge.visible { display: block; }
+
+  /* === BEARING COMPASS === */
+  #compass {
+    position: fixed;
+    top: 90px; right: 16px;
+    z-index: 15;
+    width: 36px; height: 36px;
+    pointer-events: none;
+  }
+  #compass-ring {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,239,255,0.2);
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #compass-n {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--glow-red);
+    text-shadow: 0 0 6px var(--glow-red);
+    letter-spacing: 1px;
+  }
+  .compass-tick {
+    position: absolute;
+    width: 1px; height: 6px;
+    background: rgba(0,239,255,0.3);
+    top: 0; left: 50%;
+    transform-origin: 50% 18px;
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="scanlines"></div>
+<div id="vignette"></div>
+
+<!-- Header -->
+<div id="header">
+  <div id="wordmark">WAYFINDER</div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span id="status-text" style="font-size:11px;letter-spacing:1px;color:var(--text-dim);font-family:'Share Tech Mono',monospace">LOCATING</span>
+    <div id="status-dot" class="searching"></div>
+  </div>
+</div>
+
+<!-- Coords -->
+<div id="coords-strip">
+  <span class="coord-item" id="lat-disp">LAT ---.------</span>
+  <span class="coord-item" id="lng-disp">LNG ---.------</span>
+</div>
+
+<!-- Compass -->
+<div id="compass">
+  <div id="compass-ring">
+    <div class="compass-tick" style="transform:rotate(0deg) translateX(-50%)"></div>
+    <div class="compass-tick" style="transform:rotate(90deg) translateX(-50%)"></div>
+    <div class="compass-tick" style="transform:rotate(180deg) translateX(-50%)"></div>
+    <div class="compass-tick" style="transform:rotate(270deg) translateX(-50%)"></div>
+    <span id="compass-n">N</span>
+  </div>
+</div>
+
+<!-- Crosshair -->
+<div id="crosshair"><div id="crosshair-ring"></div></div>
+
+<!-- Route Info Card -->
+<div id="route-card">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <div class="route-dest" id="route-dest-name">—</div>
+    <button id="cancel-btn" onclick="cancelRoute()">✕ END</button>
+  </div>
+  <div class="route-stats">
+    <div class="stat-box">
+      <div class="stat-val" id="stat-dist">—</div>
+      <div class="stat-lbl">Distance</div>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-eta">—</div>
+      <div class="stat-lbl">ETA</div>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-bearing">—°</div>
+      <div class="stat-lbl">Bearing</div>
+    </div>
+  </div>
+  <div class="route-step" id="next-step">
+    <span class="step-arrow">↑</span>
+    <span id="step-text">Follow route to destination</span>
+  </div>
+</div>
+
+<!-- Accuracy badge -->
+<div id="acc-badge">ACC: <span id="acc-val">—</span>m</div>
+
+<!-- Locate button -->
+<button id="locate-btn" onclick="centerOnUser()" title="Center on my location">◎</button>
+
+<!-- Search Panel -->
+<div id="search-panel">
+  <div id="search-box">
+    <span id="search-icon">⌕</span>
+    <input id="dest-input" type="text" placeholder="Where are you going?" autocomplete="off" spellcheck="false">
+    <button id="go-btn" onclick="startSearch()">GO</button>
+  </div>
+  <div id="suggestions"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ===================== STATE =====================
+const state = {
+  userPos: null,
+  destPos: null,
+  destName: '',
+  map: null,
+  userMarker: null,
+  destMarker: null,
+  routeLine: null,
+  watchId: null,
+  searchTimeout: null,
+  navigating: false,
+};
+
+// ===================== MAP INIT =====================
+function initMap() {
+  state.map = L.map('map', {
+    zoomControl: false,
+    attributionControl: false,
+    tap: true,
+    touchZoom: true,
+    dragging: true,
+  }).setView([20, 0], 2);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+  }).addTo(state.map);
+
+  state.map.on('drag', () => {});
+}
+
+// ===================== GPS =====================
+function startTracking() {
+  if (!navigator.geolocation) {
+    showToast('GPS NOT AVAILABLE', true);
+    setStatus('error', 'NO GPS');
+    return;
+  }
+
+  setStatus('searching', 'LOCATING');
+
+  state.watchId = navigator.geolocation.watchPosition(
+    onPosition,
+    onGpsError,
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 3000 }
+  );
+}
+
+function onPosition(pos) {
+  const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+  state.userPos = { lat, lng };
+
+  // Update coords display
+  document.getElementById('lat-disp').textContent = `LAT ${lat.toFixed(5)}`;
+  document.getElementById('lng-disp').textContent = `LNG ${lng.toFixed(5)}`;
+  document.getElementById('lat-disp').classList.add('active');
+  document.getElementById('lng-disp').classList.add('active');
+
+  // Accuracy
+  const accEl = document.getElementById('acc-val');
+  accEl.textContent = Math.round(accuracy);
+  document.getElementById('acc-badge').classList.add('visible');
+
+  setStatus('active', 'LOCKED');
+
+  // Update/create user marker
+  const icon = L.divIcon({
+    className: '',
+    html: `<div class="user-marker-wrap"><div class="user-marker-inner"></div></div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+
+  if (!state.userMarker) {
+    state.userMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(state.map);
+    state.map.setView([lat, lng], 15, { animate: true });
+  } else {
+    state.userMarker.setLatLng([lat, lng]);
+  }
+
+  // Update route if navigating
+  if (state.navigating && state.destPos) {
+    updateRouteInfo();
+    drawRoute(state.userPos, state.destPos);
+  }
+}
+
+function onGpsError(err) {
+  const msgs = { 1: 'PERMISSION DENIED', 2: 'GPS UNAVAILABLE', 3: 'GPS TIMEOUT' };
+  setStatus('error', msgs[err.code] || 'GPS ERROR');
+  showToast(msgs[err.code] || 'GPS ERROR', true);
+}
+
+function centerOnUser() {
+  if (state.userPos) {
+    state.map.flyTo([state.userPos.lat, state.userPos.lng], 16, { duration: 0.8 });
+  } else {
+    showToast('NO FIX YET', true);
+  }
+}
+
+// ===================== SEARCH =====================
+const searchInput = document.getElementById('dest-input');
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(state.searchTimeout);
+  const q = searchInput.value.trim();
+  if (q.length < 3) { hideSuggestions(); return; }
+  state.searchTimeout = setTimeout(() => fetchSuggestions(q), 400);
+});
+
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') startSearch();
+});
+
+async function fetchSuggestions(query) {
+  try {
+    const bias = state.userPos
+      ? `&lat=${state.userPos.lat}&lon=${state.userPos.lng}&bounded=0`
+      : '';
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=4&addressdetails=1${bias}`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    renderSuggestions(data);
+  } catch {
+    hideSuggestions();
+  }
+}
+
+function renderSuggestions(results) {
+  const box = document.getElementById('suggestions');
+  if (!results.length) { hideSuggestions(); return; }
+  box.innerHTML = results.map(r => {
+    const dist = state.userPos
+      ? ` ${formatDist(haversine(state.userPos.lat, state.userPos.lng, parseFloat(r.lat), parseFloat(r.lon)))}`
+      : '';
+    const name = r.display_name.split(',').slice(0, 2).join(', ');
+    return `<div class="suggestion-item" onclick="selectSuggestion('${encodeURIComponent(r.display_name)}',${r.lat},${r.lon})">
+      <span class="sug-icon">◈</span>
+      <span class="sug-text">${name}</span>
+      <span class="sug-dist">${dist}</span>
+    </div>`;
+  }).join('');
+  box.style.display = 'flex';
+}
+
+function hideSuggestions() {
+  document.getElementById('suggestions').style.display = 'none';
+}
+
+function selectSuggestion(nameEnc, lat, lon) {
+  const name = decodeURIComponent(nameEnc).split(',').slice(0, 2).join(', ');
+  searchInput.value = name;
+  hideSuggestions();
+  searchInput.blur();
+  navigateTo(parseFloat(lat), parseFloat(lon), name);
+}
+
+async function startSearch() {
+  const q = searchInput.value.trim();
+  if (!q) return;
+  hideSuggestions();
+  searchInput.blur();
+  showToast('SEARCHING...');
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    if (!data.length) { showToast('LOCATION NOT FOUND', true); return; }
+    const r = data[0];
+    const name = r.display_name.split(',').slice(0, 2).join(', ');
+    navigateTo(parseFloat(r.lat), parseFloat(r.lon), name);
+  } catch {
+    showToast('NETWORK ERROR', true);
+  }
+}
+
+// ===================== NAVIGATION =====================
+function navigateTo(lat, lng, name) {
+  state.destPos = { lat, lng };
+  state.destName = name;
+  state.navigating = true;
+
+  // Place dest marker
+  const icon = L.divIcon({
+    className: '',
+    html: `<div class="dest-marker-wrap"><div class="dest-marker-pin"></div></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [12, 28],
+  });
+  if (state.destMarker) state.destMarker.remove();
+  state.destMarker = L.marker([lat, lng], { icon }).addTo(state.map);
+
+  // Draw route
+  if (state.userPos) {
+    drawRoute(state.userPos, state.destPos);
+    updateRouteInfo();
+    // Fit bounds
+    const bounds = L.latLngBounds(
+      [state.userPos.lat, state.userPos.lng],
+      [lat, lng]
+    );
+    state.map.fitBounds(bounds, { padding: [60, 60], animate: true, duration: 0.8 });
+  } else {
+    state.map.flyTo([lat, lng], 14, { duration: 1 });
+  }
+
+  // Show route card
+  document.getElementById('route-dest-name').textContent = name;
+  document.getElementById('route-card').classList.add('active');
+  document.getElementById('locate-btn').classList.add('navigating');
+
+  showToast('ROUTE SET');
+}
+
+function drawRoute(from, to) {
+  if (state.routeLine) state.routeLine.remove();
+  state.routeLine = L.polyline(
+    [[from.lat, from.lng], [to.lat, to.lng]],
+    { color: '#00EFFF', weight: 3, opacity: 0.8, dashArray: '8, 6' }
+  ).addTo(state.map);
+}
+
+function updateRouteInfo() {
+  if (!state.userPos || !state.destPos) return;
+  const dist = haversine(state.userPos.lat, state.userPos.lng, state.destPos.lat, state.destPos.lng);
+  const bearing = getBearing(state.userPos.lat, state.userPos.lng, state.destPos.lat, state.destPos.lng);
+  const eta = Math.round(dist / 1.3 / 60); // assume 1.3 m/s walking
+
+  document.getElementById('stat-dist').textContent = formatDist(dist);
+  document.getElementById('stat-eta').textContent = eta < 1 ? '<1m' : `${eta}m`;
+  document.getElementById('stat-bearing').textContent = Math.round(bearing);
+
+  // Step instruction
+  const dir = getDirectionLabel(bearing);
+  document.getElementById('step-text').textContent = `Head ${dir} toward ${state.destName.split(',')[0]}`;
+  document.getElementById('next-step').querySelector('.step-arrow').textContent = getArrow(bearing);
+
+  // Arrived?
+  if (dist < 30) {
+    document.getElementById('step-text').textContent = '✓ You have arrived';
+    document.getElementById('next-step').querySelector('.step-arrow').textContent = '★';
+    showToast('DESTINATION REACHED');
+  }
+}
+
+function cancelRoute() {
+  state.navigating = false;
+  state.destPos = null;
+  state.destName = '';
+  if (state.destMarker) { state.destMarker.remove(); state.destMarker = null; }
+  if (state.routeLine) { state.routeLine.remove(); state.routeLine = null; }
+  document.getElementById('route-card').classList.remove('active');
+  document.getElementById('locate-btn').classList.remove('navigating');
+  searchInput.value = '';
+  if (state.userPos) state.map.flyTo([state.userPos.lat, state.userPos.lng], 15, { duration: 0.8 });
+  showToast('ROUTE CANCELLED');
+}
+
+// ===================== UTILS =====================
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function getBearing(lat1, lon1, lat2, lon2) {
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+  const x = Math.cos(lat1*Math.PI/180)*Math.sin(lat2*Math.PI/180)
+           - Math.sin(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.cos(dLon);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+function getDirectionLabel(bearing) {
+  const dirs = ['North','NE','East','SE','South','SW','West','NW','North'];
+  return dirs[Math.round(bearing / 45)];
+}
+
+function getArrow(bearing) {
+  const arrows = ['↑','↗','→','↘','↓','↙','←','↖','↑'];
+  return arrows[Math.round(bearing / 45)];
+}
+
+function formatDist(m) {
+  return m >= 1000 ? `${(m/1000).toFixed(1)}k` : `${Math.round(m)}m`;
+}
+
+function setStatus(type, label) {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  dot.className = '';
+  if (type === 'active') dot.classList.add('active');
+  else if (type === 'searching') dot.classList.add('searching');
+  else if (type === 'error') dot.classList.add('error');
+  txt.textContent = label;
+}
+
+let toastTimer;
+function showToast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (isError ? ' error-toast' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 2500);
+}
+
+// ===================== BOOT =====================
+initMap();
+startTracking();
+
+// Close suggestions on map tap
+document.getElementById('map').addEventListener('touchstart', () => {
+  hideSuggestions();
+  searchInput.blur();
+});
+</script>
+</body>
+</html>

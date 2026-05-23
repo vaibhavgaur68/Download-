@@ -2,1093 +2,833 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#04080C">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>SENTINEL — Device Tracker</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STARK INDUSTRIES — SUIT DIAGNOSTICS v7.3</title>
 <style>
-/* ==============================
-   TOKENS
-============================== */
-:root {
-  --bg:        #04080C;
-  --bg2:       #070E14;
-  --surface:   #0A1520;
-  --surface2:  #0E1D2C;
-  --border:    #112233;
-  --border2:   #1A3044;
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap');
 
-  --cyan:      #00F5FF;
-  --green:     #00FF88;
-  --amber:     #FFB800;
-  --red:       #FF2D55;
-  --violet:    #BF5FFF;
+  :root {
+    --gold: #c8960c;
+    --gold-bright: #ffcc00;
+    --gold-dim: #7a5c00;
+    --red: #c0392b;
+    --red-bright: #ff4136;
+    --cyan: #00d4ff;
+    --cyan-dim: #007a99;
+    --bg: #03080f;
+    --panel: rgba(0, 30, 50, 0.7);
+    --border: rgba(0, 212, 255, 0.25);
+    --text: #a8d8ea;
+    --text-dim: #3a6070;
+    --green: #00ff88;
+    --green-dim: #006633;
+  }
 
-  --text:      #B8D8E8;
-  --text-dim:  #3A6070;
-  --text-mid:  #6A9AAA;
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  --glow-c: rgba(0,245,255,0.18);
-  --glow-g: rgba(0,255,136,0.18);
-  --glow-a: rgba(255,184,0,0.18);
-  --glow-r: rgba(255,45,85,0.18);
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
 
-  --r: 10px;
-  --font-mono: 'IBM Plex Mono', monospace;
-  --font-sans: 'Syne', sans-serif;
-}
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 212, 255, 0.015) 2px,
+      rgba(0, 212, 255, 0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
 
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:var(--font-sans); overflow:hidden; }
+  /* Radial glow background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 0%, rgba(0,100,180,0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 30% at 10% 100%, rgba(200,150,12,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 90% 100%, rgba(192,57,43,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
 
-/* ==============================
-   SETUP SCREEN
-============================== */
-#setup-screen {
-  position: fixed; inset: 0; z-index: 100;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 24px;
-  background: var(--bg);
-  gap: 0;
-}
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+  }
 
-/* Animated grid bg */
-#setup-screen::before {
-  content: '';
-  position: absolute; inset: 0;
-  background-image:
-    linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-}
-#setup-screen::after {
-  content: '';
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, rgba(0,245,255,0.06) 0%, transparent 65%);
-  pointer-events: none;
-}
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
 
-.setup-inner {
-  position: relative; z-index: 1;
-  width: 100%; max-width: 360px;
-  display: flex; flex-direction: column; align-items: center; gap: 32px;
-}
+  .logo-block {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
 
-.brand {
-  text-align: center;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-}
-.brand-icon {
-  font-size: 32px;
-  filter: drop-shadow(0 0 12px var(--cyan));
-  animation: float 4s ease-in-out infinite;
-}
-@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  .arc-mini {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #ffffff, var(--cyan), var(--cyan-dim));
+    box-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,212,255,0.4);
+    animation: arcPulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
 
-.brand-name {
-  font-family: var(--font-mono);
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: 8px;
-  color: var(--cyan);
-  text-shadow: 0 0 12px var(--cyan), 0 0 40px rgba(0,245,255,0.3);
-}
-.brand-sub {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 3px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-}
+  @keyframes arcPulse {
+    0%,100% { box-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,212,255,0.4); }
+    50% { box-shadow: 0 0 30px var(--cyan), 0 0 60px rgba(0,212,255,0.6), 0 0 80px rgba(0,212,255,0.2); }
+  }
 
-/* Mode tabs */
-.mode-tabs {
-  display: flex;
-  width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  overflow: hidden;
-}
-.mode-tab {
-  flex: 1; padding: 11px 0;
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none; background: none;
-  text-transform: uppercase;
-}
-.mode-tab.active {
-  background: var(--surface2);
-  color: var(--cyan);
-  text-shadow: 0 0 8px var(--cyan);
-  border-bottom: 2px solid var(--cyan);
-}
+  .logo-text h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--gold-bright);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
 
-/* Form */
-.setup-form {
-  width: 100%;
-  display: flex; flex-direction: column; gap: 14px;
-}
+  .logo-text p {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
 
-.field-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  margin-bottom: 6px;
-  display: block;
-}
+  .header-status {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
 
-.field-wrap {
-  position: relative;
-}
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
 
-.field-input {
-  width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: var(--r);
-  padding: 13px 16px;
-  font-family: var(--font-mono);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: 2px;
-  outline: none;
-  transition: all 0.2s;
-  caret-color: var(--cyan);
-  text-transform: uppercase;
-}
-.field-input:focus {
-  border-color: rgba(0,245,255,0.4);
-  box-shadow: 0 0 0 3px rgba(0,245,255,0.08), 0 0 16px rgba(0,245,255,0.06);
-}
-.field-input::placeholder { color: var(--text-dim); font-weight: 300; text-transform: none; letter-spacing: 1px; }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 1.5s ease-in-out infinite;
+  }
 
-/* Firebase config fields */
-.config-section {
-  width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 14px;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.config-title {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--amber);
-  text-shadow: 0 0 6px var(--amber);
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
-.config-row {
-  display: flex; flex-direction: column; gap: 4px;
-}
-.config-input {
-  width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.2s;
-  caret-color: var(--cyan);
-}
-.config-input:focus { border-color: rgba(0,245,255,0.3); }
+  .dot.amber { background: var(--gold-bright); box-shadow: 0 0 8px var(--gold-bright); }
+  .dot.red { background: var(--red-bright); box-shadow: 0 0 8px var(--red-bright); }
 
-.config-hint {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--text-dim);
-  letter-spacing: 0.5px;
-  line-height: 1.5;
-}
-.config-hint a { color: var(--amber); text-decoration: none; }
+  @keyframes blink {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
 
-/* Primary button */
-.btn-primary {
-  width: 100%;
-  padding: 15px;
-  background: var(--cyan);
-  border: none;
-  border-radius: var(--r);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 3px;
-  color: #04080C;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 0 20px rgba(0,245,255,0.3);
-  text-transform: uppercase;
-}
-.btn-primary:active { transform: scale(0.97); box-shadow: 0 0 30px rgba(0,245,255,0.5); }
-.btn-primary.green-btn {
-  background: var(--green);
-  box-shadow: 0 0 20px rgba(0,255,136,0.3);
-}
-.btn-primary:disabled {
-  opacity: 0.4; cursor: not-allowed;
-  box-shadow: none;
-}
+  .time-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    color: var(--cyan);
+    letter-spacing: 2px;
+  }
 
-/* ==============================
-   TRACKER SCREEN
-============================== */
-#tracker-screen {
-  position: fixed; inset: 0; z-index: 50;
-  display: none; flex-direction: column;
-  background: var(--bg);
-}
+  /* GRID LAYOUT */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 16px;
+  }
 
-.tracker-header {
-  padding: 16px 18px 12px;
-  display: flex; align-items: center; justify-content: space-between;
-  background: linear-gradient(to bottom, rgba(4,8,12,0.98) 0%, transparent);
-  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
-}
-.tracker-id {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  letter-spacing: 3px;
-  color: var(--green);
-  text-shadow: 0 0 10px var(--green);
-}
-.tracker-status {
-  display: flex; align-items: center; gap: 8px;
-}
-.t-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--amber);
-  animation: t-pulse 1.5s ease-in-out infinite;
-}
-.t-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
-.t-dot.error { background: var(--red); animation: none; }
-@keyframes t-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
-.t-status-txt {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--text-dim);
-}
+  /* PANEL BASE */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 20px;
+    position: relative;
+    backdrop-filter: blur(8px);
+    overflow: hidden;
+  }
 
-#tracker-map {
-  position: absolute; inset: 0;
-  filter: brightness(0.55) saturate(0.35) hue-rotate(175deg);
-}
-.leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.8) saturate(0.5); }
-.leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0.6;
+  }
 
-/* Scanlines */
-.scanlines {
-  position: absolute; inset: 0;
-  pointer-events: none; z-index: 5;
-  background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,245,255,0.012) 2px,rgba(0,245,255,0.012) 4px);
-}
-.vignette {
-  position: absolute; inset: 0;
-  pointer-events: none; z-index: 6;
-  background: radial-gradient(ellipse at center, transparent 35%, rgba(4,8,12,0.88) 100%);
-}
+  .panel-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
-/* Stats panel */
-.tracker-stats {
-  position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
-  padding: 0 14px 20px;
-  background: linear-gradient(to top, rgba(4,8,12,0.99) 65%, transparent);
-  padding-top: 40px;
-}
-.stats-grid {
-  display: grid; grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px; margin-bottom: 12px;
-}
-.stat-cell {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 8px;
-  text-align: center;
-}
-.stat-cell-val {
-  font-family: var(--font-mono);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--cyan);
-  text-shadow: 0 0 8px var(--cyan);
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.stat-cell-lbl {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1.5px;
-  color: var(--text-dim);
-  margin-top: 4px;
-  text-transform: uppercase;
-}
+  .panel-title::before {
+    content: '▶';
+    color: var(--cyan);
+    font-size: 0.5rem;
+  }
 
-.tracker-log {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 10px 12px;
-  height: 52px;
-  overflow: hidden;
-  position: relative;
-}
-.log-line {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.5px;
-  color: var(--text-mid);
-  line-height: 1.6;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.log-line:first-child { color: var(--green); }
-.log-cursor { display: inline-block; background: var(--cyan); width: 6px; height: 11px; vertical-align: middle; animation: blink 1s step-end infinite; margin-left: 2px; }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  /* ARC REACTOR PANEL */
+  .arc-reactor-panel {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+  }
 
-.stop-btn {
-  position: absolute; top: 14px; right: 14px; z-index: 12;
-  background: none;
-  border: 1px solid rgba(255,45,85,0.4);
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--red);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.stop-btn:active { background: rgba(255,45,85,0.1); }
+  .arc-reactor {
+    position: relative;
+    width: 220px; height: 220px;
+    margin: 0 auto 24px;
+  }
 
-/* ==============================
-   DASHBOARD SCREEN
-============================== */
-#dashboard-screen {
-  position: fixed; inset: 0; z-index: 50;
-  display: none; flex-direction: column;
-  background: var(--bg);
-}
+  .arc-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--cyan);
+    border-right-color: var(--cyan);
+  }
 
-#dashboard-map {
-  position: absolute; inset: 0;
-}
+  .arc-ring-1 { inset: 0; animation: spin 3s linear infinite; opacity: 0.9; }
+  .arc-ring-2 { inset: 15px; animation: spin 5s linear infinite reverse; border-top-color: var(--gold); border-right-color: var(--gold); opacity: 0.7; }
+  .arc-ring-3 { inset: 30px; animation: spin 8s linear infinite; border-top-color: var(--cyan); border-right-color: transparent; border-bottom-color: var(--cyan); opacity: 0.5; }
+  .arc-ring-4 { inset: 45px; animation: spin 12s linear infinite reverse; border-color: var(--gold-dim); opacity: 0.4; }
 
-.dash-header {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
-  padding: 14px 18px 10px;
-  display: flex; align-items: center; justify-content: space-between;
-  background: linear-gradient(to bottom, rgba(4,8,12,0.97) 0%, transparent);
-}
-.dash-title {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  letter-spacing: 4px;
-  color: var(--cyan);
-  text-shadow: 0 0 10px var(--cyan);
-}
-.dash-count {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-}
-.dash-count span {
-  color: var(--green);
-  text-shadow: 0 0 6px var(--green);
-}
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Device list panel */
-.device-panel {
-  position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
-  padding: 0 12px 16px;
-  background: linear-gradient(to top, rgba(4,8,12,0.99) 60%, transparent);
-  padding-top: 36px;
-}
+  .arc-core {
+    position: absolute;
+    inset: 65px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, rgba(255,255,255,0.9), var(--cyan) 30%, rgba(0,80,120,0.8));
+    box-shadow:
+      0 0 30px var(--cyan),
+      0 0 60px rgba(0,212,255,0.5),
+      0 0 100px rgba(0,212,255,0.2),
+      inset 0 0 20px rgba(255,255,255,0.3);
+    animation: coreGlow 2s ease-in-out infinite;
+  }
 
-.device-list {
-  display: flex; flex-direction: column; gap: 6px;
-  max-height: 220px;
-  overflow-y: auto;
-}
-.device-list::-webkit-scrollbar { display: none; }
+  @keyframes coreGlow {
+    0%,100% { box-shadow: 0 0 30px var(--cyan), 0 0 60px rgba(0,212,255,0.5), 0 0 100px rgba(0,212,255,0.2), inset 0 0 20px rgba(255,255,255,0.3); }
+    50% { box-shadow: 0 0 40px var(--cyan), 0 0 80px rgba(0,212,255,0.7), 0 0 120px rgba(0,212,255,0.3), inset 0 0 30px rgba(255,255,255,0.5); }
+  }
 
-.device-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 12px 14px;
-  display: flex; align-items: center; gap: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-  position: relative;
-  overflow: hidden;
-}
-.device-card::before {
-  content: '';
-  position: absolute; left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green);
-}
-.device-card.stale::before { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
-.device-card:active { background: rgba(0,245,255,0.05); }
+  .arc-power-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: var(--cyan);
+    text-align: center;
+    text-shadow: 0 0 20px var(--cyan);
+    letter-spacing: 2px;
+  }
 
-.dev-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-  filter: drop-shadow(0 0 6px var(--cyan));
-}
-.dev-info { flex: 1; min-width: 0; }
-.dev-id {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 2px;
-  color: var(--cyan);
-  text-shadow: 0 0 6px rgba(0,245,255,0.4);
-}
-.dev-coords {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-dim);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dev-meta {
-  text-align: right;
-  flex-shrink: 0;
-}
-.dev-time {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-}
-.dev-acc {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--text-dim);
-  margin-top: 2px;
-}
+  .arc-power-sub {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-align: center;
+    margin-top: 4px;
+  }
 
-.no-devices {
-  text-align: center;
-  padding: 20px 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--text-dim);
-}
+  /* GAUGE BARS */
+  .gauge-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+  }
 
-.back-btn {
-  position: absolute; top: 14px; right: 14px; z-index: 12;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 7px 12px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--text-mid);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.back-btn:active { color: var(--cyan); border-color: rgba(0,245,255,0.3); }
+  .gauge-item {}
 
-/* ==============================
-   TOAST
-============================== */
-#toast {
-  position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
-  z-index: 200;
-  padding: 8px 18px;
-  border-radius: 30px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  white-space: nowrap;
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.2s;
-  background: var(--surface);
-  border: 1px solid rgba(0,245,255,0.3);
-  color: var(--cyan);
-  box-shadow: 0 0 20px rgba(0,245,255,0.15);
-}
-#toast.show { opacity: 1; }
-#toast.err { border-color: rgba(255,45,85,0.4); color: var(--red); box-shadow: 0 0 20px rgba(255,45,85,0.15); }
+  .gauge-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+  }
 
-/* Refresh btn */
-.refresh-btn {
-  background: none; border: none;
-  color: var(--text-dim);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px;
-  transition: color 0.2s;
-  line-height: 1;
-}
-.refresh-btn:active { color: var(--cyan); }
+  .gauge-label { color: var(--text-dim); text-transform: uppercase; }
+  .gauge-value { color: var(--cyan); font-weight: bold; }
 
+  .gauge-track {
+    height: 6px;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.15);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .gauge-fill {
+    height: 100%;
+    position: relative;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .gauge-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 4px; height: 100%;
+    background: white;
+    box-shadow: 0 0 8px currentColor;
+    opacity: 0.8;
+  }
+
+  .gauge-fill.cyan { background: linear-gradient(90deg, rgba(0,212,255,0.3), var(--cyan)); box-shadow: 0 0 10px var(--cyan); color: var(--cyan); }
+  .gauge-fill.gold { background: linear-gradient(90deg, rgba(200,150,12,0.3), var(--gold-bright)); box-shadow: 0 0 10px var(--gold)); color: var(--gold-bright); }
+  .gauge-fill.green { background: linear-gradient(90deg, rgba(0,255,136,0.3), var(--green)); box-shadow: 0 0 10px var(--green); color: var(--green); }
+  .gauge-fill.red { background: linear-gradient(90deg, rgba(255,65,54,0.3), var(--red-bright)); color: var(--red-bright); }
+
+  /* CIRCULAR METERS */
+  .circular-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .circ-meter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .circ-svg { overflow: visible; }
+
+  .circ-bg { fill: none; stroke: rgba(0,212,255,0.1); stroke-width: 4; }
+  .circ-track { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1s ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
+  .circ-text-val { font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; fill: var(--cyan); text-anchor: middle; dominant-baseline: middle; }
+  .circ-text-lbl { font-family: 'Share Tech Mono', monospace; font-size: 5.5px; fill: var(--text-dim); text-anchor: middle; dominant-baseline: middle; letter-spacing: 1px; }
+
+  /* TIMELINE / LOG */
+  .log-panel { grid-column: 1 / -1; }
+
+  .log-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 130px;
+    overflow: hidden;
+  }
+
+  .log-entry {
+    display: flex;
+    gap: 12px;
+    font-size: 0.65rem;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    animation: fadeIn 0.5s forwards;
+    padding: 5px 8px;
+    border-left: 2px solid var(--border);
+  }
+
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  .log-time { color: var(--text-dim); flex-shrink: 0; width: 70px; }
+  .log-tag { flex-shrink: 0; width: 60px; font-weight: bold; }
+  .log-tag.ok { color: var(--green); }
+  .log-tag.warn { color: var(--gold-bright); }
+  .log-tag.crit { color: var(--red-bright); }
+  .log-msg { color: var(--text); }
+
+  /* THREAT RING */
+  .threat-panel { grid-column: 3; grid-row: 1; }
+
+  .threat-level-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .threat-hex {
+    width: 80px; height: 90px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 8px 0;
+  }
+
+  .threat-hex::before, .threat-hex::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,65,54,0.08);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    border: 1px solid var(--red-bright);
+  }
+
+  .threat-hex::after {
+    animation: hexPulse 2s ease-in-out infinite;
+    opacity: 0;
+  }
+
+  @keyframes hexPulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+
+  .threat-number {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--red-bright);
+    text-shadow: 0 0 20px var(--red-bright);
+    z-index: 1;
+  }
+
+  .threat-label-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .threat-badge {
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+    padding: 3px 8px;
+    border: 1px solid;
+    text-transform: uppercase;
+  }
+
+  .threat-badge.low { border-color: var(--green); color: var(--green); }
+  .threat-badge.med { border-color: var(--gold-bright); color: var(--gold-bright); background: rgba(255,204,0,0.08); }
+  .threat-badge.high { border-color: var(--red-bright); color: var(--red-bright); background: rgba(255,65,54,0.08); }
+
+  /* GRID SPANS */
+  .span-full { grid-column: 1 / -1; }
+  .col-1 { grid-column: 1; }
+  .col-3 { grid-column: 3; }
+
+  /* MINI STATS ROW */
+  .mini-stats {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .mini-stat {
+    flex: 1;
+    background: rgba(0,212,255,0.04);
+    border: 1px solid var(--border);
+    padding: 10px;
+    text-align: center;
+  }
+
+  .mini-stat-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--cyan);
+    text-shadow: 0 0 10px rgba(0,212,255,0.5);
+  }
+
+  .mini-stat-key {
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  /* CORNER DECORATIONS */
+  .corner-tl, .corner-br {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-color: var(--cyan);
+    border-style: solid;
+    opacity: 0.6;
+  }
+  .corner-tl { top: 4px; left: 4px; border-width: 1px 0 0 1px; }
+  .corner-br { bottom: 4px; right: 4px; border-width: 0 1px 1px 0; }
+
+  /* RADAR PANEL */
+  .radar-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 0;
+  }
+
+  .radar-svg { overflow: visible; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+    .arc-reactor-panel { grid-column: 1 / -1; grid-row: auto; }
+    .log-panel { grid-column: 1 / -1; }
+  }
 </style>
 </head>
 <body>
+<div class="container">
 
-<!-- ==================== SETUP SCREEN ==================== -->
-<div id="setup-screen">
-  <div class="setup-inner">
+  <!-- HEADER -->
+  <header>
+    <div class="logo-block">
+      <div class="arc-mini"></div>
+      <div class="logo-text">
+        <h1>Stark Industries</h1>
+        <p>Mark VII · Suit Diagnostics Interface · Build 7.3.2</p>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="status-pill"><div class="dot"></div> Systems Nominal</div>
+      <div class="status-pill"><div class="dot amber"></div> Weapons Offline</div>
+      <div class="status-pill"><div class="dot red"></div> Stealth: Off</div>
+      <div class="time-display" id="clockDisplay">--:--:--</div>
+    </div>
+  </header>
 
-    <div class="brand">
-      <div class="brand-icon">◈</div>
-      <div class="brand-name">SENTINEL</div>
-      <div class="brand-sub">Personal Device Tracker</div>
+  <!-- MAIN GRID -->
+  <div class="grid">
+
+    <!-- POWER / CPU Panel (col 1) -->
+    <div class="panel col-1">
+      <div class="corner-tl"></div><div class="corner-br"></div>
+      <div class="panel-title">System Resources</div>
+      <div class="gauge-row" id="sysGauges">
+        <div class="gauge-item">
+          <div class="gauge-header">
+            <span class="gauge-label">CPU Core Temp</span>
+            <span class="gauge-value" id="cpuVal">--°C</span>
+          </div>
+          <div class="gauge-track"><div class="gauge-fill cyan" id="cpuBar" style="width:0%"></div></div>
+        </div>
+        <div class="gauge-item">
+          <div class="gauge-header">
+            <span class="gauge-label">RAM Usage</span>
+            <span class="gauge-value" id="ramVal">-- GB</span>
+          </div>
+          <div class="gauge-track"><div class="gauge-fill gold" id="ramBar" style="width:0%"></div></div>
+        </div>
+        <div class="gauge-item">
+          <div class="gauge-header">
+            <span class="gauge-label">Arc Reactor Output</span>
+            <span class="gauge-value" id="arcVal">-- TJ</span>
+          </div>
+          <div class="gauge-track"><div class="gauge-fill green" id="arcBar" style="width:0%"></div></div>
+        </div>
+        <div class="gauge-item">
+          <div class="gauge-header">
+            <span class="gauge-label">Repulsor Charge</span>
+            <span class="gauge-value" id="repVal">--%</span>
+          </div>
+          <div class="gauge-track"><div class="gauge-fill cyan" id="repBar" style="width:0%"></div></div>
+        </div>
+        <div class="gauge-item">
+          <div class="gauge-header">
+            <span class="gauge-label">Suit Integrity</span>
+            <span class="gauge-value" id="intVal">--%</span>
+          </div>
+          <div class="gauge-track"><div class="gauge-fill green" id="intBar" style="width:0%"></div></div>
+        </div>
+        <div class="gauge-item">
+          <div class="gauge-header">
+            <span class="gauge-label">Thermal Shields</span>
+            <span class="gauge-value" id="thermVal">--%</span>
+          </div>
+          <div class="gauge-track"><div class="gauge-fill gold" id="thermBar" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="mini-stat-val" id="altVal">—</div><div class="mini-stat-key">Altitude</div></div>
+        <div class="mini-stat"><div class="mini-stat-val" id="spdVal">—</div><div class="mini-stat-key">Speed</div></div>
+        <div class="mini-stat"><div class="mini-stat-val" id="gVal">—</div><div class="mini-stat-key">G-Force</div></div>
+      </div>
     </div>
 
-    <!-- Mode Tabs -->
-    <div class="mode-tabs">
-      <button class="mode-tab active" onclick="switchSetupMode('tracker')" id="tab-tracker">◉ TRACKER</button>
-      <button class="mode-tab" onclick="switchSetupMode('dashboard')" id="tab-dashboard">⊞ DASHBOARD</button>
+    <!-- ARC REACTOR CENTER -->
+    <div class="panel arc-reactor-panel">
+      <div class="corner-tl"></div><div class="corner-br"></div>
+      <div class="panel-title" style="justify-content:center">Arc Reactor Core</div>
+      <div class="arc-reactor">
+        <div class="arc-ring arc-ring-1"></div>
+        <div class="arc-ring arc-ring-2"></div>
+        <div class="arc-ring arc-ring-3"></div>
+        <div class="arc-ring arc-ring-4"></div>
+        <div class="arc-core"></div>
+      </div>
+      <div class="arc-power-label" id="powerPct">—</div>
+      <div class="arc-power-sub">Terajoules per Second</div>
     </div>
 
-    <!-- TRACKER FORM -->
-    <div class="setup-form" id="form-tracker">
-      <div>
-        <label class="field-label">Device Code</label>
-        <div class="field-wrap">
-          <input class="field-input" id="device-id-input" type="text" maxlength="12"
-            placeholder="e.g. PHONE-01" autocomplete="off" spellcheck="false">
+    <!-- THREAT LEVEL -->
+    <div class="panel threat-panel">
+      <div class="corner-tl"></div><div class="corner-br"></div>
+      <div class="panel-title">Threat Analysis</div>
+      <div class="threat-level-display">
+        <div class="threat-hex">
+          <span class="threat-number" id="threatNum">2</span>
+        </div>
+        <div class="threat-label-row">
+          <span class="threat-badge low" id="tbLow">LOW</span>
+          <span class="threat-badge med" id="tbMed">MEDIUM</span>
+          <span class="threat-badge high" id="tbHigh">HIGH</span>
+        </div>
+        <div style="margin-top:12px; font-size:0.6rem; color:var(--text-dim); letter-spacing:2px; text-align:center; text-transform:uppercase;">
+          Targets Detected: <span id="targetCount" style="color:var(--red-bright)">0</span>
         </div>
       </div>
-
-      <div class="config-section">
-        <div class="config-title">⚠ Firebase Config (One-time Setup)</div>
-        <div class="config-row">
-          <label class="field-label" style="margin-bottom:0">Database URL</label>
-          <input class="config-input" id="fb-url" type="text"
-            placeholder="https://your-app.firebaseio.com">
-        </div>
-        <div class="config-row">
-          <label class="field-label" style="margin-bottom:0">API Key</label>
-          <input class="config-input" id="fb-key" type="text"
-            placeholder="AIza...">
-        </div>
-        <div class="config-hint">
-          Free setup at <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> →
-          Create project → Realtime Database → Rules: set read/write to <code style="color:var(--cyan)">"auth"==null</code>
-        </div>
-      </div>
-
-      <button class="btn-primary green-btn" onclick="startTracking()" id="start-track-btn">
-        START BROADCASTING
-      </button>
     </div>
 
-    <!-- DASHBOARD FORM -->
-    <div class="setup-form" id="form-dashboard" style="display:none">
-      <div>
-        <label class="field-label">Dashboard Password (optional)</label>
-        <div class="field-wrap">
-          <input class="field-input" id="dash-pass-input" type="password"
-            placeholder="leave blank to skip" autocomplete="off">
-        </div>
+    <!-- CIRCULAR METERS -->
+    <div class="panel col-1">
+      <div class="corner-tl"></div><div class="corner-br"></div>
+      <div class="panel-title">Sub-Systems</div>
+      <div class="circular-grid" id="circGrid">
+        <!-- filled by JS -->
       </div>
+    </div>
 
-      <div class="config-section">
-        <div class="config-title">⚠ Firebase Config</div>
-        <div class="config-row">
-          <label class="field-label" style="margin-bottom:0">Database URL</label>
-          <input class="config-input" id="fb-url-dash" type="text"
-            placeholder="https://your-app.firebaseio.com">
-        </div>
-        <div class="config-row">
-          <label class="field-label" style="margin-bottom:0">API Key</label>
-          <input class="config-input" id="fb-key-dash" type="text"
-            placeholder="AIza...">
-        </div>
-        <div class="config-hint">Same Firebase project as your tracker devices.</div>
+    <!-- RADAR -->
+    <div class="panel col-3">
+      <div class="corner-tl"></div><div class="corner-br"></div>
+      <div class="panel-title">Proximity Radar</div>
+      <div class="radar-wrap">
+        <svg class="radar-svg" width="160" height="160" viewBox="0 0 160 160">
+          <defs>
+            <radialGradient id="radarGrad" cx="50%" cy="50%">
+              <stop offset="0%" stop-color="rgba(0,212,255,0.12)"/>
+              <stop offset="100%" stop-color="transparent"/>
+            </radialGradient>
+          </defs>
+          <circle cx="80" cy="80" r="75" fill="url(#radarGrad)" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+          <circle cx="80" cy="80" r="50" fill="none" stroke="rgba(0,212,255,0.15)" stroke-width="1"/>
+          <circle cx="80" cy="80" r="25" fill="none" stroke="rgba(0,212,255,0.15)" stroke-width="1"/>
+          <line x1="80" y1="5" x2="80" y2="155" stroke="rgba(0,212,255,0.1)" stroke-width="1"/>
+          <line x1="5" y1="80" x2="155" y2="80" stroke="rgba(0,212,255,0.1)" stroke-width="1"/>
+          <!-- Sweep line -->
+          <line id="radarSweep" x1="80" y1="80" x2="80" y2="5" stroke="rgba(0,212,255,0.8)" stroke-width="1.5"/>
+          <!-- Blips rendered by JS -->
+          <g id="radarBlips"></g>
+          <!-- Center dot -->
+          <circle cx="80" cy="80" r="3" fill="var(--cyan)" filter="url(#glow)"/>
+          <defs>
+            <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+        </svg>
       </div>
+    </div>
 
-      <button class="btn-primary" onclick="openDashboard()" id="open-dash-btn">
-        OPEN DASHBOARD
-      </button>
+    <!-- EVENT LOG -->
+    <div class="panel log-panel">
+      <div class="corner-tl"></div><div class="corner-br"></div>
+      <div class="panel-title">JARVIS System Log</div>
+      <div class="log-entries" id="logEntries"></div>
     </div>
 
   </div>
 </div>
-
-<!-- ==================== TRACKER SCREEN ==================== -->
-<div id="tracker-screen">
-  <div id="tracker-map"></div>
-  <div class="scanlines"></div>
-  <div class="vignette"></div>
-
-  <div class="tracker-header">
-    <div class="tracker-id" id="t-device-label">—</div>
-    <div class="tracker-status">
-      <div class="t-dot" id="t-dot"></div>
-      <div class="t-status-txt" id="t-status-txt">INIT</div>
-    </div>
-  </div>
-
-  <button class="stop-btn" onclick="stopTracking()">✕ STOP</button>
-
-  <div class="tracker-stats">
-    <div class="stats-grid">
-      <div class="stat-cell">
-        <div class="stat-cell-val" id="t-lat">—</div>
-        <div class="stat-cell-lbl">Latitude</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-cell-val" id="t-lng">—</div>
-        <div class="stat-cell-lbl">Longitude</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-cell-val" id="t-acc">—</div>
-        <div class="stat-cell-lbl">Accuracy</div>
-      </div>
-    </div>
-    <div class="tracker-log" id="tracker-log">
-      <div class="log-line">System ready...<span class="log-cursor"></span></div>
-    </div>
-  </div>
-</div>
-
-<!-- ==================== DASHBOARD SCREEN ==================== -->
-<div id="dashboard-screen">
-  <div id="dashboard-map"></div>
-  <div class="scanlines"></div>
-  <div class="vignette"></div>
-
-  <div class="dash-header">
-    <div class="dash-title">◈ SENTINEL</div>
-    <div class="dash-count"><span id="online-count">0</span> ONLINE</div>
-  </div>
-
-  <button class="back-btn" onclick="closeDashboard()">← BACK</button>
-
-  <div class="device-panel">
-    <div class="device-list" id="device-list">
-      <div class="no-devices">Waiting for devices...</div>
-    </div>
-  </div>
-</div>
-
-<!-- Toast -->
-<div id="toast"></div>
 
 <script>
-// ============================================================
-//  CONFIG PERSISTENCE
-// ============================================================
-const LS = {
-  save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-  load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
-};
-
-// Pre-fill saved config
-window.addEventListener('DOMContentLoaded', () => {
-  const cfg = LS.load('sentinel_cfg');
-  if (cfg) {
-    if (cfg.url) { document.getElementById('fb-url').value = cfg.url; document.getElementById('fb-url-dash').value = cfg.url; }
-    if (cfg.key) { document.getElementById('fb-key').value = cfg.key; document.getElementById('fb-key-dash').value = cfg.key; }
+  // ── CLOCK ──
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clockDisplay').textContent =
+      now.toTimeString().slice(0,8);
   }
-  const lastId = LS.load('sentinel_last_id');
-  if (lastId) document.getElementById('device-id-input').value = lastId;
-});
+  setInterval(updateClock, 1000);
+  updateClock();
 
-// ============================================================
-//  STATE
-// ============================================================
-const S = {
-  mode: 'tracker',
-  deviceId: '',
-  firebaseUrl: '',
-  firebaseKey: '',
-  watchId: null,
-  pushInterval: null,
-  trackerMap: null,
-  trackerMarker: null,
-  dashMap: null,
-  dashMarkers: {},
-  dashStream: null,
-  currentPos: null,
-  logLines: [],
-};
-
-// ============================================================
-//  SETUP UI
-// ============================================================
-function switchSetupMode(m) {
-  S.mode = m;
-  document.getElementById('tab-tracker').classList.toggle('active', m === 'tracker');
-  document.getElementById('tab-dashboard').classList.toggle('active', m === 'dashboard');
-  document.getElementById('form-tracker').style.display = m === 'tracker' ? 'flex' : 'none';
-  document.getElementById('form-dashboard').style.display = m === 'dashboard' ? 'flex' : 'none';
-}
-
-// ============================================================
-//  FIREBASE HELPERS (REST API — no SDK needed)
-// ============================================================
-function fbSet(path, data) {
-  const url = `${S.firebaseUrl}/${path}.json?auth=${S.firebaseKey}`;
-  return fetch(url, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-}
-
-function fbGet(path) {
-  const url = `${S.firebaseUrl}/${path}.json?auth=${S.firebaseKey}`;
-  return fetch(url).then(r => r.json());
-}
-
-// Server-Sent Events stream for real-time updates
-function fbStream(path, onData) {
-  const url = `${S.firebaseUrl}/${path}.json?auth=${S.firebaseKey}`;
-  const es = new EventSource(url);
-  es.addEventListener('put', e => {
-    try { onData(JSON.parse(e.data)); } catch {}
-  });
-  es.addEventListener('patch', e => {
-    try { onData({ patch: true, ...JSON.parse(e.data) }); } catch {}
-  });
-  es.onerror = () => { addLog('Stream error — reconnecting...', false); };
-  return es;
-}
-
-// ============================================================
-//  TRACKER MODE
-// ============================================================
-function startTracking() {
-  const id = document.getElementById('device-id-input').value.trim().toUpperCase();
-  const url = document.getElementById('fb-url').value.trim().replace(/\/$/, '');
-  const key = document.getElementById('fb-key').value.trim();
-
-  if (!id) { showToast('ENTER DEVICE CODE', true); return; }
-  if (!url || !key) { showToast('ENTER FIREBASE CONFIG', true); return; }
-  if (!navigator.geolocation) { showToast('GPS NOT SUPPORTED', true); return; }
-
-  S.deviceId = id;
-  S.firebaseUrl = url;
-  S.firebaseKey = key;
-
-  LS.save('sentinel_cfg', { url, key });
-  LS.save('sentinel_last_id', id);
-
-  // Show tracker screen
-  document.getElementById('setup-screen').style.display = 'none';
-  const ts = document.getElementById('tracker-screen');
-  ts.style.display = 'flex';
-  document.getElementById('t-device-label').textContent = id;
-
-  // Init map
-  S.trackerMap = L.map('tracker-map', {
-    zoomControl: false, attributionControl: false,
-    tap: true, touchZoom: true,
-  }).setView([20, 0], 2);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
-    .addTo(S.trackerMap);
-
-  addLog(`Device ${id} initialized`);
-  addLog('Acquiring GPS signal...');
-  setTrackerStatus('acquiring', 'ACQUIRING');
-
-  S.watchId = navigator.geolocation.watchPosition(
-    onTrackerPosition,
-    onTrackerError,
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
-  );
-}
-
-async function onTrackerPosition(pos) {
-  const { latitude: lat, longitude: lng, accuracy, altitude, speed } = pos.coords;
-  S.currentPos = { lat, lng, accuracy };
-
-  // Update UI
-  document.getElementById('t-lat').textContent = lat.toFixed(5);
-  document.getElementById('t-lng').textContent = lng.toFixed(5);
-  document.getElementById('t-acc').textContent = `±${Math.round(accuracy)}m`;
-  setTrackerStatus('live', 'LIVE');
-
-  // Update map
-  const icon = L.divIcon({
-    className: '',
-    html: `<div style="width:18px;height:18px;border-radius:50%;background:#00F5FF;border:2px solid #04080C;box-shadow:0 0 0 4px rgba(0,245,255,0.25),0 0 18px rgba(0,245,255,0.7);animation:tp 2s infinite"></div>
-           <style>@keyframes tp{0%,100%{box-shadow:0 0 0 4px rgba(0,245,255,0.25),0 0 18px rgba(0,245,255,0.7)}50%{box-shadow:0 0 0 10px rgba(0,245,255,0.08),0 0 28px rgba(0,245,255,0.9)}}</style>`,
-    iconSize: [18, 18], iconAnchor: [9, 9],
-  });
-
-  if (!S.trackerMarker) {
-    S.trackerMarker = L.marker([lat, lng], { icon }).addTo(S.trackerMap);
-    S.trackerMap.setView([lat, lng], 16, { animate: true });
-  } else {
-    S.trackerMarker.setLatLng([lat, lng]);
-    S.trackerMap.panTo([lat, lng], { animate: true, duration: 1 });
-  }
-
-  // Push to Firebase
-  const payload = {
-    lat, lng,
-    accuracy: Math.round(accuracy),
-    altitude: altitude ? Math.round(altitude) : null,
-    speed: speed ? Math.round(speed * 3.6) : 0,
-    ts: Date.now(),
-    label: S.deviceId,
+  // ── FAKE LIVE DATA ──
+  const state = {
+    cpu: 62, ram: 5.8, arc: 3.2, rep: 88, integrity: 94, therm: 76,
+    altitude: 4200, speed: 320, gforce: 3.1, power: 3.2,
+    threat: 2, targets: 0,
+    sub: [
+      { label: 'HUD', val: 98, color: '#00d4ff' },
+      { label: 'COMMS', val: 82, color: '#ffcc00' },
+      { label: 'JETS', val: 91, color: '#00ff88' },
+      { label: 'ARMOR', val: 94, color: '#00d4ff' },
+    ]
   };
 
-  try {
-    await fbSet(`devices/${S.deviceId}`, payload);
-    addLog(`↑ ${lat.toFixed(5)}, ${lng.toFixed(5)} | ±${Math.round(accuracy)}m`);
-  } catch (e) {
-    addLog('Push failed — check config', false);
-    setTrackerStatus('error', 'SYNC ERR');
+  // Circular meters
+  function buildCirc(label, pct, color) {
+    const r = 28; const circ = 2 * Math.PI * r;
+    const offset = circ * (1 - pct / 100);
+    return `<div class="circ-meter">
+      <svg class="circ-svg" width="72" height="72" viewBox="0 0 72 72">
+        <circle class="circ-bg" cx="36" cy="36" r="${r}"/>
+        <circle class="circ-track" cx="36" cy="36" r="${r}"
+          stroke="${color}" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"/>
+        <text class="circ-text-val" x="36" y="33" fill="${color}">${pct}%</text>
+        <text class="circ-text-lbl" x="36" y="44">${label}</text>
+      </svg>
+    </div>`;
   }
-}
 
-function onTrackerError(err) {
-  const msgs = { 1: 'Permission denied', 2: 'GPS unavailable', 3: 'GPS timeout' };
-  addLog(`GPS error: ${msgs[err.code] || 'Unknown'}`, false);
-  setTrackerStatus('error', 'GPS ERR');
-}
-
-function setTrackerStatus(type, label) {
-  const dot = document.getElementById('t-dot');
-  dot.className = 't-dot';
-  if (type === 'live') dot.classList.add('live');
-  else if (type === 'error') dot.classList.add('error');
-  document.getElementById('t-status-txt').textContent = label;
-}
-
-function addLog(msg, ok = true) {
-  S.logLines.unshift({ msg, ok });
-  if (S.logLines.length > 3) S.logLines.pop();
-  const el = document.getElementById('tracker-log');
-  el.innerHTML = S.logLines.map((l, i) =>
-    `<div class="log-line" style="${i===0 ? (l.ok ? 'color:var(--green)' : 'color:var(--red)') : ''}">${
-      i === 0 ? '> ' : '  '
-    }${l.msg}${i === 0 ? '<span class="log-cursor"></span>' : ''}</div>`
-  ).join('');
-}
-
-function stopTracking() {
-  if (S.watchId) navigator.geolocation.clearWatch(S.watchId);
-  // Mark offline
-  if (S.deviceId) {
-    fbSet(`devices/${S.deviceId}/online`, false).catch(() => {});
+  function renderCirc() {
+    document.getElementById('circGrid').innerHTML =
+      state.sub.map(s => buildCirc(s.label, s.val, s.color)).join('');
   }
-  document.getElementById('tracker-screen').style.display = 'none';
-  document.getElementById('setup-screen').style.display = 'flex';
-  showToast('TRACKING STOPPED');
-}
+  renderCirc();
 
-// ============================================================
-//  DASHBOARD MODE
-// ============================================================
-function openDashboard() {
-  const url = document.getElementById('fb-url-dash').value.trim().replace(/\/$/, '');
-  const key = document.getElementById('fb-key-dash').value.trim();
+  // Gauge update
+  function setGauge(barId, valId, pct, displayText) {
+    document.getElementById(barId).style.width = pct + '%';
+    document.getElementById(valId).textContent = displayText;
+    const fill = document.getElementById(barId);
+    if (pct > 85) { fill.className = 'gauge-fill red'; }
+  }
 
-  if (!url || !key) { showToast('ENTER FIREBASE CONFIG', true); return; }
+  function updateGauges() {
+    setGauge('cpuBar','cpuVal', Math.min(state.cpu,100), state.cpu.toFixed(0)+'°C');
+    setGauge('ramBar','ramVal', (state.ram/16)*100, state.ram.toFixed(1)+' GB');
+    setGauge('arcBar','arcVal', (state.arc/4)*100, state.arc.toFixed(2)+' TJ');
+    setGauge('repBar','repVal', state.rep, state.rep.toFixed(0)+'%');
+    setGauge('intBar','intVal', state.integrity, state.integrity.toFixed(0)+'%');
+    setGauge('thermBar','thermVal', state.therm, state.therm.toFixed(0)+'%');
 
-  S.firebaseUrl = url;
-  S.firebaseKey = key;
-  LS.save('sentinel_cfg', { url, key });
+    document.getElementById('altVal').textContent = state.altitude.toFixed(0)+'m';
+    document.getElementById('spdVal').textContent = state.speed.toFixed(0)+'kph';
+    document.getElementById('gVal').textContent = state.gforce.toFixed(1)+'g';
+    document.getElementById('powerPct').textContent = state.power.toFixed(2)+' TJ/s';
+    document.getElementById('threatNum').textContent = state.threat;
+    document.getElementById('targetCount').textContent = state.targets;
+  }
 
-  document.getElementById('setup-screen').style.display = 'none';
-  const ds = document.getElementById('dashboard-screen');
-  ds.style.display = 'flex';
+  // Fluctuate values
+  function fluctuate(val, min, max, delta) {
+    return Math.max(min, Math.min(max, val + (Math.random() - 0.5) * delta));
+  }
 
-  // Init map
-  S.dashMap = L.map('dashboard-map', {
-    zoomControl: false, attributionControl: false,
-    tap: true, touchZoom: true,
-  }).setView([20, 0], 3);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
-    .addTo(S.dashMap);
+  function tick() {
+    state.cpu = fluctuate(state.cpu, 30, 95, 4);
+    state.ram = fluctuate(state.ram, 2, 14, 0.3);
+    state.arc = fluctuate(state.arc, 2.5, 4.0, 0.05);
+    state.rep = fluctuate(state.rep, 60, 100, 2);
+    state.integrity = fluctuate(state.integrity, 80, 100, 0.8);
+    state.therm = fluctuate(state.therm, 40, 95, 3);
+    state.altitude = fluctuate(state.altitude, 100, 10000, 80);
+    state.speed = fluctuate(state.speed, 0, 600, 20);
+    state.gforce = fluctuate(state.gforce, 0, 8, 0.2);
+    state.power = state.arc;
+    state.sub.forEach(s => { s.val = Math.round(fluctuate(s.val, 60, 100, 3)); });
+    renderCirc();
+    updateGauges();
+  }
 
-  // Apply dark tile style
-  document.querySelectorAll('#dashboard-map .leaflet-tile-pane').forEach(el => {
-    el.style.filter = 'invert(1) hue-rotate(180deg) brightness(0.8) saturate(0.5)';
-  });
-  setTimeout(() => {
-    document.querySelectorAll('#dashboard-map .leaflet-tile').forEach(el => {
-      el.style.filter = 'invert(1) hue-rotate(180deg) brightness(0.8) saturate(0.5)';
+  setInterval(tick, 1200);
+  updateGauges();
+
+  // ── RADAR SWEEP ──
+  let sweepAngle = 0;
+  const blips = Array.from({length: 5}, () => ({
+    angle: Math.random() * 360,
+    dist: 10 + Math.random() * 65,
+    alive: Math.random() > 0.4,
+    life: 0,
+  }));
+
+  function updateRadar() {
+    sweepAngle = (sweepAngle + 2) % 360;
+    const rad = sweepAngle * Math.PI / 180;
+    const x2 = 80 + 75 * Math.sin(rad);
+    const y2 = 80 - 75 * Math.cos(rad);
+    document.getElementById('radarSweep').setAttribute('x2', x2.toFixed(1));
+    document.getElementById('radarSweep').setAttribute('y2', y2.toFixed(1));
+
+    // Show blip when sweep passes it
+    let blipHtml = '';
+    blips.forEach((b, i) => {
+      const diff = (sweepAngle - b.angle + 360) % 360;
+      if (diff < 15) b.life = 40;
+      if (b.life > 0) {
+        b.life--;
+        const bx = 80 + b.dist * Math.sin(b.angle * Math.PI / 180);
+        const by = 80 - b.dist * Math.cos(b.angle * Math.PI / 180);
+        const op = b.life / 40;
+        blipHtml += `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="3" fill="#ff4136" opacity="${op.toFixed(2)}" filter="url(#glow)"/>`;
+      }
+      if (Math.random() < 0.002) {
+        b.angle = Math.random() * 360;
+        b.dist = 10 + Math.random() * 65;
+      }
     });
-  }, 500);
-
-  // Initial fetch + stream
-  fetchAllDevices();
-  S.dashStream = fbStream('devices', onDeviceUpdate);
-
-  showToast('DASHBOARD CONNECTED');
-}
-
-async function fetchAllDevices() {
-  try {
-    const data = await fbGet('devices');
-    if (!data) { renderDeviceList({}); return; }
-    renderDeviceList(data);
-  } catch {
-    showToast('FETCH ERROR', true);
-  }
-}
-
-function onDeviceUpdate(event) {
-  if (!event || !event.data) return;
-  const devices = event.data;
-  if (devices && typeof devices === 'object') {
-    renderDeviceList(devices);
-  }
-}
-
-function renderDeviceList(devices) {
-  const list = document.getElementById('device-list');
-  const keys = Object.keys(devices || {});
-  const now = Date.now();
-
-  document.getElementById('online-count').textContent = keys.length;
-
-  if (!keys.length) {
-    list.innerHTML = '<div class="no-devices">No devices tracked yet</div>';
-    return;
+    document.getElementById('radarBlips').innerHTML = blipHtml;
+    state.targets = blips.filter(b => b.life > 0).length;
   }
 
-  // Update/create markers
-  keys.forEach(id => {
-    const d = devices[id];
-    if (!d || !d.lat) return;
-    const stale = (now - d.ts) > 120000; // >2 min = stale
+  setInterval(updateRadar, 30);
 
-    const html = `<div style="
-      width:14px;height:14px;border-radius:50%;
-      background:${stale ? '#FFB800' : '#00FF88'};
-      border:2px solid #04080C;
-      box-shadow:0 0 0 3px ${stale ? 'rgba(255,184,0,0.2)' : 'rgba(0,255,136,0.2)'},0 0 14px ${stale ? 'rgba(255,184,0,0.6)' : 'rgba(0,255,136,0.7)'};
-    "></div>
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${stale ? '#FFB800' : '#00FF88'};text-shadow:0 0 4px ${stale ? '#FFB800' : '#00FF88'};margin-top:2px;letter-spacing:1px;white-space:nowrap">${id}</div>`;
+  // ── LOG SYSTEM ──
+  const logMessages = [
+    ['ok','JARVIS','All suit systems are operating within normal parameters.'],
+    ['warn','THERMAL','Suit temperature elevated — engaging coolant cycle.'],
+    ['ok','ARC','Reactor output stable at 3.2 TJ/s.'],
+    ['ok','COMMS','Secure uplink to Stark Tower established.'],
+    ['warn','WEAPONS','Repulsor charge below 90% — recharging.'],
+    ['ok','NAV','Flight path updated. Estimated arrival: 4 min.'],
+    ['crit','RADAR','Unidentified aircraft detected at bearing 037.'],
+    ['ok','JARVIS','Countermeasure algorithms loaded.'],
+    ['warn','HUD','Targeting overlay refresh rate reduced to 60fps.'],
+    ['ok','POWER','Arc reactor efficiency at 98.4%.'],
+  ];
 
-    const icon = L.divIcon({
-      className: '', html,
-      iconSize: [14, 28], iconAnchor: [7, 7],
-    });
-
-    if (S.dashMarkers[id]) {
-      S.dashMarkers[id].setLatLng([d.lat, d.lng]);
-    } else {
-      S.dashMarkers[id] = L.marker([d.lat, d.lng], { icon }).addTo(S.dashMap);
-    }
-  });
-
-  // Remove stale markers
-  Object.keys(S.dashMarkers).forEach(id => {
-    if (!devices[id]) {
-      S.dashMarkers[id].remove();
-      delete S.dashMarkers[id];
-    }
-  });
-
-  // Render list
-  list.innerHTML = keys.map(id => {
-    const d = devices[id];
-    if (!d) return '';
-    const stale = (now - d.ts) > 120000;
-    const age = timeAgo(d.ts);
-    return `
-      <div class="device-card ${stale ? 'stale' : ''}" onclick="focusDevice('${id}')">
-        <div class="dev-icon">${getDeviceIcon(id)}</div>
-        <div class="dev-info">
-          <div class="dev-id">${id}</div>
-          <div class="dev-coords">${d.lat?.toFixed(5) ?? '—'}, ${d.lng?.toFixed(5) ?? '—'}</div>
-        </div>
-        <div class="dev-meta">
-          <div class="dev-time">${age}</div>
-          <div class="dev-acc">±${d.accuracy ?? '?'}m</div>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-function focusDevice(id) {
-  const m = S.dashMarkers[id];
-  if (m) {
-    S.dashMap.flyTo(m.getLatLng(), 15, { duration: 1 });
-    m.openPopup?.();
+  let logIndex = 0;
+  function addLog() {
+    const entries = document.getElementById('logEntries');
+    const [tag, src, msg] = logMessages[logIndex % logMessages.length];
+    logIndex++;
+    const now = new Date();
+    const ts = now.toTimeString().slice(0,8);
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="log-time">${ts}</span><span class="log-tag ${tag}">[${src}]</span><span class="log-msg">${msg}</span>`;
+    entries.insertBefore(entry, entries.firstChild);
+    if (entries.children.length > 5) entries.removeChild(entries.lastChild);
   }
-}
 
-function closeDashboard() {
-  if (S.dashStream) S.dashStream.close();
-  Object.values(S.dashMarkers).forEach(m => m.remove());
-  S.dashMarkers = {};
-  if (S.dashMap) { S.dashMap.remove(); S.dashMap = null; }
-  document.getElementById('dashboard-screen').style.display = 'none';
-  document.getElementById('setup-screen').style.display = 'flex';
-}
-
-// ============================================================
-//  UTILITIES
-// ============================================================
-function getDeviceIcon(id) {
-  const u = id.toLowerCase();
-  if (u.includes('phone') || u.includes('mobile') || u.includes('mob')) return '📱';
-  if (u.includes('tab') || u.includes('ipad')) return '📟';
-  if (u.includes('lap') || u.includes('pc') || u.includes('mac')) return '💻';
-  if (u.includes('watch')) return '⌚';
-  if (u.includes('car') || u.includes('bike') || u.includes('vehicle')) return '🚗';
-  return '◈';
-}
-
-function timeAgo(ts) {
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 10) return 'LIVE';
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s/60)}m ago`;
-  return `${Math.floor(s/3600)}h ago`;
-}
-
-let _toast;
-function showToast(msg, err = false) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'show' + (err ? ' err' : '');
-  clearTimeout(_toast);
-  _toast = setTimeout(() => { el.className = ''; }, 2500);
-}
-
-// Auto-refresh dashboard every 15s
-setInterval(() => {
-  if (document.getElementById('dashboard-screen').style.display === 'flex') {
-    fetchAllDevices();
-  }
-}, 15000);
+  setInterval(addLog, 3500);
+  addLog();
 </script>
 </body>
 </html>

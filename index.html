@@ -19,6 +19,18 @@
     <div id="hud-best">BEST <span id="best-val">0</span></div>
   </div>
 
+  <!-- Lives HUD -->
+  <div id="lives-hud" class="hidden">
+    <span class="life-pip" id="life-0"></span>
+    <span class="life-pip" id="life-1"></span>
+    <span class="life-pip" id="life-2"></span>
+  </div>
+
+  <!-- Level label HUD -->
+  <div id="level-hud" class="hidden">
+    <span id="level-name-hud">VOID</span>
+  </div>
+
   <!-- Start screen -->
   <div id="start-screen">
     <div class="screen-card">
@@ -39,6 +51,9 @@
       <div class="go-divider"></div>
       <div class="go-label">BEST</div>
       <div id="final-best" class="go-best">0</div>
+      <div class="go-divider"></div>
+      <div class="go-label">REACHED</div>
+      <div id="final-level" class="go-level">VOID</div>
       <button class="btn" id="retry-btn">TRY AGAIN</button>
     </div>
   </div>

@@ -617,7 +617,11 @@
       default: break;
     }
 
-    ring.radius -= effectiveSpeed * dt;
+    // Normalize collapse speed by travel distance so any screen size feels identical.
+    // Reference distance ≈ 160 px (600 px short-side device).
+    const travelDist  = spawnRadius() - targetRadius();
+    const DIST_REF    = 160;
+    ring.radius -= effectiveSpeed * dt * (travelDist / DIST_REF);
 
     // Auto-miss: passed through target zone completely
     const lv2 = currentLevel();

@@ -910,7 +910,7 @@
     const cy = canvas.height / 2 + shakeY;
 
     if (phase === 'idle')      drawIdle(cx, cy);
-    if (phase === 'playing')  { drawSpeedArc(cx, cy); drawProgressArc(cx, cy); }
+    
     if (phase === 'ceremony')  drawCeremony(cx, cy);
 
     drawTarget(cx, cy);

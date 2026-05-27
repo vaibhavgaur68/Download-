@@ -94,60 +94,128 @@ html, body {
   to   { opacity: 1; transform: translateX(-50%) scale(1); }
 }
 
+/* Best score — hidden during gameplay; gameover screen has its own display */
 #hud-best {
-  position: fixed;
-  top: 28px;
-  right: 28px;
-  font-size: 0.65rem;
-  font-weight: 400;
-  letter-spacing: 0.14em;
-  color: var(--dim);
-  line-height: 1.6;
-  text-align: right;
+  display: none;
 }
 
-/* ── LIVES HUD — top-left, red Mario hearts ────────────────────────────────── */
+/* ── LEVEL PROGRESS INDICATOR ───────────────────────────────────────────────── */
 
-#lives-hud {
+#level-progress {
   position: fixed;
   top: 28px;
   left: 28px;
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 5px;
   z-index: 10;
   pointer-events: none;
-  align-items: center;
+  opacity: 1;
+  transition: opacity 0.35s ease;
+}
+
+#level-progress.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#lp-label {
+  font-size: 0.48rem;
+  font-weight: 400;
+  letter-spacing: 0.26em;
+  color: rgba(255,255,255,0.2);
+  line-height: 1;
+}
+
+#lp-current {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  text-shadow: 0 0 14px var(--accent);
+  line-height: 1;
+  transform-origin: left center;
+  transition: color 0.55s ease, text-shadow 0.55s ease;
+}
+
+#lp-current.level-pop {
+  animation: levelNamePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes levelNamePop {
+  0%   { transform: scale(0.78) translateX(-6px); opacity: 0.2; }
+  60%  { transform: scale(1.1) translateX(0); opacity: 1; }
+  100% { transform: scale(1) translateX(0); opacity: 1; }
+}
+
+#lp-bar-track {
+  width: 72px;
+  height: 1.5px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 2px;
+  margin-top: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+#lp-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent), 0 0 14px var(--accent);
+  border-radius: 2px;
+  transition: width 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.55s ease,
+              box-shadow 0.55s ease;
+}
+
+#lp-next {
+  font-size: 0.5rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.2);
+  margin-top: 1px;
+  transition: color 0.55s ease;
+  line-height: 1;
+}
+
+/* ── LIVES HUD ──────────────────────────────────────────────────────────────── */
+
+#lives-hud {
+  position: fixed;
+  bottom: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+  pointer-events: none;
 }
 
 #lives-hud.hidden { display: none; }
 
 .life-pip {
   display: inline-block;
-  font-size: clamp(1.1rem, 4vw, 1.4rem);
-  line-height: 1;
-  color: #FF3B30;
-  text-shadow:
-    0 0 8px rgba(255, 59, 48, 0.8),
-    0 0 18px rgba(255, 59, 48, 0.4);
-  transition: color 0.3s ease, text-shadow 0.3s ease, transform 0.2s ease;
-}
-
-.life-pip::before {
-  content: '♥';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
 }
 
 .life-pip.lost {
-  color: rgba(255, 255, 255, 0.15);
-  text-shadow: none;
+  background: rgba(255,255,255,0.1);
+  box-shadow: none;
 }
 
 .life-pip.gained {
-  animation: lifeGain 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: lifeGain 0.5s cubic-bezier(0.34,1.56,0.64,1);
 }
 
 @keyframes lifeGain {
-  0%   { transform: scale(0.4); }
-  60%  { transform: scale(1.6); }
+  0%   { transform: scale(0.5); }
+  60%  { transform: scale(1.5); }
   100% { transform: scale(1); }
 }
 
@@ -155,7 +223,7 @@ html, body {
 
 #level-hud {
   position: fixed;
-  bottom: 14px;
+  bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 0.55rem;
@@ -235,6 +303,52 @@ html, body {
   color: var(--dim);
   text-transform: lowercase;
   margin-bottom: 36px;
+}
+
+.ring-demo {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.35);
+  box-shadow:
+    0 0 14px rgba(255,255,255,0.12),
+    inset 0 0 14px rgba(255,255,255,0.04);
+  position: relative;
+  margin-bottom: 24px;
+  animation: demoPulse 2s ease-in-out infinite;
+}
+
+.ring-demo::before {
+  content: '';
+  position: absolute;
+  inset: -22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,255,178,0.5);
+  animation: demoRing 2s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(0,255,178,0.3);
+}
+
+.ring-demo::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 0 8px rgba(255,255,255,0.6);
+}
+
+@keyframes demoPulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(255,255,255,0.12), inset 0 0 14px rgba(255,255,255,0.04); }
+  50%       { box-shadow: 0 0 24px rgba(255,255,255,0.25), inset 0 0 14px rgba(255,255,255,0.06); }
+}
+
+@keyframes demoRing {
+  0%   { inset: -50px; opacity: 0.8; border-color: rgba(0,255,178,0.6); }
+  60%  { inset: -22px; opacity: 1;   border-color: rgba(0,255,178,0.9); }
+  80%  { inset: -22px; opacity: 1; }
+  100% { inset: -50px; opacity: 0;   border-color: rgba(0,255,178,0.1); }
 }
 
 .key-hint {
@@ -330,7 +444,7 @@ html, body {
 
 #speed-bar {
   position: fixed;
-  bottom: 38px;        /* sits above level-hud, no overlap */
+  bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;

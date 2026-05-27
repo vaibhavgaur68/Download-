@@ -19,17 +19,7 @@
     <div id="hud-best">BEST <span id="best-val">0</span></div>
   </div>
 
-  <!-- Level Progress Indicator (top-left) -->
-  <div id="level-progress" class="hidden">
-    <div id="lp-label">LEVEL</div>
-    <div id="lp-current">VOID</div>
-    <div id="lp-bar-track">
-      <div id="lp-bar-fill"></div>
-    </div>
-    <div id="lp-next">→ PULSE</div>
-  </div>
-
-  <!-- Lives HUD -->
+  <!-- Lives HUD — top-left -->
   <div id="lives-hud" class="hidden">
     <span class="life-pip" id="life-0"></span>
     <span class="life-pip" id="life-1"></span>
@@ -41,12 +31,11 @@
     <span id="level-name-hud">VOID</span>
   </div>
 
-  <!-- Start screen -->
+  <!-- Start screen — ring-demo removed (canvas idle animation handles it) -->
   <div id="start-screen">
     <div class="screen-card">
       <div class="game-title">PULSE</div>
       <div class="game-tagline">tap the ring. feel the pressure.</div>
-      <div class="ring-demo" id="ring-demo"></div>
       <button class="btn" id="start-btn">TAP TO BEGIN</button>
       <div class="key-hint">SPACE · CLICK · TAP</div>
     </div>

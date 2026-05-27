@@ -245,6 +245,12 @@
   const levelHudEl   = document.getElementById('level-hud');
   const levelNameHud = document.getElementById('level-name-hud');
 
+  // Level progress indicator (top-left)
+  const levelProgressEl = document.getElementById('level-progress');
+  const lpCurrentEl     = document.getElementById('lp-current');
+  const lpBarFillEl     = document.getElementById('lp-bar-fill');
+  const lpNextEl        = document.getElementById('lp-next');
+
   const lifePips = [
     document.getElementById('life-0'),
     document.getElementById('life-1'),
@@ -277,6 +283,33 @@
 
   function updateLevelHud() {
     levelNameHud.textContent = currentLevel().name;
+    updateLevelProgressHUD();
+  }
+
+  function updateLevelProgressHUD() {
+    const lv     = currentLevel();
+    const isLast = levelIdx >= LEVELS.length - 1;
+    const nextLv = isLast ? lv : LEVELS[levelIdx + 1];
+
+    lpCurrentEl.textContent      = lv.name;
+    lpCurrentEl.style.color      = lv.accent;
+    lpCurrentEl.style.textShadow = `0 0 14px ${lv.accent}`;
+
+    const progress = isLast
+      ? (levelHits % 30) / 30       // endless fill cycle on final level
+      : Math.min(levelHits / lv.hitsNeeded, 1);
+    lpBarFillEl.style.width      = (progress * 100) + '%';
+    lpBarFillEl.style.background = lv.accent;
+    lpBarFillEl.style.boxShadow  = `0 0 6px ${lv.accent}, 0 0 14px ${lv.accent}`;
+
+    if (isLast) {
+      lpNextEl.textContent = '∞ ENDLESS';
+      lpNextEl.style.color = 'rgba(255,255,255,0.15)';
+    } else {
+      lpNextEl.textContent = '→ ' + nextLv.name;
+      const [r, g, b]     = hexToRgb(nextLv.accent);
+      lpNextEl.style.color = `rgba(${r},${g},${b},0.42)`;
+    }
   }
 
   // ── GAME CONTROL ─────────────────────────────────────────────────────────────
@@ -307,6 +340,7 @@
     hudEl.classList.remove('hidden');
     livesHudEl.classList.remove('hidden');
     levelHudEl.classList.remove('hidden');
+    levelProgressEl.classList.remove('hidden');
     speedBar.classList.add('visible');
 
     bestValEl.textContent = highScore;
@@ -336,6 +370,7 @@
 
     livesHudEl.classList.add('hidden');
     levelHudEl.classList.add('hidden');
+    levelProgressEl.classList.add('hidden');
     speedBar.classList.remove('visible');
 
     setTimeout(() => { goScreen.className = ''; }, 650);
@@ -352,6 +387,18 @@
     setAccent(lv.accent);
     updateLevelHud();
     updatePips();
+
+    // Pop animation on level name + instant bar reset before fill
+    lpBarFillEl.style.transition = 'none';
+    lpBarFillEl.style.width = '0%';
+    requestAnimationFrame(() => {
+      lpBarFillEl.style.transition = '';
+      updateLevelProgressHUD();
+    });
+    lpCurrentEl.classList.remove('level-pop');
+    void lpCurrentEl.offsetWidth;
+    lpCurrentEl.classList.add('level-pop');
+    setTimeout(() => lpCurrentEl.classList.remove('level-pop'), 520);
 
     // Silence god mode — the level up is its own event
     if (godMode) {
@@ -682,6 +729,7 @@
     } else {
       hudComboEl.classList.add('hidden');
     }
+    updateLevelProgressHUD();
   }
 
   // ── UPDATE ───────────────────────────────────────────────────────────────────

@@ -42,6 +42,14 @@
   const TRAIL_LEN = PERF_LOW ? 8   : 18;
   const BLUR_MULT = PERF_LOW ? 0.4 : 1.0;   // scale all shadowBlur values
 
+  // At level 3+ every GPU compositing pass from shadowBlur stalls the frame.
+  // liveBlur() returns 0 above that threshold so arcs stroke without a blur pass.
+  function liveBlur(blur) {
+    if (PERF_LOW)     return blur * 0.4;
+    if (levelIdx >= 3) return 0;
+    return blur * BLUR_MULT;
+  }
+
   // ── RESPONSIVE MEASUREMENTS ─────────────────────────────────────────────────
 
   function shortSide()    { return Math.min(canvas.width, canvas.height); }
@@ -736,7 +744,8 @@
 
   function spawnLevelBurst(cx, cy, color) {
     const tr    = targetRadius();
-    const count = PERF_LOW ? 60 : 150;
+    // Fewer long-lived particles at high levels to avoid draw-budget stacking
+    const count = PERF_LOW ? 40 : (levelIdx >= 3 ? 55 : 150);
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
       const spd   = 2.5 + Math.random() * 11;
@@ -747,7 +756,7 @@
         vx: Math.cos(angle) * spd,
         vy: Math.sin(angle) * spd,
         life: 1,
-        decay: 0.005 + Math.random() * 0.011,
+        decay: (levelIdx >= 3 ? 0.018 : 0.005) + Math.random() * 0.011,
         r: 1.5 + Math.random() * 4.5,
         color,
       });
@@ -922,7 +931,7 @@
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth   = lineWidth;
     ctx.shadowColor = strokeColor;
-    ctx.shadowBlur  = blur * BLUR_MULT;
+    ctx.shadowBlur  = liveBlur(blur);
     ctx.beginPath();
     ctx.arc(x, y, Math.max(r, 0), 0, Math.PI * 2);
     ctx.stroke();
@@ -933,7 +942,7 @@
     ctx.save();
     ctx.fillStyle   = color;
     ctx.shadowColor = color;
-    ctx.shadowBlur  = blur * BLUR_MULT;
+    ctx.shadowBlur  = liveBlur(blur);
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
@@ -1020,7 +1029,7 @@
         ctx.globalAlpha = zoneProx * 0.09;
         ctx.fillStyle   = `rgb(${ar},${ag},${ab})`;
         ctx.shadowColor = lv.accent;
-        ctx.shadowBlur  = 14;
+        ctx.shadowBlur  = liveBlur(14);
         ctx.beginPath();
         ctx.arc(cx, cy, tr + lv.goodWin, 0, Math.PI * 2);
         ctx.arc(cx, cy, Math.max(0, tr - lv.goodWin), 0, Math.PI * 2, true);
@@ -1040,7 +1049,7 @@
     ctx.strokeStyle = 'rgba(255,255,255,0.22)';
     ctx.lineWidth   = 1.5;
     ctx.shadowColor = 'rgba(255,255,255,0.15)';
-    ctx.shadowBlur  = 5;
+    ctx.shadowBlur  = liveBlur(5);
     angles.forEach(a => {
       ctx.beginPath();
       ctx.moveTo(cx + Math.cos(a) * tickInner, cy + Math.sin(a) * tickInner);
@@ -1054,7 +1063,7 @@
 
   function drawParticles() {
     if (parts.length === 0) return;
-    const useShadow = !PERF_LOW && speed <= 260;
+    const useShadow = !PERF_LOW && levelIdx < 3;
     ctx.save();
     parts.forEach(p => {
       const a = Math.pow(p.life, 1.4);
@@ -1072,18 +1081,19 @@
   }
 
   function drawFeedbacks() {
+    if (feedbacks.length === 0) return;
+    ctx.save();
+    ctx.font          = '400 9px "Press Start 2P", monospace';
+    ctx.textAlign     = 'center';
+    ctx.letterSpacing = '0.06em';
+    ctx.shadowBlur    = liveBlur(18);
     feedbacks.forEach(f => {
-      ctx.save();
-      ctx.globalAlpha   = Math.max(0, f.alpha);
-      ctx.fillStyle     = f.color;
-      ctx.shadowColor   = f.color;
-      ctx.shadowBlur    = 18;
-      ctx.font          = '400 9px "Press Start 2P", monospace';
-      ctx.textAlign     = 'center';
-      ctx.letterSpacing = '0.06em';
+      ctx.globalAlpha = Math.max(0, f.alpha);
+      ctx.fillStyle   = f.color;
+      ctx.shadowColor = f.color;
       ctx.fillText(f.text, f.x + shakeX, f.y + shakeY);
-      ctx.restore();
     });
+    ctx.restore();
   }
 
   // ── DRAW GRID ────────────────────────────────────────────────────────────────
@@ -1139,23 +1149,24 @@
   // ── DRAW LIGHTNING ───────────────────────────────────────────────────────────
 
   function drawLightning() {
+    if (lightningBolts.length === 0) return;
+    ctx.save();
+    ctx.lineWidth   = 1.5;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.shadowBlur  = liveBlur(16);
     lightningBolts.forEach(bolt => {
-      ctx.save();
       ctx.globalAlpha = bolt.alpha;
       ctx.strokeStyle = bolt.color;
       ctx.shadowColor = bolt.color;
-      ctx.shadowBlur  = 16;
-      ctx.lineWidth   = 1.5;
-      ctx.lineCap     = 'round';
-      ctx.lineJoin    = 'round';
       ctx.beginPath();
       bolt.points.forEach((p, i) => {
         if (i === 0) ctx.moveTo(p.x + shakeX, p.y + shakeY);
         else         ctx.lineTo(p.x + shakeX, p.y + shakeY);
       });
       ctx.stroke();
-      ctx.restore();
     });
+    ctx.restore();
   }
 
   // ── DRAW BREAKTHROUGH BANNER ─────────────────────────────────────────────────

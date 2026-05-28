@@ -10,7 +10,7 @@
 }
 
 :root {
-  --accent:  #00FFB2;   /* dynamically overridden by JS per level */
+  --accent:  #00FFB2;
   --gold:    #FFD166;
   --red:     #FF2D55;
   --white:   #FFFFFF;
@@ -94,89 +94,127 @@ html, body {
   to   { opacity: 1; transform: translateX(-50%) scale(1); }
 }
 
-/* Best score — hidden during gameplay; gameover screen has its own display */
 #hud-best {
-  display: none;
-}
-
-/* ── LEVEL PROGRESS INDICATOR ───────────────────────────────────────────────── */
-
-#level-progress {
   position: fixed;
   top: 28px;
-  left: 28px;
+  right: 28px;
+  font-size: 0.65rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  line-height: 1.6;
+  text-align: right;
+}
+
+/* ── LEVEL PATH MAP ──────────────────────────────────────────────────────────── */
+
+#level-map {
+  position: fixed;
+  top: 50%;
+  right: 22px;
+  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  align-items: flex-start;
   z-index: 10;
   pointer-events: none;
   opacity: 1;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.4s ease;
 }
 
-#level-progress.hidden {
+#level-map.hidden {
   opacity: 0;
-  pointer-events: none;
 }
 
-#lp-label {
-  font-size: 0.48rem;
-  font-weight: 400;
-  letter-spacing: 0.26em;
-  color: rgba(255,255,255,0.2);
-  line-height: 1;
+/* Each row = one level: spine column + label column */
+.lm-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
 }
 
-#lp-current {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  color: var(--accent);
-  text-shadow: 0 0 14px var(--accent);
-  line-height: 1;
-  transform-origin: left center;
-  transition: color 0.55s ease, text-shadow 0.55s ease;
+/* Spine: top-connector + dot + bottom-connector stacked vertically */
+.lm-spine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 10px;
 }
 
-#lp-current.level-pop {
-  animation: levelNamePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes levelNamePop {
-  0%   { transform: scale(0.78) translateX(-6px); opacity: 0.2; }
-  60%  { transform: scale(1.1) translateX(0); opacity: 1; }
-  100% { transform: scale(1) translateX(0); opacity: 1; }
-}
-
-#lp-bar-track {
-  width: 72px;
-  height: 1.5px;
-  background: rgba(255,255,255,0.07);
-  border-radius: 2px;
-  margin-top: 2px;
+/* Connector lines above/below dot */
+.lm-connector {
+  flex: 1;
+  width: 1px;
+  background: rgba(255,255,255,0.06);
   position: relative;
   overflow: hidden;
+  min-height: 14px;
 }
 
-#lp-bar-fill {
-  height: 100%;
-  width: 0%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent), 0 0 14px var(--accent);
-  border-radius: 2px;
-  transition: width 0.38s cubic-bezier(0.22, 1, 0.36, 1),
-              background 0.55s ease,
-              box-shadow 0.55s ease;
+/* Top connector: always full height for done/current levels */
+.lm-connector-top .lm-connector-fill {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 0%;
+  background: rgba(255,255,255,0.22);
+  transition: height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-#lp-next {
-  font-size: 0.5rem;
-  font-weight: 400;
-  letter-spacing: 0.18em;
-  color: rgba(255,255,255,0.2);
-  margin-top: 1px;
-  transition: color 0.55s ease;
+/* Bottom connector: fills with progress toward next level */
+.lm-connector-bot .lm-connector-fill {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 0%;
+  background: rgba(255,255,255,0.22);
+  transition: height 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Level dot */
+.lm-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  background: transparent;
+  flex-shrink: 0;
+  transition:
+    background    0.45s ease,
+    border-color  0.45s ease,
+    box-shadow    0.45s ease,
+    transform     0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.lm-row.lm-current .lm-dot {
+  transform: scale(1.35);
+}
+
+/* Label area */
+.lm-label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 0;
+  gap: 2px;
+  min-width: 52px;
+}
+
+.lm-name {
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(255,255,255,0.1);
   line-height: 1;
+  transition: color 0.45s ease, text-shadow 0.45s ease;
+}
+
+.lm-hits {
+  font-size: 0.38rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.05);
+  line-height: 1;
+  transition: color 0.45s ease;
 }
 
 /* ── LIVES HUD ──────────────────────────────────────────────────────────────── */

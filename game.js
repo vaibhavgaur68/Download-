@@ -244,12 +244,7 @@
   const livesHudEl   = document.getElementById('lives-hud');
   const levelHudEl   = document.getElementById('level-hud');
   const levelNameHud = document.getElementById('level-name-hud');
-
-  // Level progress indicator (top-left)
-  const levelProgressEl = document.getElementById('level-progress');
-  const lpCurrentEl     = document.getElementById('lp-current');
-  const lpBarFillEl     = document.getElementById('lp-bar-fill');
-  const lpNextEl        = document.getElementById('lp-next');
+  const levelMapEl   = document.getElementById('level-map');
 
   const lifePips = [
     document.getElementById('life-0'),
@@ -283,33 +278,130 @@
 
   function updateLevelHud() {
     levelNameHud.textContent = currentLevel().name;
-    updateLevelProgressHUD();
+    updateLevelMap();
   }
 
-  function updateLevelProgressHUD() {
+  // ── LEVEL MAP ────────────────────────────────────────────────────────────────
+
+  function buildLevelMap() {
+    if (!levelMapEl) return;
+    levelMapEl.innerHTML = '';
+    LEVELS.forEach((lv, i) => {
+      const row = document.createElement('div');
+      row.className = 'lm-row';
+      row.id = `lmrow-${i}`;
+
+      // Left spine: connector line above + dot + connector line below
+      const spine = document.createElement('div');
+      spine.className = 'lm-spine';
+
+      const topLine = document.createElement('div');
+      topLine.className = 'lm-connector lm-connector-top';
+      topLine.id = `lmtop-${i}`;
+      const topFill = document.createElement('div');
+      topFill.className = 'lm-connector-fill';
+      topLine.appendChild(topFill);
+
+      const dot = document.createElement('div');
+      dot.className = 'lm-dot';
+      dot.id = `lmdot-${i}`;
+
+      const botLine = document.createElement('div');
+      botLine.className = 'lm-connector lm-connector-bot';
+      botLine.id = `lmbot-${i}`;
+      const botFill = document.createElement('div');
+      botFill.className = 'lm-connector-fill';
+      botLine.appendChild(botFill);
+
+      spine.appendChild(topLine);
+      spine.appendChild(dot);
+      spine.appendChild(botLine);
+
+      // Right label area
+      const label = document.createElement('div');
+      label.className = 'lm-label';
+
+      const name = document.createElement('span');
+      name.className = 'lm-name';
+      name.id = `lmname-${i}`;
+      name.textContent = lv.name;
+
+      const hits = document.createElement('span');
+      hits.className = 'lm-hits';
+      hits.id = `lmhits-${i}`;
+      hits.textContent = i === LEVELS.length - 1 ? '∞' : `${lv.hitsNeeded}`;
+
+      label.appendChild(name);
+      label.appendChild(hits);
+      row.appendChild(spine);
+      row.appendChild(label);
+      levelMapEl.appendChild(row);
+    });
+  }
+
+  function updateLevelMap() {
+    if (!levelMapEl) return;
     const lv     = currentLevel();
     const isLast = levelIdx >= LEVELS.length - 1;
-    const nextLv = isLast ? lv : LEVELS[levelIdx + 1];
 
-    lpCurrentEl.textContent      = lv.name;
-    lpCurrentEl.style.color      = lv.accent;
-    lpCurrentEl.style.textShadow = `0 0 14px ${lv.accent}`;
+    LEVELS.forEach((lvDef, i) => {
+      const row    = document.getElementById(`lmrow-${i}`);
+      const dot    = document.getElementById(`lmdot-${i}`);
+      const name   = document.getElementById(`lmname-${i}`);
+      const hits   = document.getElementById(`lmhits-${i}`);
+      const topLine = document.getElementById(`lmtop-${i}`);
+      const botLine = document.getElementById(`lmbot-${i}`);
+      if (!row || !dot || !name) return;
 
-    const progress = isLast
-      ? (levelHits % 30) / 30       // endless fill cycle on final level
-      : Math.min(levelHits / lv.hitsNeeded, 1);
-    lpBarFillEl.style.width      = (progress * 100) + '%';
-    lpBarFillEl.style.background = lv.accent;
-    lpBarFillEl.style.boxShadow  = `0 0 6px ${lv.accent}, 0 0 14px ${lv.accent}`;
+      const topFill = topLine ? topLine.querySelector('.lm-connector-fill') : null;
+      const botFill = botLine ? botLine.querySelector('.lm-connector-fill') : null;
 
-    if (isLast) {
-      lpNextEl.textContent = '∞ ENDLESS';
-      lpNextEl.style.color = 'rgba(255,255,255,0.15)';
-    } else {
-      lpNextEl.textContent = '→ ' + nextLv.name;
-      const [r, g, b]     = hexToRgb(nextLv.accent);
-      lpNextEl.style.color = `rgba(${r},${g},${b},0.42)`;
-    }
+      row.classList.remove('lm-done', 'lm-current', 'lm-future');
+
+      if (i < levelIdx) {
+        // completed
+        row.classList.add('lm-done');
+        dot.style.background  = lvDef.accent;
+        dot.style.borderColor = lvDef.accent;
+        dot.style.boxShadow   = `0 0 5px ${lvDef.accent}40`;
+        name.style.color      = `${lvDef.accent}80`;
+        name.style.textShadow = 'none';
+        if (hits) hits.style.color = `${lvDef.accent}40`;
+        if (topFill) topFill.style.height = '100%';
+        if (botFill) { botFill.style.height = '100%'; botFill.style.background = lvDef.accent; }
+
+      } else if (i === levelIdx) {
+        // current
+        row.classList.add('lm-current');
+        dot.style.background  = lv.accent;
+        dot.style.borderColor = lv.accent;
+        dot.style.boxShadow   = `0 0 10px ${lv.accent}, 0 0 20px ${lv.accent}60`;
+        name.style.color      = lv.accent;
+        name.style.textShadow = `0 0 10px ${lv.accent}`;
+        if (hits) hits.style.color = `${lv.accent}70`;
+        if (topFill) topFill.style.height = '100%';
+        // bot fill = progress toward next
+        if (botFill && !isLast) {
+          const prog = Math.min(levelHits / lv.hitsNeeded, 1);
+          botFill.style.transition  = 'height 0.35s cubic-bezier(0.22,1,0.36,1)';
+          botFill.style.height      = (prog * 100) + '%';
+          botFill.style.background  = lv.accent;
+          botFill.style.boxShadow   = `0 0 4px ${lv.accent}`;
+        }
+
+      } else {
+        // future
+        row.classList.add('lm-future');
+        dot.style.background  = 'transparent';
+        dot.style.borderColor = 'rgba(255,255,255,0.1)';
+        dot.style.boxShadow   = 'none';
+        name.style.color      = 'rgba(255,255,255,0.1)';
+        name.style.textShadow = 'none';
+        if (hits) hits.style.color = 'rgba(255,255,255,0.05)';
+        if (topFill) topFill.style.height = '0%';
+        if (botFill) botFill.style.height = '0%';
+      }
+    });
   }
 
   // ── GAME CONTROL ─────────────────────────────────────────────────────────────
@@ -340,7 +432,8 @@
     hudEl.classList.remove('hidden');
     livesHudEl.classList.remove('hidden');
     levelHudEl.classList.remove('hidden');
-    levelProgressEl.classList.remove('hidden');
+    buildLevelMap();
+    levelMapEl.classList.remove('hidden');
     speedBar.classList.add('visible');
 
     bestValEl.textContent = highScore;
@@ -370,7 +463,7 @@
 
     livesHudEl.classList.add('hidden');
     levelHudEl.classList.add('hidden');
-    levelProgressEl.classList.add('hidden');
+    levelMapEl.classList.add('hidden');
     speedBar.classList.remove('visible');
 
     setTimeout(() => { goScreen.className = ''; }, 650);
@@ -387,18 +480,6 @@
     setAccent(lv.accent);
     updateLevelHud();
     updatePips();
-
-    // Pop animation on level name + instant bar reset before fill
-    lpBarFillEl.style.transition = 'none';
-    lpBarFillEl.style.width = '0%';
-    requestAnimationFrame(() => {
-      lpBarFillEl.style.transition = '';
-      updateLevelProgressHUD();
-    });
-    lpCurrentEl.classList.remove('level-pop');
-    void lpCurrentEl.offsetWidth;
-    lpCurrentEl.classList.add('level-pop');
-    setTimeout(() => lpCurrentEl.classList.remove('level-pop'), 520);
 
     // Silence god mode — the level up is its own event
     if (godMode) {
@@ -729,7 +810,7 @@
     } else {
       hudComboEl.classList.add('hidden');
     }
-    updateLevelProgressHUD();
+    updateLevelMap();
   }
 
   // ── UPDATE ───────────────────────────────────────────────────────────────────
@@ -1259,9 +1340,6 @@
     drawHeartbeatDot(cx, cy);
 
     drawFeedbacks();
-
-    // Breakthrough banner floats above everything else (no shake — it's UI)
-    drawBreakthroughBanner(canvas.width / 2);
 
     // Screen flash overlay — always on top
     if (flashA > 0) {

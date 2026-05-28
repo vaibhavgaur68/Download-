@@ -28,11 +28,23 @@
   window.addEventListener('resize', resize);
   resize();
 
+  // ── PERFORMANCE TIER ─────────────────────────────────────────────────────────
+  // Detect low-end / mobile: reduce particles, shadowBlur, skip grid & trail
+  const isMobile  = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600;
+  const PERF_LOW  = isMobile || (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency <= 4);
+  const MAX_PARTS = PERF_LOW ? 60  : 180;
+  const MAX_BOLTS = PERF_LOW ? 3   : 7;
+  const TRAIL_LEN = PERF_LOW ? 8   : 18;
+  const BLUR_MULT = PERF_LOW ? 0.4 : 1.0;   // scale all shadowBlur values
+
   // ── RESPONSIVE MEASUREMENTS ─────────────────────────────────────────────────
 
   function shortSide()    { return Math.min(canvas.width, canvas.height); }
-  function targetRadius() { return Math.min(shortSide() * 0.21, 105); }
-  function spawnRadius()  { return shortSide() * 0.44; }
+  function targetRadius() {
+    const base = isMobile ? 0.24 : 0.21;
+    return Math.min(shortSide() * base, 115);
+  }
+  function spawnRadius()  { return shortSide() * (isMobile ? 0.48 : 0.44); }
 
   // ── LEVEL DEFINITIONS ───────────────────────────────────────────────────────
 
@@ -242,8 +254,6 @@
   const finalLevelEl = document.getElementById('final-level');
   const newHsBadge   = document.getElementById('new-hs-badge');
   const livesHudEl   = document.getElementById('lives-hud');
-  const levelHudEl   = document.getElementById('level-hud');
-  const levelNameHud = document.getElementById('level-name-hud');
   const levelMapEl   = document.getElementById('level-map');
 
   const lifePips = [
@@ -293,7 +303,6 @@
   }
 
   function updateLevelHud() {
-    levelNameHud.textContent = currentLevel().name;
     updateLevelMap();
   }
 
@@ -307,48 +316,28 @@
       row.className = 'lm-row';
       row.id = `lmrow-${i}`;
 
-      // Left spine: connector line above + dot + connector line below
+      // Spine: single continuous connector segment per level
       const spine = document.createElement('div');
       spine.className = 'lm-spine';
 
-      const topLine = document.createElement('div');
-      topLine.className = 'lm-connector lm-connector-top';
-      topLine.id = `lmtop-${i}`;
-      const topFill = document.createElement('div');
-      topFill.className = 'lm-connector-fill';
-      topLine.appendChild(topFill);
+      const line = document.createElement('div');
+      line.className = 'lm-connector';
+      line.id = `lmline-${i}`;
+      const fill = document.createElement('div');
+      fill.className = 'lm-connector-fill';
+      fill.id = `lmfill-${i}`;
+      line.appendChild(fill);
+      spine.appendChild(line);
 
-      const dot = document.createElement('div');
-      dot.className = 'lm-dot';
-      dot.id = `lmdot-${i}`;
-
-      const botLine = document.createElement('div');
-      botLine.className = 'lm-connector lm-connector-bot';
-      botLine.id = `lmbot-${i}`;
-      const botFill = document.createElement('div');
-      botFill.className = 'lm-connector-fill';
-      botLine.appendChild(botFill);
-
-      spine.appendChild(topLine);
-      spine.appendChild(dot);
-      spine.appendChild(botLine);
-
-      // Right label area
+      // Label
       const label = document.createElement('div');
       label.className = 'lm-label';
-
       const name = document.createElement('span');
       name.className = 'lm-name';
       name.id = `lmname-${i}`;
       name.textContent = lv.name;
-
-      const hits = document.createElement('span');
-      hits.className = 'lm-hits';
-      hits.id = `lmhits-${i}`;
-      hits.textContent = i === LEVELS.length - 1 ? '∞' : `${lv.hitsNeeded}`;
-
       label.appendChild(name);
-      label.appendChild(hits);
+
       row.appendChild(spine);
       row.appendChild(label);
       levelMapEl.appendChild(row);
@@ -361,73 +350,33 @@
     const isLast = levelIdx >= LEVELS.length - 1;
 
     LEVELS.forEach((lvDef, i) => {
-      const row    = document.getElementById(`lmrow-${i}`);
-      const dot    = document.getElementById(`lmdot-${i}`);
-      const name   = document.getElementById(`lmname-${i}`);
-      const hits   = document.getElementById(`lmhits-${i}`);
-      const topLine = document.getElementById(`lmtop-${i}`);
-      const botLine = document.getElementById(`lmbot-${i}`);
-      if (!row || !dot || !name) return;
-
-      const topFill = topLine ? topLine.querySelector('.lm-connector-fill') : null;
-      const botFill = botLine ? botLine.querySelector('.lm-connector-fill') : null;
-
-      row.classList.remove('lm-done', 'lm-current', 'lm-future');
+      const fill = document.getElementById(`lmfill-${i}`);
+      const name = document.getElementById(`lmname-${i}`);
+      if (!fill || !name) return;
 
       if (i < levelIdx) {
-        // completed
-        row.classList.add('lm-done');
-        dot.style.background  = lvDef.accent;
-        dot.style.borderColor = lvDef.accent;
-        dot.style.boxShadow   = `0 0 6px ${lvDef.accent}, 0 0 14px ${lvDef.accent}60`;
-        name.style.color      = `${lvDef.accent}90`;
-        name.style.textShadow = `0 0 8px ${lvDef.accent}50`;
-        if (hits) hits.style.color = `${lvDef.accent}50`;
-        if (topFill) {
-          topFill.style.height     = '100%';
-          topFill.style.background = lvDef.accent;
-          topFill.style.boxShadow  = `0 0 6px ${lvDef.accent}, 0 0 12px ${lvDef.accent}80`;
-        }
-        if (botFill) {
-          botFill.style.height     = '100%';
-          botFill.style.background = lvDef.accent;
-          botFill.style.boxShadow  = `0 0 6px ${lvDef.accent}, 0 0 12px ${lvDef.accent}80`;
-        }
-
-      } else if (i === levelIdx) {
-        // current
-        row.classList.add('lm-current');
-        dot.style.background  = lv.accent;
-        dot.style.borderColor = lv.accent;
-        dot.style.boxShadow   = `0 0 10px ${lv.accent}, 0 0 22px ${lv.accent}70`;
-        name.style.color      = lv.accent;
-        name.style.textShadow = `0 0 10px ${lv.accent}`;
-        if (hits) hits.style.color = `${lv.accent}80`;
-        if (topFill) {
-          topFill.style.height     = '100%';
-          topFill.style.background = lv.accent;
-          topFill.style.boxShadow  = `0 0 6px ${lv.accent}, 0 0 12px ${lv.accent}80`;
-        }
-        // bot fill = live progress toward next level
-        if (botFill && !isLast) {
-          const prog = Math.min(levelHits / lv.hitsNeeded, 1);
-          botFill.style.transition = 'height 0.38s cubic-bezier(0.22,1,0.36,1), box-shadow 0.38s ease';
-          botFill.style.height     = (prog * 100) + '%';
-          botFill.style.background = lv.accent;
-          botFill.style.boxShadow  = `0 0 8px ${lv.accent}, 0 0 18px ${lv.accent}90`;
-        }
-
-      } else {
-        // future
-        row.classList.add('lm-future');
-        dot.style.background  = 'transparent';
-        dot.style.borderColor = 'rgba(255,255,255,0.1)';
-        dot.style.boxShadow   = 'none';
-        name.style.color      = 'rgba(255,255,255,0.1)';
+        // completed — full fill, accent glow
+        fill.style.height     = '100%';
+        fill.style.background = lvDef.accent;
+        fill.style.boxShadow  = `0 0 6px ${lvDef.accent}, 0 0 14px ${lvDef.accent}70`;
+        name.style.color      = `${lvDef.accent}70`;
         name.style.textShadow = 'none';
-        if (hits) hits.style.color = 'rgba(255,255,255,0.05)';
-        if (topFill) topFill.style.height = '0%';
-        if (botFill) botFill.style.height = '0%';
+      } else if (i === levelIdx) {
+        // current — partial fill by progress
+        const prog = isLast
+          ? (levelHits % 30) / 30
+          : Math.min(levelHits / lv.hitsNeeded, 1);
+        fill.style.height     = (prog * 100) + '%';
+        fill.style.background = lv.accent;
+        fill.style.boxShadow  = `0 0 8px ${lv.accent}, 0 0 18px ${lv.accent}80`;
+        name.style.color      = lv.accent;
+        name.style.textShadow = `0 0 8px ${lv.accent}`;
+      } else {
+        // future — empty
+        fill.style.height    = '0%';
+        fill.style.boxShadow = 'none';
+        name.style.color     = 'rgba(255,255,255,0.08)';
+        name.style.textShadow = 'none';
       }
     });
   }
@@ -459,7 +408,6 @@
     goScreen.className         = 'screen-hidden';
     hudEl.classList.remove('hidden');
     livesHudEl.classList.remove('hidden');
-    levelHudEl.classList.remove('hidden');
     buildLevelMap();
     levelMapEl.classList.remove('hidden');
     speedBar.classList.add('visible');
@@ -491,7 +439,6 @@
     newHsBadge.classList.toggle('hidden', !newBest);
 
     livesHudEl.classList.add('hidden');
-    levelHudEl.classList.add('hidden');
     levelMapEl.classList.add('hidden');
     speedBar.classList.remove('visible');
 
@@ -758,8 +705,9 @@
 
   function spawnBurst(cx, cy, color, count) {
     const tr = targetRadius();
-    for (let i = 0; i < count; i++) {
-      const angle    = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+    const n  = Math.min(count, MAX_PARTS - parts.length);
+    for (let i = 0; i < n; i++) {
+      const angle    = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
       const spd      = 3.5 + Math.random() * 5;
       const fromEdge = Math.random() < 0.6;
       parts.push({
@@ -777,7 +725,7 @@
 
   function spawnLevelBurst(cx, cy, color) {
     const tr    = targetRadius();
-    const count = 150;   // substantially more than the original 60
+    const count = PERF_LOW ? 60 : 150;
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
       const spd   = 2.5 + Math.random() * 11;
@@ -800,7 +748,7 @@
   function spawnLightning(cx, cy) {
     const lv    = currentLevel();
     const tr    = targetRadius();
-    const count = Math.min(2 + Math.floor((combo - 5) / 2), 7);
+    const count = Math.min(2 + Math.floor((combo - 5) / 2), MAX_BOLTS);
 
     for (let i = 0; i < count; i++) {
       const angle  = Math.random() * Math.PI * 2;
@@ -850,13 +798,15 @@
     if (Math.abs(shakeX) < 0.05) shakeX = 0;
     if (Math.abs(shakeY) < 0.05) shakeY = 0;
 
-    // Chromatic aberration — CSS filter approach for zero canvas overhead
+    // Chromatic aberration — skip on low-end devices
     if (chromaT > 0) {
       chromaT = Math.max(0, chromaT - dt * 2.4);
-      canvas.style.filter = chromaT > 0.01
-        ? `hue-rotate(${Math.sin(chromaT * 20) * 24}deg) saturate(${1 + chromaT * 5.5})`
-        : '';
-      if (chromaT <= 0.01) canvas.style.filter = '';
+      if (!PERF_LOW) {
+        canvas.style.filter = chromaT > 0.01
+          ? `hue-rotate(${Math.sin(chromaT * 20) * 24}deg) saturate(${1 + chromaT * 5.5})`
+          : '';
+        if (chromaT <= 0.01) canvas.style.filter = '';
+      }
     }
 
     // Particles
@@ -947,7 +897,7 @@
     // Update God Mode comet trail
     if (godMode) {
       ringTrail.push({ r: ring.radius, o: ring.opacity ?? 1 });
-      if (ringTrail.length > 18) ringTrail.shift();
+      if (ringTrail.length > TRAIL_LEN) ringTrail.shift();
     }
 
     // Auto-miss: passed through target zone
@@ -961,7 +911,7 @@
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth   = lineWidth;
     ctx.shadowColor = strokeColor;
-    ctx.shadowBlur  = blur;
+    ctx.shadowBlur  = blur * BLUR_MULT;
     ctx.beginPath();
     ctx.arc(x, y, Math.max(r, 0), 0, Math.PI * 2);
     ctx.stroke();
@@ -972,7 +922,7 @@
     ctx.save();
     ctx.fillStyle   = color;
     ctx.shadowColor = color;
-    ctx.shadowBlur  = blur;
+    ctx.shadowBlur  = blur * BLUR_MULT;
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
@@ -1077,12 +1027,12 @@
   // ── DRAW PARTICLES & FEEDBACKS ───────────────────────────────────────────────
 
   function drawParticles() {
+    const blur = PERF_LOW ? 0 : 8;
     parts.forEach(p => {
       ctx.save();
       ctx.globalAlpha = Math.pow(p.life, 1.4);
       ctx.fillStyle   = p.color;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur  = 8;
+      if (!PERF_LOW) { ctx.shadowColor = p.color; ctx.shadowBlur = blur; }
       ctx.beginPath();
       ctx.arc(p.x + shakeX, p.y + shakeY, p.r, 0, Math.PI * 2);
       ctx.fill();
@@ -1108,6 +1058,7 @@
   // ── DRAW GRID ────────────────────────────────────────────────────────────────
 
   function drawGrid() {
+    if (PERF_LOW) return;
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,0.025)';
     ctx.lineWidth   = 1;
@@ -1200,7 +1151,7 @@
   // ── DRAW BREAKTHROUGH VIGNETTE (persistent gold edge glow) ───────────────────
 
   function drawBreakthroughVignette() {
-    if (!breakthroughActive) return;
+    if (!breakthroughActive || PERF_LOW) return;
     const pulse  = 0.5 + 0.5 * Math.sin(breakthroughT * 2.8);
     const intens = 0.032 + pulse * 0.022;
     const cx = canvas.width  / 2;
@@ -1224,25 +1175,25 @@
     const cx       = canvas.width  / 2;
     const cy       = canvas.height / 2;
     const pulse    = 0.5 + 0.5 * Math.sin(godModeT * 5.5);
-    const intens   = 0.07 + pulse * 0.06;
-    const ss       = Math.max(canvas.width, canvas.height);
 
-    const grad = ctx.createRadialGradient(cx, cy, shortSide() * 0.22, cx, cy, ss * 0.72);
-    grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
-    grad.addColorStop(1, `rgba(${r},${g},${b},${intens})`);
+    if (!PERF_LOW) {
+      const intens = 0.07 + pulse * 0.06;
+      const ss     = Math.max(canvas.width, canvas.height);
+      const grad   = ctx.createRadialGradient(cx, cy, shortSide() * 0.22, cx, cy, ss * 0.72);
+      grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
+      grad.addColorStop(1, `rgba(${r},${g},${b},${intens})`);
+      ctx.save(); ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
 
-    ctx.save();
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
-
-    // Small "GOD" label, top-left, fades in
+    // "GOD" label always shown
     const fadeIn = Math.min(godModeT * 4, 1);
     ctx.save();
     ctx.globalAlpha   = fadeIn * (0.45 + 0.55 * pulse);
     ctx.fillStyle     = lv.accent;
     ctx.shadowColor   = lv.accent;
-    ctx.shadowBlur    = 18;
+    ctx.shadowBlur    = 18 * BLUR_MULT;
     ctx.textAlign     = 'left';
     ctx.font          = '700 8px "IBM Plex Mono", monospace';
     ctx.letterSpacing = '0.44em';

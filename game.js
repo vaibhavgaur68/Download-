@@ -664,7 +664,6 @@
 
     const cx = canvas.width  / 2;
     const cy = canvas.height / 2;
-    spawnBurst(cx, cy, color, isPerfect ? 30 : 14);
     pushFeedback(label, color, cx, cy - targetRadius() - 28);
     flashA   = isPerfect ? 0.12 : 0.06;
     flashCol = color;

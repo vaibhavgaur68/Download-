@@ -21,6 +21,10 @@
   const canvas = document.getElementById('canvas');
   const ctx    = canvas.getContext('2d');
 
+  // Offscreen grid cache — must be declared before resize() is called below
+  let gridCache      = null;
+  let gridCacheDirty = true;
+
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -227,10 +231,6 @@
   let heartbeatT     = 0;    // center dot pulse phase
 
   const SPEED_PIPS = 9;
-
-  // Offscreen canvas for the static grid — rebuilt only on resize
-  let gridCache      = null;
-  let gridCacheDirty = true;
 
   // ── HELPERS ──────────────────────────────────────────────────────────────────
 

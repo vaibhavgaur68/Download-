@@ -1,9 +1,16 @@
 /* ──────────────────────────────────────────────────────────────────────────────
-   PULSE — game.js  (v4: alien story edition)
-   Added systems:
-     · TERMINAL BOOT  — typewriter sequence before start screen
-     · ALIEN VERDICT  — fate/rank injection on endGame()
-     · All original dopamine systems preserved
+   PULSE — game.js  (v3: dopamine-engineered)
+   New systems:
+     · THE BREAKTHROUGH  — live high-score crossing: gold flash, triumphant
+                           arpeggio, persistent vignette, banner
+     · THE PRESSURE RELEASE — level-up overhauled: bass shockwave boom,
+                              5 expanding rings, spring-scale name, 150 particles
+     · GOD MODE          — 8 consecutive perfects: comet trail, pulse vignette,
+                           doubled multiplier, SFX cascade, broken on non-perfect
+     · COMBO LIGHTNING   — zigzag bolts radiate from target at high combo
+     · NEAR-MISS ZONE    — faint accent fill between goodWin bounds on approach
+     · HEARTBEAT DOT     — center dot pulses at current ring speed
+     · CHROMATIC ABER.   — CSS hue-rotate / saturate jolt on every miss
 ────────────────────────────────────────────────────────────────────────────── */
 
 (function () {
@@ -14,6 +21,7 @@
   const canvas = document.getElementById('canvas');
   const ctx    = canvas.getContext('2d');
 
+  // Offscreen grid cache — must be declared before resize() is called below
   let gridCache      = null;
   let gridCacheDirty = true;
 
@@ -26,14 +34,16 @@
   resize();
 
   // ── PERFORMANCE TIER ─────────────────────────────────────────────────────────
-
+  // Detect low-end / mobile: reduce particles, shadowBlur, skip grid & trail
   const isMobile  = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600;
   const PERF_LOW  = isMobile || (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency <= 4);
   const MAX_PARTS = PERF_LOW ? 60  : 180;
   const MAX_BOLTS = PERF_LOW ? 3   : 7;
   const TRAIL_LEN = PERF_LOW ? 8   : 18;
-  const BLUR_MULT = PERF_LOW ? 0.4 : 1.0;
+  const BLUR_MULT = PERF_LOW ? 0.4 : 1.0;   // scale all shadowBlur values
 
+  // At level 3+ every GPU compositing pass from shadowBlur stalls the frame.
+  // liveBlur() returns 0 above that threshold so arcs stroke without a blur pass.
   function liveBlur(blur) {
     if (PERF_LOW)     return blur * 0.4;
     if (levelIdx >= 3) return 0;
@@ -48,6 +58,8 @@
     return Math.min(shortSide() * base, 115);
   }
   function spawnRadius()  { return shortSide() * (isMobile ? 0.48 : 0.44); }
+  // Normalise all pixel-speed values to a 600 px reference short-side so the
+  // game plays at identical timing on every screen size.
   function screenScale()  { return shortSide() / 600; }
 
   // ── LEVEL DEFINITIONS ───────────────────────────────────────────────────────
@@ -97,19 +109,6 @@
     },
   ];
 
-  // ── ALIEN FATE TABLE ─────────────────────────────────────────────────────────
-
-  const FATES = [
-    { rank: 'The Weak',   fate: 'Subterranean Slavery.' },     // 0 — EMBER
-    { rank: 'Baseline',   fate: 'Hard Labor.' },               // 1 — FLAME
-    { rank: 'Fast',       fate: 'City Guard.' },               // 2 — HEAT
-    { rank: 'Elite',      fate: 'Alien Tech Operator.' },      // 3 — BLAZE
-    { rank: 'Master',     fate: 'Sector Manager.' },           // 4 — INFERNO
-    { rank: 'Ascended',   fate: 'Connected to Alien Brain.' }, // 5 — FORGE
-    { rank: 'Vanguard',   fate: 'Planet Ruler.' },             // 6 — PLASMA
-    { rank: 'Anomaly',    fate: 'Threat Detected. Eliminate immediately.' }, // beat all
-  ];
-
   // ── AUDIO ENGINE ────────────────────────────────────────────────────────────
 
   let audioCtx = null;
@@ -152,6 +151,8 @@
       setTimeout(() => tone(110, 'sine', 0.28, 0.01, 0.40), 440);
     },
     gainLife() { tone(990, 'sine', 0.18, 0.008, 0.2); },
+
+    // ── PRESSURE RELEASE: earth-shake bass boom + ascending fanfare ──────────
     shockwaveBoom() {
       tone(41,  'sine',     0.70, 0.001, 0.50);
       tone(55,  'sine',     0.50, 0.001, 0.40);
@@ -164,13 +165,17 @@
       setTimeout(() => tone(880,  'sine', 0.18, 0.01, 0.34), 610);
       setTimeout(() => tone(1100, 'sine', 0.14, 0.01, 0.44), 800);
     },
+
+    // ── BREAKTHROUGH: low rumble → C major crown chord ───────────────────────
     breakthrough() {
-      tone(80,   'sine', 0.45, 0.002, 0.32);
-      setTimeout(() => tone(523,  'sine', 0.24, 0.01, 0.20), 90);
-      setTimeout(() => tone(659,  'sine', 0.22, 0.01, 0.20), 185);
-      setTimeout(() => tone(784,  'sine', 0.22, 0.01, 0.20), 280);
-      setTimeout(() => tone(1047, 'sine', 0.30, 0.01, 0.55), 420);
+      tone(80,   'sine', 0.45, 0.002, 0.32);          // ground rumble
+      setTimeout(() => tone(523,  'sine', 0.24, 0.01, 0.20), 90);   // C5
+      setTimeout(() => tone(659,  'sine', 0.22, 0.01, 0.20), 185);  // E5
+      setTimeout(() => tone(784,  'sine', 0.22, 0.01, 0.20), 280);  // G5
+      setTimeout(() => tone(1047, 'sine', 0.30, 0.01, 0.55), 420);  // C6 — the crown
     },
+
+    // ── GOD MODE: power-up whoosh cascade ────────────────────────────────────
     godModeOn() {
       tone(110, 'sine', 0.30, 0.01, 0.14);
       tone(220, 'sine', 0.25, 0.04, 0.30);
@@ -183,30 +188,11 @@
       setTimeout(() => tone(220, 'sine', 0.15, 0.005, 0.20), 80);
       setTimeout(() => tone(110, 'sine', 0.12, 0.005, 0.30), 160);
     },
-
-    // Terminal key click sound
-    keyClick() {
-      try {
-        const a   = ac();
-        const buf = a.createBuffer(1, a.sampleRate * 0.04, a.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
-          data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 3);
-        }
-        const src = a.createBufferSource();
-        const g   = a.createGain();
-        src.buffer = buf;
-        src.connect(g); g.connect(a.destination);
-        g.gain.setValueAtTime(0.08, a.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.04);
-        src.start();
-      } catch (_) {}
-    },
   };
 
   // ── STATE ────────────────────────────────────────────────────────────────────
 
-  let phase         = 'terminal';
+  let phase         = 'idle';
   let score         = 0;
   let combo         = 0;
   let hitCount      = 0;
@@ -235,19 +221,22 @@
 
   // ── DOPAMINE STATE ───────────────────────────────────────────────────────────
 
+  // Breakthrough
   let breakthroughActive = false;
   let breakthroughT      = 0;
 
+  // God Mode
   let godMode        = false;
   let godModeT       = 0;
   let godStreak      = 0;
   const GOD_THRESHOLD = 8;
 
-  let ringTrail      = [];
-  let shockwaves     = [];
-  let lightningBolts = [];
-  let chromaT        = 0;
-  let heartbeatT     = 0;
+  // Visual systems
+  let ringTrail      = [];   // comet trail [{r, o}]
+  let shockwaves     = [];   // expanding rings [{r, alpha, color, lw, speed}]
+  let lightningBolts = [];   // zigzag sparks [{points, alpha, color}]
+  let chromaT        = 0;    // chromatic aberration intensity
+  let heartbeatT     = 0;    // center dot pulse phase
 
   const SPEED_PIPS = 9;
 
@@ -282,9 +271,6 @@
   const newHsBadge   = document.getElementById('new-hs-badge');
   const livesHudEl   = document.getElementById('lives-hud');
   const levelMapEl   = document.getElementById('level-map');
-  const fateTextEl   = document.getElementById('fate-text');
-  const terminalOverlay = document.getElementById('terminal-overlay');
-  const terminalTextEl  = document.getElementById('terminal-text');
 
   const lifePips = [
     document.getElementById('life-0'),
@@ -317,12 +303,14 @@
       const wasLost = heart.classList.contains('lost');
       const isLost  = i >= lives;
       if (!wasLost && isLost) {
+        // just lost this heart
         heart.classList.add('losing');
         setTimeout(() => {
           heart.classList.remove('losing');
           heart.classList.add('lost');
         }, 400);
       } else if (wasLost && !isLost) {
+        // heart regained
         heart.classList.remove('lost');
         heart.classList.add('gained');
         setTimeout(() => heart.classList.remove('gained'), 560);
@@ -344,6 +332,7 @@
       row.className = 'lm-row';
       row.id = `lmrow-${i}`;
 
+      // Spine: single continuous connector segment per level
       const spine = document.createElement('div');
       spine.className = 'lm-spine';
 
@@ -356,6 +345,7 @@
       line.appendChild(fill);
       spine.appendChild(line);
 
+      // Label
       const label = document.createElement('div');
       label.className = 'lm-label';
       const name = document.createElement('span');
@@ -381,12 +371,14 @@
       if (!fill || !name) return;
 
       if (i < levelIdx) {
+        // completed — full fill, accent glow
         fill.style.height     = '100%';
         fill.style.background = lvDef.accent;
         fill.style.boxShadow  = `0 0 6px ${lvDef.accent}, 0 0 14px ${lvDef.accent}70`;
         name.style.color      = `${lvDef.accent}70`;
         name.style.textShadow = 'none';
       } else if (i === levelIdx) {
+        // current — partial fill by progress
         const prog = isLast
           ? (levelHits % 30) / 30
           : Math.min(levelHits / lv.hitsNeeded, 1);
@@ -396,83 +388,13 @@
         name.style.color      = lv.accent;
         name.style.textShadow = `0 0 8px ${lv.accent}`;
       } else {
+        // future — empty
         fill.style.height    = '0%';
         fill.style.boxShadow = 'none';
         name.style.color     = 'rgba(255,255,255,0.08)';
         name.style.textShadow = 'none';
       }
     });
-  }
-
-  // ── TERMINAL BOOT SEQUENCE ───────────────────────────────────────────────────
-
-  const TERMINAL_LINES = [
-    '> ALIEN SYSTEM BOOTING...',
-    '> STARTING MANDATORY HUMAN BRAIN TEST.',
-    '> IF YOU FAIL, YOU BECOME A SLAVE.',
-    '> PROVE YOUR WORTH.',
-  ];
-
-  function runTerminal() {
-    if (!terminalOverlay || !terminalTextEl) {
-      // Elements missing — skip straight to start
-      showStartScreen();
-      return;
-    }
-
-    terminalOverlay.classList.remove('hidden');
-    terminalTextEl.textContent = '';
-    phase = 'terminal';
-
-    let lineIdx   = 0;
-    let charIdx   = 0;
-    let fullText  = '';
-    let typingTimer = null;
-
-    const CHAR_DELAY     = 38;   // ms per character
-    const LINE_PAUSE     = 520;  // ms between lines
-    const FLASH_DELAY    = 600;  // ms after last line before flash
-    const FLASH_DURATION = 320;  // ms of white flash
-
-    function typeNextChar() {
-      if (lineIdx >= TERMINAL_LINES.length) {
-        // All lines done — flash then show start screen
-        setTimeout(() => {
-          terminalOverlay.classList.add('flash');
-          setTimeout(() => {
-            terminalOverlay.classList.add('hidden');
-            terminalOverlay.classList.remove('flash');
-            showStartScreen();
-          }, FLASH_DURATION);
-        }, FLASH_DELAY);
-        return;
-      }
-
-      const currentLine = TERMINAL_LINES[lineIdx];
-
-      if (charIdx < currentLine.length) {
-        fullText += currentLine[charIdx];
-        terminalTextEl.textContent = fullText;
-        SFX.keyClick();
-        charIdx++;
-        typingTimer = setTimeout(typeNextChar, CHAR_DELAY);
-      } else {
-        // End of this line — add newline and pause before next
-        fullText += '\n';
-        terminalTextEl.textContent = fullText;
-        lineIdx++;
-        charIdx = 0;
-        typingTimer = setTimeout(typeNextChar, LINE_PAUSE);
-      }
-    }
-
-    typeNextChar();
-  }
-
-  function showStartScreen() {
-    phase = 'idle';
-    startScreen.classList.remove('screen-hidden');
-    startScreen.style.animation = 'fadeIn 0.6s steps(8) ease-out';
   }
 
   // ── GAME CONTROL ─────────────────────────────────────────────────────────────
@@ -486,6 +408,7 @@
     waveT         = 0; stutterT = 0; stutterPaused = false;
     ceremony      = null;
 
+    // Reset dopamine systems
     breakthroughActive = false; breakthroughT = 0;
     godMode = false; godModeT = 0; godStreak = 0;
     ringTrail = []; shockwaves = []; lightningBolts = [];
@@ -497,8 +420,8 @@
     speed = lv.baseSpeed;
     setAccent(lv.accent);
 
-    startScreen.classList.add('screen-hidden');
-    goScreen.className = 'screen-hidden';
+    startScreen.style.display = 'none';
+    goScreen.className         = 'screen-hidden';
     hudEl.classList.remove('hidden');
     livesHudEl.classList.remove('hidden');
     buildLevelMap();
@@ -524,28 +447,12 @@
     const newBest = score > highScore;
     if (newBest) { highScore = score; localStorage.setItem('pulse_hs', highScore); }
 
-    // ── FATE INJECTION ───────────────────────────────────────────────────────
-    // Determine fate index: if player beat Plasma (last level, 999 hits),
-    // use the "anomaly" entry (index 7), otherwise use levelIdx.
-    const beatAll = levelIdx >= LEVELS.length - 1 && levelHits >= 50; // survived Plasma a good while
-    const fateIdx = beatAll ? FATES.length - 1 : Math.min(levelIdx, FATES.length - 2);
-    const fate    = FATES[fateIdx];
-
     finalScoreEl.textContent = score;
     finalBestEl.textContent  = highScore;
     finalLevelEl.textContent = currentLevel().name;
     finalLevelEl.style.color = currentLevel().accent;
     finalLevelEl.style.textShadow = `0 0 20px ${currentLevel().accent}`;
     newHsBadge.classList.toggle('hidden', !newBest);
-
-    if (fateTextEl) {
-      fateTextEl.innerHTML =
-        `<span class="fate-rank">RANK: ${fate.rank}</span>` +
-        `<span class="fate-sentence">FATE: ${fate.fate}</span>`;
-      // Make anomaly fate red and glowing
-      if (beatAll) fateTextEl.classList.add('fate-anomaly');
-      else         fateTextEl.classList.remove('fate-anomaly');
-    }
 
     livesHudEl.classList.add('hidden');
     levelMapEl.classList.add('hidden');
@@ -566,19 +473,23 @@
     updateLevelHud();
     updatePips();
 
+    // Silence god mode — the level up is its own event
     if (godMode) {
       godMode = false; godStreak = 0;
       hudScoreEl.classList.remove('godmode');
       canvas.style.filter = '';
     }
 
+    // ── THE PRESSURE RELEASE ─────────────────────────────────────────────────
     SFX.shockwaveBoom();
     SFX.levelFanfare();
 
+    // Violent white flash + heavy shake
     flashA   = 0.85;
     flashCol = '#FFFFFF';
     shakeX   = 34; shakeY = 22;
 
+    // 5 staggered shockwave rings in the new level's color
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
         shockwaves.push({
@@ -591,10 +502,12 @@
       }, i * 78);
     }
 
+    // Massive particle explosion
     const cx = canvas.width  / 2;
     const cy = canvas.height / 2;
     spawnLevelBurst(cx, cy, lv.accent);
 
+    // Enter ceremony
     ceremony = { t: 0, level: lv };
     phase    = 'ceremony';
     ring     = null;
@@ -641,6 +554,7 @@
 
     hudScoreEl.classList.add('breakthrough');
 
+    // Gold particle burst from HUD score area (top-center)
     const cx = canvas.width / 2;
     for (let i = 0; i < 45; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -689,7 +603,6 @@
   // ── TAP / HIT DETECTION ──────────────────────────────────────────────────────
 
   function onInput() {
-    if (phase === 'terminal')  return;
     if (phase === 'idle')      { startGame(); return; }
     if (phase === 'gameover')  return;
     if (phase === 'ceremony')  {
@@ -720,8 +633,10 @@
       godStreak = 0;
     }
 
+    // Activate God Mode threshold
     if (!godMode && godStreak >= GOD_THRESHOLD) activateGodMode();
 
+    // God Mode doubles the combo multiplier
     const baseMult   = 1 + Math.floor(combo / 3);
     const multiplier = godMode ? baseMult * 2 : baseMult;
     const pts        = basePoints * multiplier;
@@ -737,6 +652,7 @@
       lv.maxSpeed
     );
 
+    // Life bonus at 5-perfect streak
     if (perfectStreak > 0 && perfectStreak % 5 === 0 && lives < 3) {
       lives++;
       updateLivesUI();
@@ -752,6 +668,7 @@
     flashA   = isPerfect ? 0.12 : 0.06;
     flashCol = color;
 
+    // Lightning bolts at high combo
     if (isPerfect && combo >= 5) spawnLightning(cx, cy);
 
     if (isPerfect) SFX.perfect(); else SFX.good();
@@ -775,6 +692,7 @@
     if (godMode) deactivateGodMode();
     godStreak = 0;
 
+    // Chromatic aberration jolt
     chromaT = 0.58;
 
     lives--;
@@ -803,6 +721,7 @@
 
   function spawnBurst(cx, cy, color, count) {
     const tr  = targetRadius();
+    // Reduce particle count at high speed to maintain frame rate
     const cap = speed > 280 ? Math.min(MAX_PARTS, 40) : MAX_PARTS;
     const n   = Math.min(count, cap - parts.length);
     for (let i = 0; i < n; i++) {
@@ -824,6 +743,7 @@
 
   function spawnLevelBurst(cx, cy, color) {
     const tr    = targetRadius();
+    // Fewer long-lived particles at high levels to avoid draw-budget stacking
     const count = PERF_LOW ? 40 : (levelIdx >= 3 ? 55 : 150);
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
@@ -897,6 +817,7 @@
     if (Math.abs(shakeX) < 0.05) shakeX = 0;
     if (Math.abs(shakeY) < 0.05) shakeY = 0;
 
+    // Chromatic aberration — skip on low-end devices
     if (chromaT > 0) {
       chromaT = Math.max(0, chromaT - dt * 2.4);
       if (!PERF_LOW) {
@@ -907,6 +828,7 @@
       }
     }
 
+    // Particles
     parts = parts.filter(p => {
       p.x += p.vx; p.y += p.vy;
       p.vx *= 0.92; p.vy *= 0.92;
@@ -914,27 +836,32 @@
       return p.life > 0;
     });
 
+    // Feedbacks
     feedbacks = feedbacks.filter(f => {
       f.y    += f.vy;
       f.alpha -= dt * 1.4;
       return f.alpha > 0;
     });
 
+    // Shockwaves
     shockwaves = shockwaves.filter(s => {
       s.r     += s.spd * dt;
       s.alpha -= dt * 1.15;
       return s.alpha > 0;
     });
 
+    // Lightning fade
     lightningBolts = lightningBolts.filter(b => {
       b.alpha -= dt * 5.5;
       return b.alpha > 0;
     });
 
+    // Breakthrough timer
     if (breakthroughActive) breakthroughT += dt;
+
+    // God Mode timer
     if (godMode) godModeT += dt;
 
-    if (phase === 'terminal') return;
     if (phase === 'idle') { idleT += dt; return; }
 
     if (phase === 'ceremony') {
@@ -945,6 +872,7 @@
 
     if (phase !== 'playing' || !ring) return;
 
+    // Heartbeat pulse (only during active play)
     heartbeatT += dt * (speed / 85);
 
     const lv = currentLevel();
@@ -985,11 +913,13 @@
 
     ring.radius -= effectiveSpeed * screenScale() * dt;
 
+    // Update God Mode comet trail
     if (godMode) {
       ringTrail.push({ r: ring.radius, o: ring.opacity ?? 1 });
       if (ringTrail.length > TRAIL_LEN) ringTrail.shift();
     }
 
+    // Auto-miss: passed through target zone
     if (ring.radius < targetRadius() - (lv.goodWin + 6) * screenScale()) registerMiss();
   }
 
@@ -1056,7 +986,9 @@
     const blur  = 4 + prox * 22;
     const lw    = 1.5 + prox * 2.5;
 
+    // GOD MODE: comet trail — batched to avoid per-segment save/restore
     if (godMode && ringTrail.length > 0) {
+      // Shorten trail at high speed to stay smooth
       const visLen = speed > 280 ? Math.ceil(ringTrail.length * 0.5) : ringTrail.length;
       const slice  = ringTrail.slice(-visLen);
       ctx.save();
@@ -1066,6 +998,7 @@
         const talpha = frac * 0.52 * t.o;
         ctx.globalAlpha = talpha;
         ctx.lineWidth   = 0.5 + frac * 2.5;
+        // Reduce blur at high speed to avoid compositing stalls
         ctx.shadowBlur  = PERF_LOW || speed > 280 ? 0 : (2 + frac * 20) * BLUR_MULT;
         ctx.strokeStyle = `rgba(${ar},${ag},${ab},1)`;
         ctx.beginPath();
@@ -1084,6 +1017,7 @@
     const lv = currentLevel();
     const tr = targetRadius();
 
+    // Near-miss zone: faint fill illuminates as ring approaches goodWin bounds
     if (ring && phase === 'playing') {
       const absd     = Math.abs(ring.radius - tr);
       const sc       = screenScale();
@@ -1162,6 +1096,7 @@
   }
 
   // ── DRAW GRID ────────────────────────────────────────────────────────────────
+  // Grid is static — render once to an offscreen canvas and blit every frame.
 
   function drawGrid() {
     if (PERF_LOW) return;
@@ -1175,6 +1110,7 @@
       const step    = 48;
       const bigStep = step * 4;
 
+      // Minor grid — all lines in a single path
       gctx.strokeStyle = 'rgba(255,140,0,0.04)';
       gctx.lineWidth   = 1;
       gctx.beginPath();
@@ -1182,6 +1118,7 @@
       for (let y = 0; y < canvas.height; y += step) { gctx.moveTo(0, y); gctx.lineTo(canvas.width, y);  }
       gctx.stroke();
 
+      // Major grid — single path
       gctx.strokeStyle = 'rgba(255,140,0,0.07)';
       gctx.beginPath();
       for (let x = 0; x < canvas.width;  x += bigStep) { gctx.moveTo(x, 0); gctx.lineTo(x, canvas.height); }
@@ -1250,6 +1187,7 @@
     ctx.save();
     ctx.globalAlpha = prog * pulse;
 
+    // Horizontal gradient bar
     const barH = 40;
     const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
     grad.addColorStop(0,    'rgba(255,209,102,0)');
@@ -1270,7 +1208,7 @@
     ctx.restore();
   }
 
-  // ── DRAW BREAKTHROUGH VIGNETTE ───────────────────────────────────────────────
+  // ── DRAW BREAKTHROUGH VIGNETTE (persistent gold edge glow) ───────────────────
 
   function drawBreakthroughVignette() {
     if (!breakthroughActive || PERF_LOW) return;
@@ -1309,6 +1247,7 @@
       ctx.restore();
     }
 
+    // "GOD" label always shown
     const fadeIn = Math.min(godModeT * 4, 1);
     ctx.save();
     ctx.globalAlpha   = fadeIn * (0.45 + 0.55 * pulse);
@@ -1326,6 +1265,7 @@
 
   function drawHeartbeatDot(cx, cy) {
     if (phase === 'playing') {
+      // Sharp pulse: positive half of sin, cubed for snappy attack
       const hb    = Math.pow(Math.max(0, Math.sin(heartbeatT * Math.PI * 2)), 3);
       const dotR  = 3 + hb * 4;
       const alpha = 0.62 + hb * 0.38;
@@ -1344,6 +1284,7 @@
     const lv = ceremony.level;
     const [r, g, b] = hexToRgb(lv.accent);
 
+    // Expanding accent rings (inherited from original, kept as atmosphere)
     for (let i = 0; i < 3; i++) {
       const delay = i * 0.18;
       const lt    = Math.max(0, t - delay);
@@ -1358,6 +1299,7 @@
       : 1;
 
     if (nameAlpha > 0) {
+      // Spring-scale: invisible during flash, then slams in with overshoot
       const sp    = Math.max(0, t - 0.3);
       const decay = Math.exp(-sp * 7);
       const osc   = Math.cos(sp * 14);
@@ -1406,6 +1348,7 @@
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Heartbeat micro-pulse on background luminance
     const lv = currentLevel();
     const [br, bg, bb] = lv.bgTint;
     const hbPulse = phase === 'playing'
@@ -1419,12 +1362,14 @@
     const cx = canvas.width  / 2 + shakeX;
     const cy = canvas.height / 2 + shakeY;
 
+    // Persistent atmospheric overlays (unshaken, anchored to screen)
     drawBreakthroughVignette();
     drawGodModeOverlay();
 
     if (phase === 'idle')     drawIdle(cx, cy);
     if (phase === 'ceremony') drawCeremony(cx, cy);
 
+    // Shockwaves sit behind the target
     drawShockwaves(cx, cy);
 
     drawTarget(cx, cy);
@@ -1435,8 +1380,8 @@
     drawHeartbeatDot(cx, cy);
 
     drawFeedbacks();
-    drawBreakthroughBanner(canvas.width / 2);
 
+    // Screen flash overlay — always on top
     if (flashA > 0) {
       ctx.save();
       ctx.globalAlpha = flashA;
@@ -1478,9 +1423,8 @@
     e.stopPropagation(); startGame();
   });
 
-  // ── INIT — run terminal first ─────────────────────────────────────────────────
+  // ── INIT ─────────────────────────────────────────────────────────────────────
 
   bestValEl.textContent = highScore;
-  runTerminal();
 
 })();

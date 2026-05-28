@@ -24,6 +24,7 @@
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
+    gridCacheDirty = true;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -45,6 +46,9 @@
     return Math.min(shortSide() * base, 115);
   }
   function spawnRadius()  { return shortSide() * (isMobile ? 0.48 : 0.44); }
+  // Normalise all pixel-speed values to a 600 px reference short-side so the
+  // game plays at identical timing on every screen size.
+  function screenScale()  { return shortSide() / 600; }
 
   // ── LEVEL DEFINITIONS ───────────────────────────────────────────────────────
 
@@ -223,6 +227,10 @@
   let heartbeatT     = 0;    // center dot pulse phase
 
   const SPEED_PIPS = 9;
+
+  // Offscreen canvas for the static grid — rebuilt only on resize
+  let gridCache      = null;
+  let gridCacheDirty = true;
 
   // ── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -600,10 +608,11 @@
 
     const lv   = currentLevel();
     const diff = Math.abs(ring.radius - targetRadius());
+    const sc   = screenScale();
 
-    if (diff <= lv.perfectWin)      registerHit('PERFECT', lv.accent, 10, true);
-    else if (diff <= lv.goodWin)    registerHit('GOOD', '#FFD166', 5, false);
-    else                            registerMiss();
+    if (diff <= lv.perfectWin * sc)   registerHit('PERFECT', lv.accent, 10, true);
+    else if (diff <= lv.goodWin * sc) registerHit('GOOD', '#FFD166', 5, false);
+    else                               registerMiss();
   }
 
   function registerHit(label, color, basePoints, isPerfect) {
@@ -704,8 +713,10 @@
   // ── PARTICLES ────────────────────────────────────────────────────────────────
 
   function spawnBurst(cx, cy, color, count) {
-    const tr = targetRadius();
-    const n  = Math.min(count, MAX_PARTS - parts.length);
+    const tr  = targetRadius();
+    // Reduce particle count at high speed to maintain frame rate
+    const cap = speed > 280 ? Math.min(MAX_PARTS, 40) : MAX_PARTS;
+    const n   = Math.min(count, cap - parts.length);
     for (let i = 0; i < n; i++) {
       const angle    = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
       const spd      = 3.5 + Math.random() * 5;
@@ -892,7 +903,7 @@
       default: break;
     }
 
-    ring.radius -= effectiveSpeed * dt;
+    ring.radius -= effectiveSpeed * screenScale() * dt;
 
     // Update God Mode comet trail
     if (godMode) {
@@ -901,7 +912,7 @@
     }
 
     // Auto-miss: passed through target zone
-    if (ring.radius < targetRadius() - lv.goodWin - 6) registerMiss();
+    if (ring.radius < targetRadius() - (lv.goodWin + 6) * screenScale()) registerMiss();
   }
 
   // ── DRAW HELPERS ─────────────────────────────────────────────────────────────
@@ -945,15 +956,16 @@
     if (!ring) return;
     const lv   = currentLevel();
     const tr   = targetRadius();
+    const sc   = screenScale();
     const absd = Math.abs(ring.radius - tr);
-    const prox = Math.max(0, 1 - absd / 80);
+    const prox = Math.max(0, 1 - absd / (80 * sc));
     const [ar, ag, ab] = hexToRgb(lv.accent);
 
     let r, g, b;
-    if (absd <= lv.perfectWin) {
+    if (absd <= lv.perfectWin * sc) {
       [r, g, b] = [ar, ag, ab];
-    } else if (absd <= lv.goodWin) {
-      const t = (absd - lv.perfectWin) / (lv.goodWin - lv.perfectWin);
+    } else if (absd <= lv.goodWin * sc) {
+      const t = (absd - lv.perfectWin * sc) / ((lv.goodWin - lv.perfectWin) * sc);
       r = Math.floor(ar + t * (255 - ar));
       g = Math.floor(ag + t * (209 - ag));
       b = Math.floor(ab + t * (102 - ab));
@@ -966,13 +978,26 @@
     const blur  = 4 + prox * 22;
     const lw    = 1.5 + prox * 2.5;
 
-    // GOD MODE: comet trail (oldest→newest, increasing brightness)
+    // GOD MODE: comet trail — batched to avoid per-segment save/restore
     if (godMode && ringTrail.length > 0) {
-      ringTrail.forEach((t, i) => {
-        const frac   = (i + 1) / ringTrail.length;
+      // Shorten trail at high speed to stay smooth
+      const visLen = speed > 280 ? Math.ceil(ringTrail.length * 0.5) : ringTrail.length;
+      const slice  = ringTrail.slice(-visLen);
+      ctx.save();
+      ctx.shadowColor = `rgb(${ar},${ag},${ab})`;
+      slice.forEach((t, i) => {
+        const frac   = (i + 1) / slice.length;
         const talpha = frac * 0.52 * t.o;
-        circle(cx, cy, t.r, `rgba(${ar},${ag},${ab},${talpha})`, 0.5 + frac * 2.5, 2 + frac * 20);
+        ctx.globalAlpha = talpha;
+        ctx.lineWidth   = 0.5 + frac * 2.5;
+        // Reduce blur at high speed to avoid compositing stalls
+        ctx.shadowBlur  = PERF_LOW || speed > 280 ? 0 : (2 + frac * 20) * BLUR_MULT;
+        ctx.strokeStyle = `rgba(${ar},${ag},${ab},1)`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, t.r, 0, Math.PI * 2);
+        ctx.stroke();
       });
+      ctx.restore();
     }
 
     circle(cx, cy, ring.radius, `rgba(${r},${g},${b},${alpha})`, lw, blur);
@@ -987,7 +1012,8 @@
     // Near-miss zone: faint fill illuminates as ring approaches goodWin bounds
     if (ring && phase === 'playing') {
       const absd     = Math.abs(ring.radius - tr);
-      const zoneProx = Math.max(0, 1 - absd / (lv.goodWin * 2.4));
+      const sc       = screenScale();
+      const zoneProx = Math.max(0, 1 - absd / (lv.goodWin * sc * 2.4));
       if (zoneProx > 0) {
         const [ar, ag, ab] = hexToRgb(lv.accent);
         ctx.save();
@@ -1027,20 +1053,22 @@
   // ── DRAW PARTICLES & FEEDBACKS ───────────────────────────────────────────────
 
   function drawParticles() {
+    if (parts.length === 0) return;
+    const useShadow = !PERF_LOW && speed <= 260;
+    ctx.save();
     parts.forEach(p => {
-      ctx.save();
-      ctx.globalAlpha = Math.pow(p.life, 1.4);
+      const a = Math.pow(p.life, 1.4);
+      ctx.globalAlpha = a;
       ctx.fillStyle   = p.color;
-      if (!PERF_LOW) { ctx.shadowColor = p.color; ctx.shadowBlur = 6; }
-      // Square pixel particles instead of circles
+      if (useShadow) { ctx.shadowColor = p.color; ctx.shadowBlur = 6; }
       const sz = p.r * 2;
       ctx.fillRect(
         Math.round(p.x + shakeX - p.r),
         Math.round(p.y + shakeY - p.r),
         Math.round(sz), Math.round(sz)
       );
-      ctx.restore();
     });
+    ctx.restore();
   }
 
   function drawFeedbacks() {
@@ -1059,30 +1087,39 @@
   }
 
   // ── DRAW GRID ────────────────────────────────────────────────────────────────
+  // Grid is static — render once to an offscreen canvas and blit every frame.
 
   function drawGrid() {
     if (PERF_LOW) return;
-    ctx.save();
-    // Major grid lines — warm dim tint
-    ctx.strokeStyle = 'rgba(255,140,0,0.04)';
-    ctx.lineWidth   = 1;
-    const step = 48;
-    for (let x = 0; x < canvas.width; x += step) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+
+    if (gridCacheDirty || !gridCache ||
+        gridCache.width !== canvas.width || gridCache.height !== canvas.height) {
+      gridCache        = document.createElement('canvas');
+      gridCache.width  = canvas.width;
+      gridCache.height = canvas.height;
+      const gctx = gridCache.getContext('2d');
+      const step    = 48;
+      const bigStep = step * 4;
+
+      // Minor grid — all lines in a single path
+      gctx.strokeStyle = 'rgba(255,140,0,0.04)';
+      gctx.lineWidth   = 1;
+      gctx.beginPath();
+      for (let x = 0; x < canvas.width;  x += step) { gctx.moveTo(x, 0); gctx.lineTo(x, canvas.height); }
+      for (let y = 0; y < canvas.height; y += step) { gctx.moveTo(0, y); gctx.lineTo(canvas.width, y);  }
+      gctx.stroke();
+
+      // Major grid — single path
+      gctx.strokeStyle = 'rgba(255,140,0,0.07)';
+      gctx.beginPath();
+      for (let x = 0; x < canvas.width;  x += bigStep) { gctx.moveTo(x, 0); gctx.lineTo(x, canvas.height); }
+      for (let y = 0; y < canvas.height; y += bigStep) { gctx.moveTo(0, y); gctx.lineTo(canvas.width, y);  }
+      gctx.stroke();
+
+      gridCacheDirty = false;
     }
-    for (let y = 0; y < canvas.height; y += step) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-    }
-    // Brighter major lines every 4 cells
-    ctx.strokeStyle = 'rgba(255,140,0,0.07)';
-    const bigStep = step * 4;
-    for (let x = 0; x < canvas.width; x += bigStep) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-    }
-    for (let y = 0; y < canvas.height; y += bigStep) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-    }
-    ctx.restore();
+
+    ctx.drawImage(gridCache, 0, 0);
   }
 
   // ── DRAW SHOCKWAVES ──────────────────────────────────────────────────────────

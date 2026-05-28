@@ -273,7 +273,23 @@
   }
 
   function updateLivesUI() {
-    lifePips.forEach((pip, i) => pip.classList.toggle('lost', i >= lives));
+    lifePips.forEach((heart, i) => {
+      const wasLost = heart.classList.contains('lost');
+      const isLost  = i >= lives;
+      if (!wasLost && isLost) {
+        // just lost this heart
+        heart.classList.add('losing');
+        setTimeout(() => {
+          heart.classList.remove('losing');
+          heart.classList.add('lost');
+        }, 400);
+      } else if (wasLost && !isLost) {
+        // heart regained
+        heart.classList.remove('lost');
+        heart.classList.add('gained');
+        setTimeout(() => heart.classList.remove('gained'), 560);
+      }
+    });
   }
 
   function updateLevelHud() {
@@ -363,30 +379,42 @@
         row.classList.add('lm-done');
         dot.style.background  = lvDef.accent;
         dot.style.borderColor = lvDef.accent;
-        dot.style.boxShadow   = `0 0 5px ${lvDef.accent}40`;
-        name.style.color      = `${lvDef.accent}80`;
-        name.style.textShadow = 'none';
-        if (hits) hits.style.color = `${lvDef.accent}40`;
-        if (topFill) topFill.style.height = '100%';
-        if (botFill) { botFill.style.height = '100%'; botFill.style.background = lvDef.accent; }
+        dot.style.boxShadow   = `0 0 6px ${lvDef.accent}, 0 0 14px ${lvDef.accent}60`;
+        name.style.color      = `${lvDef.accent}90`;
+        name.style.textShadow = `0 0 8px ${lvDef.accent}50`;
+        if (hits) hits.style.color = `${lvDef.accent}50`;
+        if (topFill) {
+          topFill.style.height     = '100%';
+          topFill.style.background = lvDef.accent;
+          topFill.style.boxShadow  = `0 0 6px ${lvDef.accent}, 0 0 12px ${lvDef.accent}80`;
+        }
+        if (botFill) {
+          botFill.style.height     = '100%';
+          botFill.style.background = lvDef.accent;
+          botFill.style.boxShadow  = `0 0 6px ${lvDef.accent}, 0 0 12px ${lvDef.accent}80`;
+        }
 
       } else if (i === levelIdx) {
         // current
         row.classList.add('lm-current');
         dot.style.background  = lv.accent;
         dot.style.borderColor = lv.accent;
-        dot.style.boxShadow   = `0 0 10px ${lv.accent}, 0 0 20px ${lv.accent}60`;
+        dot.style.boxShadow   = `0 0 10px ${lv.accent}, 0 0 22px ${lv.accent}70`;
         name.style.color      = lv.accent;
         name.style.textShadow = `0 0 10px ${lv.accent}`;
-        if (hits) hits.style.color = `${lv.accent}70`;
-        if (topFill) topFill.style.height = '100%';
-        // bot fill = progress toward next
+        if (hits) hits.style.color = `${lv.accent}80`;
+        if (topFill) {
+          topFill.style.height     = '100%';
+          topFill.style.background = lv.accent;
+          topFill.style.boxShadow  = `0 0 6px ${lv.accent}, 0 0 12px ${lv.accent}80`;
+        }
+        // bot fill = live progress toward next level
         if (botFill && !isLast) {
           const prog = Math.min(levelHits / lv.hitsNeeded, 1);
-          botFill.style.transition  = 'height 0.35s cubic-bezier(0.22,1,0.36,1)';
-          botFill.style.height      = (prog * 100) + '%';
-          botFill.style.background  = lv.accent;
-          botFill.style.boxShadow   = `0 0 4px ${lv.accent}`;
+          botFill.style.transition = 'height 0.38s cubic-bezier(0.22,1,0.36,1), box-shadow 0.38s ease';
+          botFill.style.height     = (prog * 100) + '%';
+          botFill.style.background = lv.accent;
+          botFill.style.boxShadow  = `0 0 8px ${lv.accent}, 0 0 18px ${lv.accent}90`;
         }
 
       } else {
@@ -437,6 +465,7 @@
     speedBar.classList.add('visible');
 
     bestValEl.textContent = highScore;
+    lifePips.forEach(h => { h.classList.remove('lost','gained','losing'); });
     updateHUD(); updatePips(); updateLivesUI(); updateLevelHud();
     spawnRing();
   }

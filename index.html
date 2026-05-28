@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PULSE</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -12,33 +12,22 @@
 
   <canvas id="canvas"></canvas>
 
-  <!-- HUD overlay (visible while playing) -->
+  <!-- HUD overlay -->
   <div id="hud" class="hidden">
     <div id="hud-score">0</div>
     <div id="hud-combo" class="hidden">×<span id="combo-val">2</span></div>
     <div id="hud-best">BEST <span id="best-val">0</span></div>
   </div>
 
-  <!-- Lives — top left, heart shaped -->
+  <!-- Lives — horizontal, top-left, pixel hearts -->
   <div id="lives-hud" class="hidden">
-    <svg id="life-0" class="life-heart" viewBox="0 0 20 18" xmlns="http://www.w3.org/2000/svg">
-      <path d="M10 16.5C10 16.5 1.5 10.5 1.5 5.5C1.5 3.01 3.51 1 6 1C7.74 1 9.26 1.97 10 3.44C10.74 1.97 12.26 1 14 1C16.49 1 18.5 3.01 18.5 5.5C18.5 10.5 10 16.5 10 16.5Z"/>
-    </svg>
-    <svg id="life-1" class="life-heart" viewBox="0 0 20 18" xmlns="http://www.w3.org/2000/svg">
-      <path d="M10 16.5C10 16.5 1.5 10.5 1.5 5.5C1.5 3.01 3.51 1 6 1C7.74 1 9.26 1.97 10 3.44C10.74 1.97 12.26 1 14 1C16.49 1 18.5 3.01 18.5 5.5C18.5 10.5 10 16.5 10 16.5Z"/>
-    </svg>
-    <svg id="life-2" class="life-heart" viewBox="0 0 20 18" xmlns="http://www.w3.org/2000/svg">
-      <path d="M10 16.5C10 16.5 1.5 10.5 1.5 5.5C1.5 3.01 3.51 1 6 1C7.74 1 9.26 1.97 10 3.44C10.74 1.97 12.26 1 14 1C16.49 1 18.5 3.01 18.5 5.5C18.5 10.5 10 16.5 10 16.5Z"/>
-    </svg>
+    <span id="life-0" class="life-heart"></span>
+    <span id="life-1" class="life-heart"></span>
+    <span id="life-2" class="life-heart"></span>
   </div>
 
-  <!-- Level path map (right side, vertical) -->
+  <!-- Level path map (right side, vertical) — no dots, just line + label -->
   <div id="level-map" class="hidden"></div>
-
-  <!-- Level label HUD -->
-  <div id="level-hud" class="hidden">
-    <span id="level-name-hud">VOID</span>
-  </div>
 
   <!-- Start screen -->
   <div id="start-screen">

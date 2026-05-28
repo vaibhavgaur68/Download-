@@ -12,6 +12,14 @@
 
   <canvas id="canvas"></canvas>
 
+  <!-- ── TERMINAL BOOT OVERLAY ── -->
+  <div id="terminal-overlay">
+    <div id="terminal-inner">
+      <div id="terminal-text"></div>
+      <span id="terminal-cursor">▮</span>
+    </div>
+  </div>
+
   <!-- HUD overlay -->
   <div id="hud" class="hidden">
     <div id="hud-score">0</div>
@@ -30,29 +38,46 @@
   <div id="level-map" class="hidden"></div>
 
   <!-- Start screen -->
-  <div id="start-screen">
+  <div id="start-screen" class="screen-hidden">
     <div class="screen-card">
+      <div class="alien-sigil">◈</div>
       <div class="game-title">PULSE</div>
-      <div class="game-tagline">tap the ring. survive the heat.</div>
+      <div class="game-tagline">HUMAN TESTING INITIATED.</div>
       <div class="ring-demo" id="ring-demo"></div>
-      <button class="btn" id="start-btn">PRESS START</button>
+      <button class="btn" id="start-btn">SUBMIT TO TEST</button>
       <div class="key-hint">SPACE · CLICK · TAP</div>
     </div>
   </div>
 
-  <!-- Game over screen -->
+  <!-- Game over screen — Alien Verdict -->
   <div id="gameover-screen" class="screen-hidden">
-    <div class="screen-card">
-      <div class="go-label">SCORE</div>
-      <div id="final-score" class="go-score">0</div>
-      <div id="new-hs-badge" class="new-hs hidden">★ NEW BEST ★</div>
-      <div class="go-divider"></div>
-      <div class="go-label">BEST</div>
-      <div id="final-best" class="go-best">0</div>
-      <div class="go-divider"></div>
-      <div class="go-label">REACHED</div>
-      <div id="final-level" class="go-level">VOID</div>
-      <button class="btn" id="retry-btn">TRY AGAIN</button>
+    <div class="verdict-frame">
+      <div class="verdict-header">
+        <span class="verdict-icon">⚠</span>
+        <span class="verdict-title">ALIEN VERDICT</span>
+        <span class="verdict-icon">⚠</span>
+      </div>
+      <div class="verdict-row">
+        <div class="go-label">BRAIN SPEED</div>
+        <div id="final-score" class="go-score">0</div>
+        <div id="new-hs-badge" class="new-hs hidden">★ NEW BEST ★</div>
+      </div>
+      <div class="verdict-divider"></div>
+      <div class="verdict-row">
+        <div class="go-label">BEST</div>
+        <div id="final-best" class="go-best">0</div>
+      </div>
+      <div class="verdict-divider"></div>
+      <div class="verdict-row">
+        <div class="go-label">YOUR NEW RANK</div>
+        <div id="final-level" class="go-level">VOID</div>
+      </div>
+      <div class="verdict-divider"></div>
+      <div id="fate-block">
+        <div class="go-label">ASSIGNED FATE</div>
+        <div id="fate-text" class="fate-text"></div>
+      </div>
+      <button class="btn btn-danger" id="retry-btn">REQUEST RETEST</button>
     </div>
   </div>
 

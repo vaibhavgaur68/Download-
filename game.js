@@ -50,46 +50,46 @@
 
   const LEVELS = [
     {
-      accent: '#00FFB2', name: 'VOID',    subtitle: 'nothing but static.',
+      accent: '#FF6B00', name: 'EMBER',   subtitle: 'the first spark.',
       hitsNeeded: 8,  perfectWin: 9,  goodWin: 20,
       baseSpeed: 105, maxSpeed: 180,  speedStep: 9,
-      behavior: 'normal', bgTint: [0, 0, 0, 1],
+      behavior: 'normal', bgTint: [8, 2, 0, 1],
     },
     {
-      accent: '#00D4FF', name: 'PULSE',   subtitle: 'feel the rhythm.',
+      accent: '#FF8C00', name: 'FLAME',   subtitle: 'heat is rising.',
       hitsNeeded: 10, perfectWin: 9,  goodWin: 18,
       baseSpeed: 130, maxSpeed: 220,  speedStep: 10,
-      behavior: 'wave', bgTint: [0, 5, 12, 1],
+      behavior: 'wave', bgTint: [12, 4, 0, 1],
     },
     {
-      accent: '#FFD166', name: 'HEAT',    subtitle: 'temperature rising.',
+      accent: '#FFD700', name: 'HEAT',    subtitle: 'temperature critical.',
       hitsNeeded: 12, perfectWin: 8,  goodWin: 17,
       baseSpeed: 155, maxSpeed: 260,  speedStep: 11,
-      behavior: 'wave', bgTint: [8, 4, 0, 1],
+      behavior: 'wave', bgTint: [16, 8, 0, 1],
     },
     {
-      accent: '#FF6B35', name: 'CRIMSON', subtitle: 'blood in the signal.',
+      accent: '#FF4500', name: 'BLAZE',   subtitle: 'burning out of control.',
       hitsNeeded: 14, perfectWin: 7,  goodWin: 16,
       baseSpeed: 180, maxSpeed: 300,  speedStep: 12,
-      behavior: 'stutter', bgTint: [10, 2, 0, 1],
+      behavior: 'stutter', bgTint: [18, 3, 0, 1],
     },
     {
-      accent: '#B57BFF', name: 'ETHER',   subtitle: 'phase through reality.',
+      accent: '#FF2200', name: 'INFERNO', subtitle: 'no way back.',
       hitsNeeded: 16, perfectWin: 7,  goodWin: 15,
       baseSpeed: 210, maxSpeed: 340,  speedStep: 12,
-      behavior: 'ghost', bgTint: [5, 0, 12, 1],
+      behavior: 'ghost', bgTint: [20, 2, 0, 1],
     },
     {
-      accent: '#FF2D55', name: 'ABYSS',   subtitle: 'stare long enough.',
+      accent: '#CC0000', name: 'FORGE',   subtitle: 'pressure becomes power.',
       hitsNeeded: 18, perfectWin: 6,  goodWin: 13,
       baseSpeed: 250, maxSpeed: 390,  speedStep: 13,
-      behavior: 'stutter', bgTint: [10, 0, 3, 1],
+      behavior: 'stutter', bgTint: [18, 0, 0, 1],
     },
     {
-      accent: '#FFFFFF', name: 'GHOST',   subtitle: 'you are the signal.',
+      accent: '#FFF4E0', name: 'PLASMA',  subtitle: 'beyond the flame.',
       hitsNeeded: 999, perfectWin: 5, goodWin: 12,
       baseSpeed: 290, maxSpeed: 460,  speedStep: 14,
-      behavior: 'near-invisible', bgTint: [8, 8, 8, 1],
+      behavior: 'near-invisible', bgTint: [22, 12, 6, 1],
     },
   ];
 
@@ -1027,15 +1027,18 @@
   // ── DRAW PARTICLES & FEEDBACKS ───────────────────────────────────────────────
 
   function drawParticles() {
-    const blur = PERF_LOW ? 0 : 8;
     parts.forEach(p => {
       ctx.save();
       ctx.globalAlpha = Math.pow(p.life, 1.4);
       ctx.fillStyle   = p.color;
-      if (!PERF_LOW) { ctx.shadowColor = p.color; ctx.shadowBlur = blur; }
-      ctx.beginPath();
-      ctx.arc(p.x + shakeX, p.y + shakeY, p.r, 0, Math.PI * 2);
-      ctx.fill();
+      if (!PERF_LOW) { ctx.shadowColor = p.color; ctx.shadowBlur = 6; }
+      // Square pixel particles instead of circles
+      const sz = p.r * 2;
+      ctx.fillRect(
+        Math.round(p.x + shakeX - p.r),
+        Math.round(p.y + shakeY - p.r),
+        Math.round(sz), Math.round(sz)
+      );
       ctx.restore();
     });
   }
@@ -1047,9 +1050,9 @@
       ctx.fillStyle     = f.color;
       ctx.shadowColor   = f.color;
       ctx.shadowBlur    = 18;
-      ctx.font          = '700 18px "IBM Plex Mono", monospace';
+      ctx.font          = '400 9px "Press Start 2P", monospace';
       ctx.textAlign     = 'center';
-      ctx.letterSpacing = '0.14em';
+      ctx.letterSpacing = '0.06em';
       ctx.fillText(f.text, f.x + shakeX, f.y + shakeY);
       ctx.restore();
     });
@@ -1060,13 +1063,23 @@
   function drawGrid() {
     if (PERF_LOW) return;
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+    // Major grid lines — warm dim tint
+    ctx.strokeStyle = 'rgba(255,140,0,0.04)';
     ctx.lineWidth   = 1;
-    const step = 64;
+    const step = 48;
     for (let x = 0; x < canvas.width; x += step) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
     }
     for (let y = 0; y < canvas.height; y += step) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+    // Brighter major lines every 4 cells
+    ctx.strokeStyle = 'rgba(255,140,0,0.07)';
+    const bigStep = step * 4;
+    for (let x = 0; x < canvas.width; x += bigStep) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += bigStep) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
     }
     ctx.restore();
@@ -1142,8 +1155,8 @@
     ctx.shadowColor = '#FFD166';
     ctx.shadowBlur  = 32;
     ctx.textAlign   = 'center';
-    ctx.font        = '700 10px "IBM Plex Mono", monospace';
-    ctx.letterSpacing = '0.48em';
+    ctx.font        = '400 7px "Press Start 2P", monospace';
+    ctx.letterSpacing = '0.28em';
     ctx.fillText('✦  NEW BEST  ✦', cx, bannerY + 4);
     ctx.restore();
   }
@@ -1195,8 +1208,8 @@
     ctx.shadowColor   = lv.accent;
     ctx.shadowBlur    = 18 * BLUR_MULT;
     ctx.textAlign     = 'left';
-    ctx.font          = '700 8px "IBM Plex Mono", monospace';
-    ctx.letterSpacing = '0.44em';
+    ctx.font          = '400 6px "Press Start 2P", monospace';
+    ctx.letterSpacing = '0.28em';
     ctx.fillText('GOD', 28, 94);
     ctx.restore();
   }
@@ -1253,9 +1266,9 @@
       ctx.shadowColor   = lv.accent;
       ctx.shadowBlur    = 40;
       ctx.textAlign     = 'center';
-      const nameFontSize = Math.min(shortSide() * 0.09, 64);
-      ctx.font          = `700 ${nameFontSize}px "IBM Plex Mono", monospace`;
-      ctx.letterSpacing = '0.3em';
+      const nameFontSize = Math.min(shortSide() * 0.055, 40);
+      ctx.font          = `400 ${nameFontSize}px "Press Start 2P", monospace`;
+      ctx.letterSpacing = '0.18em';
       ctx.fillText(lv.name, 0, 0);
       ctx.restore();
 
@@ -1265,8 +1278,8 @@
       ctx.shadowColor   = lv.accent;
       ctx.shadowBlur    = 14;
       ctx.textAlign     = 'center';
-      ctx.font          = `400 ${Math.min(shortSide() * 0.025, 16)}px "IBM Plex Mono", monospace`;
-      ctx.letterSpacing = '0.2em';
+      ctx.font          = `400 ${Math.min(shortSide() * 0.018, 10)}px "Press Start 2P", monospace`;
+      ctx.letterSpacing = '0.12em';
       ctx.fillText(lv.subtitle, cx, cy + 18);
       ctx.restore();
 
@@ -1275,8 +1288,8 @@
         ctx.globalAlpha   = Math.min(nameAlpha * 0.5, (t - 0.6) * 1.5);
         ctx.fillStyle     = 'rgba(255,255,255,0.3)';
         ctx.textAlign     = 'center';
-        ctx.font          = `400 10px "IBM Plex Mono", monospace`;
-        ctx.letterSpacing = '0.2em';
+        ctx.font          = `400 7px "Press Start 2P", monospace`;
+        ctx.letterSpacing = '0.12em';
         ctx.fillText('TAP TO CONTINUE', cx, cy + 50);
         ctx.restore();
       }

@@ -1884,11 +1884,61 @@
     }
   }
 
+  // ── IDLE TITLE CANVAS — subtle scanner behind the start screen ──────────────
+
+  let idleScanT = 0;
+
+  function drawIdleBackground() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#080200';
+    ctx.fillRect(0, 0, W, H);
+
+    const cx = W / 2, cy = H / 2;
+    const maxR = Math.max(W, H) * 0.72;
+    idleScanT += 0.004;
+
+    // Three concentric faint arcs that breathe
+    for (let i = 0; i < 3; i++) {
+      const phi = idleScanT + i * 0.9;
+      const r   = maxR * (0.18 + i * 0.22) * (0.88 + 0.12 * Math.sin(phi * 0.7));
+      const a   = 0.022 + 0.012 * Math.sin(phi * 1.1);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0,255,178,${a})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Single slow sweep wedge
+    const sweepAngle = idleScanT * 0.6;
+    const sweepLen   = maxR * 0.55;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(sweepAngle);
+    const sweepGrad = ctx.createLinearGradient(0, 0, sweepLen, 0);
+    sweepGrad.addColorStop(0,   'rgba(0,255,178,0.0)');
+    sweepGrad.addColorStop(0.6, 'rgba(0,255,178,0.07)');
+    sweepGrad.addColorStop(1,   'rgba(0,255,178,0.02)');
+    ctx.fillStyle = sweepGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, sweepLen, -0.08, 0.08);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
   // ── MAIN DRAW ────────────────────────────────────────────────────────────────
 
   function draw() {
     // Lore intro is fully self-contained
     if (phase === 'intro') { drawLoreIntro(); return; }
+
+    // Idle = start screen is visible; draw clean black + subtle scanner only
+    if (phase === 'idle') { drawIdleBackground(); return; }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1910,7 +1960,6 @@
     drawBreakthroughVignette();
     drawGodModeOverlay();
 
-    if (phase === 'idle')     drawIdle(cx, cy);
     if (phase === 'ceremony') drawCeremony(cx, cy);
 
     // Shockwaves sit behind the target

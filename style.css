@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────────────
-   PULSE — style.css  (v4: vreth classification engine)
+   PULSE — style.css  (v5: vreth classification engine)
    Earth 2031. The Vreth occupation. Every human will be tested.
 ────────────────────────────────────────────────────────────────────────────── */
 
@@ -15,7 +15,7 @@
   --bg:     #080200;
   --ember:  #FF4500;
 
-  /* Vreth palette — cold alien tones that layer over the warm human palette */
+  /* Vreth palette */
   --vreth-green:  #00FFB2;
   --vreth-blue:   #00CFFF;
   --vreth-dim:    rgba(0,255,178,0.12);
@@ -34,7 +34,7 @@ html, body {
   image-rendering: pixelated;
 }
 
-/* ── CRT SCANLINES — now with a subtle green tint to feel alien ── */
+/* ── CRT SCANLINES ── */
 body::after {
   content: '';
   position: fixed;
@@ -231,7 +231,7 @@ body::after {
   100% { transform: scale(1)   rotate(0deg); }
 }
 
-/* ── LEVEL PATH MAP — reframed as CLASSIFICATION PROGRESS ── */
+/* ── LEVEL PATH MAP ── */
 #level-map {
   position: fixed;
   top: 50%;
@@ -263,7 +263,7 @@ body::after {
 .lm-connector {
   flex: 1;
   width: 2px;
-  background: rgba(0,255,178,0.05);   /* vreth green base instead of warm white */
+  background: rgba(0,255,178,0.05);
   position: relative;
   min-height: 18px;
 }
@@ -289,7 +289,7 @@ body::after {
   font-size: 0.38rem;
   font-weight: 400;
   letter-spacing: 0.18em;
-  color: rgba(0,255,178,0.06);        /* vreth green dim */
+  color: rgba(0,255,178,0.06);
   line-height: 1;
   transition: color 0.4s ease, text-shadow 0.4s ease;
 }
@@ -301,6 +301,8 @@ body::after {
   align-items: center;
   justify-content: center;
   z-index: 20;
+  /* CRITICAL: fully opaque so the game canvas doesn't bleed through */
+  background: #080200;
 }
 #start-screen    { animation: fadeIn 0.6s steps(8) ease-out; }
 #gameover-screen { animation: slideUp 0.4s steps(6) cubic-bezier(0.22, 1, 0.36, 1); }
@@ -316,6 +318,8 @@ body::after {
   display: flex; flex-direction: column;
   align-items: center; gap: 14px;
   padding: 0 20px; text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 /* ── TITLE / START SCREEN ── */
@@ -347,7 +351,6 @@ body::after {
   margin-bottom: 2px;
 }
 
-/* Tagline reframed as Vreth directive */
 .game-tagline {
   font-size: clamp(0.32rem, 1.5vw, 0.44rem);
   font-weight: 400;
@@ -358,7 +361,6 @@ body::after {
   line-height: 1.8;
 }
 
-/* Lore flavour line below tagline */
 .game-lore-line {
   font-size: clamp(0.26rem, 1.1vw, 0.34rem);
   letter-spacing: 0.14em;
@@ -368,40 +370,15 @@ body::after {
   line-height: 2;
 }
 
-/* Animated ring demo */
+/* ── VRETH SCANNER — replaces the ring-demo, drawn on canvas ── */
+/* The HTML .ring-demo is kept for spacing but invisible — canvas draws behind */
 .ring-demo {
   width: 90px; height: 90px;
   border-radius: 50%;
-  border: 2px solid rgba(255,140,0,0.30);
-  box-shadow: 0 0 12px rgba(255,140,0,0.10), inset 0 0 12px rgba(255,140,0,0.04);
+  /* invisible — scanner effect is now purely from the canvas drawIdleBackground */
+  border: none;
+  background: transparent;
   position: relative; margin-bottom: 20px;
-  animation: demoPulse 2s ease-in-out infinite;
-}
-.ring-demo::before {
-  content: '';
-  position: absolute; inset: -22px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,140,0,0.55);
-  animation: demoRing 2s ease-in-out infinite;
-  box-shadow: 0 0 14px rgba(255,140,0,0.35);
-}
-.ring-demo::after {
-  content: '';
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 6px; height: 6px;
-  background: var(--white);
-  box-shadow: 0 0 8px rgba(255,140,0,0.8);
-}
-@keyframes demoPulse {
-  0%,100% { box-shadow: 0 0 12px rgba(255,140,0,0.10), inset 0 0 12px rgba(255,140,0,0.04); }
-  50%     { box-shadow: 0 0 26px rgba(255,140,0,0.28), inset 0 0 12px rgba(255,140,0,0.08); }
-}
-@keyframes demoRing {
-  0%   { inset: -50px; opacity: 0.8; border-color: rgba(255,140,0,0.6); }
-  60%  { inset: -22px; opacity: 1;   border-color: rgba(255,220,0,0.9); }
-  80%  { inset: -22px; opacity: 1; }
-  100% { inset: -50px; opacity: 0;   border-color: rgba(255,140,0,0.1); }
 }
 
 /* Vreth classification notice below ring */
@@ -425,7 +402,7 @@ body::after {
 .go-label {
   font-size: 0.38rem;
   letter-spacing: 0.22em;
-  color: rgba(0,255,178,0.35);        /* vreth green instead of warm white */
+  color: rgba(0,255,178,0.35);
   text-shadow: 0 0 8px rgba(0,255,178,0.2);
   margin-bottom: -4px;
   text-transform: uppercase;
@@ -444,7 +421,6 @@ body::after {
 
 .go-divider {
   width: 40px; height: 1px;
-  /* Changed to vreth green */
   background: rgba(0,255,178,0.20);
   margin: 8px 0;
 }
@@ -456,12 +432,11 @@ body::after {
   text-shadow: 2px 2px 0 rgba(255,69,0,0.3);
 }
 
-/* Rank title — this gets its color set inline by JS per rank */
 .go-level {
   font-size: clamp(0.9rem, 3.8vw, 1.6rem);
   font-weight: 400;
   letter-spacing: 0.18em;
-  color: var(--accent);              /* fallback; overridden by JS */
+  color: var(--accent);
   text-shadow: 3px 3px 0 rgba(255,140,0,0.4), 0 0 22px var(--accent);
   animation: rankPulse 2.4s ease-in-out infinite;
 }
@@ -470,7 +445,6 @@ body::after {
   50%      { opacity: 0.82; }
 }
 
-/* Alien verdict text — injected by JS as #go-verdict */
 #go-verdict {
   font-size: clamp(0.24rem, 1.1vw, 0.34rem);
   letter-spacing: 0.08em;
@@ -488,7 +462,6 @@ body::after {
   to   { clip-path: inset(0 0% 0 0); }
 }
 
-/* New high score badge */
 .new-hs {
   font-size: 0.44rem;
   letter-spacing: 0.18em;
@@ -524,7 +497,6 @@ body::after {
   position: relative;
 }
 
-/* Vreth border glow on button */
 .btn::before {
   content: '';
   position: absolute;
@@ -569,7 +541,7 @@ body::after {
 .speed-pip {
   width: 5px; height: 5px;
   border-radius: 0;
-  background: rgba(0,255,178,0.07);   /* vreth green base */
+  background: rgba(0,255,178,0.07);
   transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 .speed-pip.active {
@@ -577,7 +549,7 @@ body::after {
   box-shadow: 0 0 6px var(--accent);
 }
 
-/* ── VRETH CORNER MARK — subtle alien watermark bottom-left ── */
+/* ── VRETH CORNER MARK ── */
 body::before {
   content: 'VRETH // CLASSIFICATION ENGINE // v7.3.1';
   position: fixed;
@@ -590,4 +562,36 @@ body::before {
   pointer-events: none;
   z-index: 5;
   white-space: nowrap;
+}
+
+/* ── START SCREEN — Vreth scanner rings (CSS-only atmosphere layer) ── */
+#start-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 28%, rgba(0,255,178,0.018) 50%, transparent 72%),
+    radial-gradient(circle at 50% 50%, transparent 48%, rgba(0,255,178,0.012) 68%, transparent 82%);
+  pointer-events: none;
+  animation: scannerPulse 6s ease-in-out infinite;
+}
+
+#start-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,20,10,0.11) 2px,
+    rgba(0,20,10,0.11) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes scannerPulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
 }

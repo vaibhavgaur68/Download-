@@ -1,5 +1,6 @@
 /* ──────────────────────────────────────────────────────────────────────────────
-   PULSE — style.css  (pixel heat edition)
+   PULSE — style.css  (v4: vreth classification engine)
+   Earth 2031. The Vreth occupation. Every human will be tested.
 ────────────────────────────────────────────────────────────────────────────── */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,6 +14,12 @@
   --font:   'Press Start 2P', 'Courier New', monospace;
   --bg:     #080200;
   --ember:  #FF4500;
+
+  /* Vreth palette — cold alien tones that layer over the warm human palette */
+  --vreth-green:  #00FFB2;
+  --vreth-blue:   #00CFFF;
+  --vreth-dim:    rgba(0,255,178,0.12);
+  --vreth-border: rgba(0,255,178,0.18);
 }
 
 html, body {
@@ -27,7 +34,7 @@ html, body {
   image-rendering: pixelated;
 }
 
-/* ── CRT SCANLINES — subtle horizontal line overlay ── */
+/* ── CRT SCANLINES — now with a subtle green tint to feel alien ── */
 body::after {
   content: '';
   position: fixed;
@@ -36,8 +43,8 @@ body::after {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0,0,0,0.10) 2px,
-    rgba(0,0,0,0.10) 4px
+    rgba(0,20,10,0.11) 2px,
+    rgba(0,20,10,0.11) 4px
   );
   pointer-events: none;
   z-index: 200;
@@ -72,7 +79,6 @@ body::after {
   font-weight: 400;
   letter-spacing: 0.04em;
   color: var(--white);
-  /* pixel hard-shadow in ember colour */
   text-shadow:
     3px 3px 0 var(--ember),
     6px 6px 0 rgba(255,69,0,0.35);
@@ -83,7 +89,6 @@ body::after {
 }
 #hud-score.bump { transform: scale(1.18); }
 
-/* breakthrough / god mode tints */
 #hud-score.breakthrough {
   color: var(--gold);
   text-shadow: 3px 3px 0 #B8860B, 6px 6px 0 rgba(184,134,11,0.35);
@@ -123,27 +128,20 @@ body::after {
   text-align: right;
 }
 
-/* ── PIXEL HEART LIVES — top-left, horizontal ──
-   FIX: container gap is 26px so box-shadows (21px wide) never overlap.
-   Each .life-heart element is 3×3px; box-shadow draws the full 21×18px art.
-────────────────────────────────────────────────── */
+/* ── PIXEL HEART LIVES ── */
 #lives-hud {
   position: fixed;
   top: 24px;
   left: 28px;
   display: flex;
   flex-direction: row;
-  gap: 26px;          /* was 8px — increased to prevent overlap */
+  gap: 26px;
   z-index: 10;
   pointer-events: none;
   align-items: center;
 }
 #lives-hud.hidden { display: none; }
 
-/*
-  16×14 pixel-heart (3px unit, box-shadow art):
-  Same pixel map as before; only spacing fix is in the container.
-*/
 .life-heart {
   display: inline-block;
   position: relative;
@@ -182,7 +180,6 @@ body::after {
   transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
-/* Lost heart — dim grey */
 .life-heart.lost {
   box-shadow:
     3px  0px 0 0 #2A1A1A,
@@ -234,7 +231,7 @@ body::after {
   100% { transform: scale(1)   rotate(0deg); }
 }
 
-/* ── LEVEL PATH MAP ── */
+/* ── LEVEL PATH MAP — reframed as CLASSIFICATION PROGRESS ── */
 #level-map {
   position: fixed;
   top: 50%;
@@ -266,7 +263,7 @@ body::after {
 .lm-connector {
   flex: 1;
   width: 2px;
-  background: rgba(255,244,224,0.06);
+  background: rgba(0,255,178,0.05);   /* vreth green base instead of warm white */
   position: relative;
   min-height: 18px;
 }
@@ -292,7 +289,7 @@ body::after {
   font-size: 0.38rem;
   font-weight: 400;
   letter-spacing: 0.18em;
-  color: rgba(255,244,224,0.07);
+  color: rgba(0,255,178,0.06);        /* vreth green dim */
   line-height: 1;
   transition: color 0.4s ease, text-shadow 0.4s ease;
 }
@@ -321,36 +318,63 @@ body::after {
   padding: 0 20px; text-align: center;
 }
 
-/* ── TITLE SCREEN ── */
+/* ── TITLE / START SCREEN ── */
+
+/* Vreth system label above the title */
+.vreth-system-label {
+  font-size: clamp(0.28rem, 1.2vw, 0.36rem);
+  letter-spacing: 0.32em;
+  color: var(--vreth-green);
+  text-shadow: 0 0 14px var(--vreth-green);
+  margin-bottom: 2px;
+  animation: labelFlicker 4s steps(2) infinite;
+}
+@keyframes labelFlicker {
+  0%, 89%, 91%, 94%, 96%, 100% { opacity: 1; }
+  90%, 93%, 95%                 { opacity: 0.3; }
+}
+
 .game-title {
   font-size: clamp(2.8rem, 12vw, 6rem);
   font-weight: 400;
   letter-spacing: 0.2em;
   color: var(--white);
-  /* Layered pixel shadow for depth */
   text-shadow:
     4px 4px 0 var(--ember),
     8px 8px 0 rgba(255,69,0,0.5),
     12px 12px 0 rgba(255,69,0,0.2);
   line-height: 1;
-  margin-bottom: 8px;
-}
-.game-tagline {
-  font-size: clamp(0.38rem, 1.8vw, 0.52rem);
-  font-weight: 400;
-  letter-spacing: 0.12em;
-  color: var(--dim);
-  text-transform: lowercase;
-  margin-bottom: 28px;
+  margin-bottom: 2px;
 }
 
-/* Animated ring demo on start screen */
+/* Tagline reframed as Vreth directive */
+.game-tagline {
+  font-size: clamp(0.32rem, 1.5vw, 0.44rem);
+  font-weight: 400;
+  letter-spacing: 0.10em;
+  color: rgba(255,244,224,0.22);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  line-height: 1.8;
+}
+
+/* Lore flavour line below tagline */
+.game-lore-line {
+  font-size: clamp(0.26rem, 1.1vw, 0.34rem);
+  letter-spacing: 0.14em;
+  color: rgba(0,255,178,0.35);
+  text-shadow: 0 0 10px rgba(0,255,178,0.3);
+  margin-bottom: 22px;
+  line-height: 2;
+}
+
+/* Animated ring demo */
 .ring-demo {
   width: 90px; height: 90px;
   border-radius: 50%;
   border: 2px solid rgba(255,140,0,0.30);
   box-shadow: 0 0 12px rgba(255,140,0,0.10), inset 0 0 12px rgba(255,140,0,0.04);
-  position: relative; margin-bottom: 24px;
+  position: relative; margin-bottom: 20px;
   animation: demoPulse 2s ease-in-out infinite;
 }
 .ring-demo::before {
@@ -366,7 +390,6 @@ body::after {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   width: 6px; height: 6px;
-  /* pixel-square dot */
   background: var(--white);
   box-shadow: 0 0 8px rgba(255,140,0,0.8);
 }
@@ -381,6 +404,16 @@ body::after {
   100% { inset: -50px; opacity: 0;   border-color: rgba(255,140,0,0.1); }
 }
 
+/* Vreth classification notice below ring */
+.vreth-notice {
+  font-size: clamp(0.24rem, 1vw, 0.30rem);
+  letter-spacing: 0.18em;
+  color: rgba(0,255,178,0.28);
+  line-height: 2.2;
+  margin-top: -10px;
+  margin-bottom: 4px;
+}
+
 .key-hint {
   font-size: 0.38rem;
   letter-spacing: 0.16em;
@@ -388,13 +421,16 @@ body::after {
   margin-top: 8px;
 }
 
-/* ── GAME OVER ── */
+/* ── GAME OVER / VERDICT SCREEN ── */
 .go-label {
-  font-size: 0.42rem;
-  letter-spacing: 0.2em;
-  color: rgba(255,244,224,0.28);
+  font-size: 0.38rem;
+  letter-spacing: 0.22em;
+  color: rgba(0,255,178,0.35);        /* vreth green instead of warm white */
+  text-shadow: 0 0 8px rgba(0,255,178,0.2);
   margin-bottom: -4px;
+  text-transform: uppercase;
 }
+
 .go-score {
   font-size: clamp(2.6rem, 11vw, 6rem);
   font-weight: 400;
@@ -405,26 +441,56 @@ body::after {
     4px 4px 0 var(--ember),
     8px 8px 0 rgba(255,69,0,0.35);
 }
+
 .go-divider {
-  width: 40px; height: 2px;
-  background: rgba(255,140,0,0.25);
-  margin: 10px 0;
+  width: 40px; height: 1px;
+  /* Changed to vreth green */
+  background: rgba(0,255,178,0.20);
+  margin: 8px 0;
 }
+
 .go-best {
   font-size: clamp(0.9rem, 3.5vw, 1.5rem);
   font-weight: 400;
   color: var(--dim);
   text-shadow: 2px 2px 0 rgba(255,69,0,0.3);
 }
+
+/* Rank title — this gets its color set inline by JS per rank */
 .go-level {
-  font-size: clamp(0.7rem, 3vw, 1.1rem);
+  font-size: clamp(0.9rem, 3.8vw, 1.6rem);
   font-weight: 400;
-  letter-spacing: 0.15em;
-  color: var(--accent);
-  text-shadow: 3px 3px 0 rgba(255,140,0,0.4), 0 0 18px var(--accent);
+  letter-spacing: 0.18em;
+  color: var(--accent);              /* fallback; overridden by JS */
+  text-shadow: 3px 3px 0 rgba(255,140,0,0.4), 0 0 22px var(--accent);
+  animation: rankPulse 2.4s ease-in-out infinite;
 }
+@keyframes rankPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.82; }
+}
+
+/* Alien verdict text — injected by JS as #go-verdict */
+#go-verdict {
+  font-size: clamp(0.24rem, 1.1vw, 0.34rem);
+  letter-spacing: 0.08em;
+  color: rgba(0,255,178,0.40);
+  text-shadow: 0 0 8px rgba(0,255,178,0.25);
+  max-width: 300px;
+  line-height: 2.0;
+  text-align: center;
+  margin-top: 2px;
+  font-family: var(--font);
+  animation: verdictTypeIn 0.8s steps(20) ease-out;
+}
+@keyframes verdictTypeIn {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0% 0 0); }
+}
+
+/* New high score badge */
 .new-hs {
-  font-size: 0.48rem;
+  font-size: 0.44rem;
   letter-spacing: 0.18em;
   color: var(--gold);
   text-shadow: 2px 2px 0 #B8860B;
@@ -439,24 +505,39 @@ body::after {
 /* ── PIXEL BUTTON ── */
 .btn {
   font-family: var(--font);
-  font-size: 0.58rem;
+  font-size: 0.52rem;
   font-weight: 400;
   letter-spacing: 0.14em;
   color: #080200;
   background: var(--white);
   border: none;
   padding: clamp(12px, 3vw, 16px) clamp(22px, 7vw, 32px);
-  /* Hard pixel shadow — no border-radius */
   border-radius: 0;
   box-shadow:
     4px 4px 0 var(--ember),
     8px 8px 0 rgba(255,69,0,0.35);
   cursor: pointer;
-  margin-top: 18px;
-  transition: transform 0.08s steps(2), box-shadow 0.08s steps(2);
+  margin-top: 14px;
+  transition: transform 0.08s steps(2), box-shadow 0.08s steps(2), background 0.08s steps(2);
   min-height: 48px;
   min-width: 160px;
+  position: relative;
 }
+
+/* Vreth border glow on button */
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 1px solid rgba(0,255,178,0.15);
+  pointer-events: none;
+  transition: border-color 0.2s ease;
+}
+.btn:hover::before {
+  border-color: rgba(0,255,178,0.40);
+  box-shadow: 0 0 14px rgba(0,255,178,0.15);
+}
+
 .btn:hover {
   background: var(--accent);
   color: #080200;
@@ -487,12 +568,26 @@ body::after {
 
 .speed-pip {
   width: 5px; height: 5px;
-  /* square pips — pixel style */
   border-radius: 0;
-  background: rgba(255,244,224,0.10);
+  background: rgba(0,255,178,0.07);   /* vreth green base */
   transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 .speed-pip.active {
   background: var(--accent);
   box-shadow: 0 0 6px var(--accent);
+}
+
+/* ── VRETH CORNER MARK — subtle alien watermark bottom-left ── */
+body::before {
+  content: 'VRETH // CLASSIFICATION ENGINE // v7.3.1';
+  position: fixed;
+  bottom: 14px;
+  left: 16px;
+  font-family: var(--font);
+  font-size: 0.22rem;
+  letter-spacing: 0.20em;
+  color: rgba(0,255,178,0.10);
+  pointer-events: none;
+  z-index: 5;
+  white-space: nowrap;
 }

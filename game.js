@@ -1,20 +1,106 @@
 /* ──────────────────────────────────────────────────────────────────────────────
-   PULSE — game.js  (v3: dopamine-engineered)
-   New systems:
-     · THE BREAKTHROUGH  — live high-score crossing: gold flash, triumphant
-                           arpeggio, persistent vignette, banner
-     · THE PRESSURE RELEASE — level-up overhauled: bass shockwave boom,
-                              5 expanding rings, spring-scale name, 150 particles
-     · GOD MODE          — 8 consecutive perfects: comet trail, pulse vignette,
-                           doubled multiplier, SFX cascade, broken on non-perfect
-     · COMBO LIGHTNING   — zigzag bolts radiate from target at high combo
-     · NEAR-MISS ZONE    — faint accent fill between goodWin bounds on approach
-     · HEARTBEAT DOT     — center dot pulses at current ring speed
-     · CHROMATIC ABER.   — CSS hue-rotate / saturate jolt on every miss
+   PULSE — game.js  (v4: the vreth classification engine)
+   Story: Earth 2031. The Vreth occupation. Every human must be tested.
+   This machine reads your neural reflexes and assigns your caste.
+   Systems:
+     · LORE INTRO        — typewriter crawl before game starts
+     · RANK SYSTEM       — each level clears earns a caste title
+     · CEREMONY REWRITE  — level-up shows rank promotion + alien verdict
+     · GAMEOVER VERDICT  — cold alien sentence with rank earned
+     · NEURAL OVERDRIVE  — God Mode renamed to Vreth term
+     · SIGNAL ANOMALY    — Breakthrough renamed to Vreth detection event
 ────────────────────────────────────────────────────────────────────────────── */
 
 (function () {
   'use strict';
+
+  // ── LORE & RANK DATA ────────────────────────────────────────────────────────
+
+  const LORE = {
+    intro: [
+      'EARTH. 2031.',
+      'THE VRETH ARRIVED WITHOUT WARNING.',
+      'NO WAR. NO NEGOTIATION.',
+      'JUST SILENCE — THEN OCCUPATION.',
+      'THEY DO NOT KILL.',
+      'THEY SORT.',
+      'EVERY HUMAN WILL BE TESTED.',
+      'THIS MACHINE READS WHAT IS UNDERNEATH.',
+      'YOUR RESULT DETERMINES YOUR FATE.',
+      'THERE IS NO APPEAL.',
+      'BEGIN.',
+    ],
+
+    // Rank earned after clearing each level (index = levelIdx cleared)
+    ranks: [
+      {
+        title:    'CITIZEN',
+        alien:    'SUBJECT LOGGED. BASELINE COGNITION CONFIRMED.',
+        desc:     'Managed human. Basic rations. Supervised housing.',
+        color:    '#FF8C00',
+      },
+      {
+        title:    'OPERATOR',
+        alien:    'NEURAL EFFICIENCY: ACCEPTABLE. ASSIGNING INFRASTRUCTURE ROLE.',
+        desc:     'Runs human-facing systems. Transport. Supply chains. Some autonomy.',
+        color:    '#FFD700',
+      },
+      {
+        title:    'SPECIALIST',
+        alien:    'REACTION INDEX EXCEEDS BASELINE BY 340%. FLAGGING FOR TECHNICAL DIVISION.',
+        desc:     'Operates Vreth machinery. Reflex speed of a pre-occupation F1 pilot.',
+        color:    '#FFD700',
+      },
+      {
+        title:    'SENTINEL',
+        alien:    'COMBAT COGNITION THRESHOLD REACHED. AUTHORIZING ENFORCEMENT CLEARANCE.',
+        desc:     'Controls other humans on behalf of the Vreth. Armed. Feared.',
+        color:    '#FF4500',
+      },
+      {
+        title:    'ARCHITECT',
+        alien:    'ANOMALOUS SPATIAL PROCESSING DETECTED. ELEVATED CLEARANCE GRANTED.',
+        desc:     'Designs occupied city infrastructure. Significant privilege. Significant burden.',
+        color:    '#FF2200',
+      },
+      {
+        title:    'PRIME',
+        alien:    'SPECIMEN EXHIBITS NEAR-VRETH COGNITIVE SIGNATURES. INNER COUNCIL NOTIFIED.',
+        desc:     'Direct Vreth liaison. Humanity\'s most dangerous minds — working for the enemy.',
+        color:    '#CC0000',
+      },
+      {
+        title:    'ASCENDANT',
+        alien:    'CLASSIFICATION FAILURE. NO EXISTING CASTE APPLIES. ESCALATING TO HIGH COMMAND.',
+        desc:     'Unclassified. The Vreth have never seen a score this high. Something else is being decided.',
+        color:    '#FFF4E0',
+      },
+    ],
+
+    // Drone rank — for those who fail level 1
+    drone: {
+      title:    'DRONE',
+      alien:    'COGNITIVE SCORE: INSUFFICIENT. ASSIGNING TO LABOR DIVISION.',
+      desc:     'Slave labor. Mining. Waste processing. No rights.',
+      color:    '#444444',
+    },
+
+    // Alien commentary during level ceremonies (indexed by new levelIdx)
+    ceremonyLines: [
+      'INITIATING PHASE 2. INCREASING NEURAL PRESSURE.',            // entering FLAME
+      'THERMAL THRESHOLD BREACH. COGNITIVE LOAD AMPLIFIED.',        // entering HEAT
+      'SUBJECT IS ADAPTING. DEPLOYING PATTERN DISRUPTION.',         // entering BLAZE
+      'RESISTANCE NOTED. ESCALATING TO INFERNO PROTOCOL.',          // entering INFERNO
+      'UNPRECEDENTED ENDURANCE. FORGE SEQUENCE ACTIVATED.',         // entering FORGE
+      'ALL KNOWN PARAMETERS EXCEEDED. PLASMA FIELD ENGAGED.',       // entering PLASMA
+    ],
+
+    // God Mode — Vreth term
+    neuralOverdrive: 'NEURAL OVERDRIVE',
+
+    // Breakthrough — Vreth detection
+    signalAnomaly:   '✦ SIGNAL ANOMALY ✦',
+  };
 
   // ── CANVAS SETUP ────────────────────────────────────────────────────────────
 
@@ -192,7 +278,7 @@
 
   // ── STATE ────────────────────────────────────────────────────────────────────
 
-  let phase         = 'idle';
+  let phase         = 'intro';   // starts with lore intro now
   let score         = 0;
   let combo         = 0;
   let hitCount      = 0;
@@ -202,6 +288,14 @@
   let perfectStreak = 0;
   let speed         = LEVELS[0].baseSpeed;
   let highScore     = parseInt(localStorage.getItem('pulse_hs') || '0');
+
+  // Lore intro state
+  let introLineIdx  = 0;
+  let introCharIdx  = 0;
+  let introT        = 0;
+  let introDisplayLines = [];   // lines fully typed so far
+  let introDone     = false;
+  let introSkipped  = false;
 
   let ring      = null;
   let parts     = [];
@@ -447,11 +541,40 @@
     const newBest = score > highScore;
     if (newBest) { highScore = score; localStorage.setItem('pulse_hs', highScore); }
 
+    // Determine rank earned
+    // If cleared 0 levels (died on level 1) → DRONE
+    // Otherwise → rank at levelIdx - 1 if died mid-level, or levelIdx if just leveled up
+    const rankEarned = levelIdx === 0
+      ? LORE.drone
+      : LORE.ranks[Math.min(levelIdx - 1, LORE.ranks.length - 1)];
+
     finalScoreEl.textContent = score;
     finalBestEl.textContent  = highScore;
-    finalLevelEl.textContent = currentLevel().name;
-    finalLevelEl.style.color = currentLevel().accent;
-    finalLevelEl.style.textShadow = `0 0 20px ${currentLevel().accent}`;
+
+    // Show rank instead of plain level name
+    finalLevelEl.textContent      = rankEarned.title;
+    finalLevelEl.style.color      = rankEarned.color;
+    finalLevelEl.style.textShadow = `0 0 20px ${rankEarned.color}`;
+
+    // Inject alien verdict line under rank
+    let verdictEl = document.getElementById('go-verdict');
+    if (!verdictEl) {
+      verdictEl    = document.createElement('div');
+      verdictEl.id = 'go-verdict';
+      verdictEl.style.cssText = [
+        'font-size: clamp(0.28rem, 1.2vw, 0.38rem)',
+        'letter-spacing: 0.08em',
+        'color: rgba(255,244,224,0.35)',
+        'max-width: 280px',
+        'line-height: 1.9',
+        'text-align: center',
+        'margin-top: 4px',
+        'font-family: var(--font)',
+      ].join(';');
+      finalLevelEl.insertAdjacentElement('afterend', verdictEl);
+    }
+    verdictEl.textContent = rankEarned.alien;
+
     newHsBadge.classList.toggle('hidden', !newBest);
 
     livesHudEl.classList.add('hidden');
@@ -585,7 +708,7 @@
     hudScoreEl.classList.add('godmode');
     const cx = canvas.width  / 2;
     const cy = canvas.height / 2;
-    pushFeedback('⚡ GOD MODE ⚡', '#FFFFFF', cx, cy - targetRadius() - 72);
+    pushFeedback(LORE.neuralOverdrive, '#FFFFFF', cx, cy - targetRadius() - 72);
   }
 
   function deactivateGodMode() {
@@ -603,6 +726,21 @@
   // ── TAP / HIT DETECTION ──────────────────────────────────────────────────────
 
   function onInput() {
+    if (phase === 'intro') {
+      if (!introDone) {
+        // Skip to end of typing
+        introDisplayLines = [...LORE.intro];
+        introDone  = true;
+        // Compress remaining time so auto-transition fires soon
+        const typingDuration = LORE.intro.reduce((s, l) => s + l.length, 0) / 28;
+        introT = typingDuration;
+      } else {
+        // Already done — go to idle immediately
+        phase = 'idle';
+        startScreen.style.display = '';
+      }
+      return;
+    }
     if (phase === 'idle')      { startGame(); return; }
     if (phase === 'gameover')  return;
     if (phase === 'ceremony')  {
@@ -812,6 +950,42 @@
   // ── UPDATE ───────────────────────────────────────────────────────────────────
 
   function update(dt) {
+    // ── LORE INTRO UPDATE ──────────────────────────────────────────────────────
+    if (phase === 'intro') {
+      introT += dt;
+      if (!introDone) {
+        const CHARS_PER_SEC = 28;
+        const totalChars = LORE.intro.reduce((s, l) => s + l.length, 0);
+        const elapsed    = introT * CHARS_PER_SEC;
+        let   charBudget = Math.floor(elapsed);
+        let   lineI = 0, charI = 0;
+
+        for (let i = 0; i < LORE.intro.length; i++) {
+          if (charBudget <= 0) break;
+          const take = Math.min(charBudget, LORE.intro[i].length);
+          charBudget -= take;
+          lineI = i;
+          charI = take;
+        }
+
+        // Rebuild display lines
+        introDisplayLines = [];
+        for (let i = 0; i < lineI; i++) introDisplayLines.push(LORE.intro[i]);
+        if (charI > 0) introDisplayLines.push(LORE.intro[lineI].slice(0, charI));
+
+        if (lineI >= LORE.intro.length - 1 && charI >= LORE.intro[LORE.intro.length - 1].length) {
+          introDone = true;
+        }
+      } else {
+        // After typing done, wait 1.8s then auto-transition to idle
+        if (introT > (LORE.intro.reduce((s, l) => s + l.length, 0) / 28) + 1.8) {
+          phase = 'idle';
+          startScreen.style.display = '';
+        }
+      }
+      return;
+    }
+
     if (flashA > 0) flashA = Math.max(0, flashA - dt * 2.8);
     shakeX *= 0.74; shakeY *= 0.74;
     if (Math.abs(shakeX) < 0.05) shakeX = 0;
@@ -945,6 +1119,71 @@
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+  }
+
+  // ── DRAW LORE INTRO ──────────────────────────────────────────────────────────
+
+  function drawLoreIntro() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#080200';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawGrid();
+
+    const cx        = canvas.width / 2;
+    const lineH     = Math.min(shortSide() * 0.045, 22);
+    const fontSize  = Math.min(shortSide() * 0.018, 9);
+    const totalH    = introDisplayLines.length * lineH;
+    const startY    = canvas.height / 2 - totalH / 2;
+
+    ctx.save();
+    ctx.textAlign     = 'center';
+    ctx.font          = `400 ${fontSize}px "Press Start 2P", monospace`;
+    ctx.letterSpacing = '0.12em';
+
+    introDisplayLines.forEach((line, i) => {
+      const isLast = i === introDisplayLines.length - 1;
+      // Last line currently typing: pulse opacity
+      const alpha = isLast && !introDone
+        ? 0.55 + 0.45 * Math.sin(introT * 8)
+        : (i < introDisplayLines.length - 1 ? 1 : 0.9);
+      // Color: last line = accent, rest fade from dim to white
+      const frac = i / Math.max(introDisplayLines.length - 1, 1);
+      const col  = i === introDisplayLines.length - 1 && introDone
+        ? '#FF8C00'
+        : `rgba(255, ${180 + Math.floor(frac * 60)}, ${120 + Math.floor(frac * 100)}, ${alpha})`;
+
+      ctx.fillStyle   = col;
+      ctx.shadowColor = col;
+      ctx.shadowBlur  = isLast ? 14 : 4;
+      ctx.globalAlpha = alpha;
+      ctx.fillText(line, cx, startY + i * lineH);
+    });
+
+    // Typing cursor on current line
+    if (!introDone && introDisplayLines.length > 0) {
+      const curLine = introDisplayLines[introDisplayLines.length - 1];
+      const blink   = Math.sin(introT * 10) > 0;
+      if (blink) {
+        const tw  = ctx.measureText(curLine).width;
+        const cx2 = cx + tw / 2 + 4;
+        const cy2 = startY + (introDisplayLines.length - 1) * lineH;
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle   = '#FF8C00';
+        ctx.fillRect(cx2, cy2 - fontSize, 6, fontSize + 2);
+      }
+    }
+
+    // Skip hint
+    if (introT > 1.2) {
+      ctx.globalAlpha   = 0.2 + 0.12 * Math.sin(introT * 2.5);
+      ctx.fillStyle     = 'rgba(255,244,224,0.5)';
+      ctx.shadowBlur    = 0;
+      ctx.font          = `400 ${Math.min(fontSize * 0.7, 6)}px "Press Start 2P", monospace`;
+      ctx.letterSpacing = '0.18em';
+      ctx.fillText('TAP TO SKIP', cx, canvas.height - 40);
+    }
+
     ctx.restore();
   }
 
@@ -1204,7 +1443,7 @@
     ctx.textAlign   = 'center';
     ctx.font        = '400 7px "Press Start 2P", monospace';
     ctx.letterSpacing = '0.28em';
-    ctx.fillText('✦  NEW BEST  ✦', cx, bannerY + 4);
+    ctx.fillText(LORE.signalAnomaly, cx, bannerY + 4);
     ctx.restore();
   }
 
@@ -1257,7 +1496,7 @@
     ctx.textAlign     = 'left';
     ctx.font          = '400 6px "Press Start 2P", monospace';
     ctx.letterSpacing = '0.28em';
-    ctx.fillText('GOD', 28, 94);
+    ctx.fillText('N.O.', 28, 94);
     ctx.restore();
   }
 
@@ -1284,7 +1523,7 @@
     const lv = ceremony.level;
     const [r, g, b] = hexToRgb(lv.accent);
 
-    // Expanding accent rings (inherited from original, kept as atmosphere)
+    // Expanding accent rings (atmosphere)
     for (let i = 0; i < 3; i++) {
       const delay = i * 0.18;
       const lt    = Math.max(0, t - delay);
@@ -1299,37 +1538,88 @@
       : 1;
 
     if (nameAlpha > 0) {
-      // Spring-scale: invisible during flash, then slams in with overshoot
+      // Spring-scale for level name
       const sp    = Math.max(0, t - 0.3);
       const decay = Math.exp(-sp * 7);
       const osc   = Math.cos(sp * 14);
       const nameScale = sp <= 0 ? 0.001 : 1 + decay * osc * 0.5;
 
+      // ── RANK EARNED label ────────────────────────────────────────────────────
+      // levelIdx already advanced — rank is at levelIdx - 1 (just cleared)
+      const rankIdx  = Math.min(levelIdx - 1, LORE.ranks.length - 1);
+      const rank     = rankIdx >= 0 ? LORE.ranks[rankIdx] : null;
+
+      if (rank) {
+        // "RANK ASSIGNED" micro label
+        ctx.save();
+        ctx.globalAlpha   = nameAlpha * 0.55;
+        ctx.fillStyle     = 'rgba(255,255,255,0.5)';
+        ctx.textAlign     = 'center';
+        ctx.font          = `400 5px "Press Start 2P", monospace`;
+        ctx.letterSpacing = '0.28em';
+        ctx.fillText('RANK ASSIGNED', cx, cy - 62);
+        ctx.restore();
+
+        // Rank title — spring scaled, accent colored
+        ctx.save();
+        ctx.globalAlpha = nameAlpha;
+        ctx.translate(cx, cy - 28);
+        ctx.scale(nameScale, nameScale);
+        ctx.fillStyle     = rank.color;
+        ctx.shadowColor   = rank.color;
+        ctx.shadowBlur    = 40;
+        ctx.textAlign     = 'center';
+        const rankFontSize = Math.min(shortSide() * 0.052, 36);
+        ctx.font          = `400 ${rankFontSize}px "Press Start 2P", monospace`;
+        ctx.letterSpacing = '0.18em';
+        ctx.fillText(rank.title, 0, 0);
+        ctx.restore();
+
+        // Rank desc line
+        ctx.save();
+        ctx.globalAlpha   = nameAlpha * 0.65;
+        ctx.fillStyle     = '#ffffff';
+        ctx.shadowColor   = rank.color;
+        ctx.shadowBlur    = 10;
+        ctx.textAlign     = 'center';
+        ctx.font          = `400 ${Math.min(shortSide() * 0.014, 8)}px "Press Start 2P", monospace`;
+        ctx.letterSpacing = '0.08em';
+        ctx.fillText(rank.desc, cx, cy + 14);
+        ctx.restore();
+      }
+
+      // ── Alien commentary line ─────────────────────────────────────────────────
+      const alienLine = LORE.ceremonyLines[Math.min(levelIdx - 1, LORE.ceremonyLines.length - 1)];
+      if (alienLine && t > 0.5) {
+        const alienAlpha = Math.min(nameAlpha * 0.7, (t - 0.5) * 1.2);
+        ctx.save();
+        ctx.globalAlpha   = alienAlpha;
+        ctx.fillStyle     = lv.accent;
+        ctx.shadowColor   = lv.accent;
+        ctx.shadowBlur    = 8;
+        ctx.textAlign     = 'center';
+        ctx.font          = `400 ${Math.min(shortSide() * 0.012, 7)}px "Press Start 2P", monospace`;
+        ctx.letterSpacing = '0.06em';
+        // Wrap long alien line into two halves
+        const half = Math.ceil(alienLine.length / 2);
+        const line1 = alienLine.slice(0, half);
+        const line2 = alienLine.slice(half);
+        ctx.fillText(line1, cx, cy + 38);
+        ctx.fillText(line2, cx, cy + 52);
+        ctx.restore();
+      }
+
+      // ── Level name (top, small) ───────────────────────────────────────────────
       ctx.save();
-      ctx.globalAlpha = nameAlpha;
-      ctx.translate(cx, cy - 18);
-      ctx.scale(nameScale, nameScale);
+      ctx.globalAlpha   = nameAlpha * 0.28;
       ctx.fillStyle     = lv.accent;
-      ctx.shadowColor   = lv.accent;
-      ctx.shadowBlur    = 40;
       ctx.textAlign     = 'center';
-      const nameFontSize = Math.min(shortSide() * 0.055, 40);
-      ctx.font          = `400 ${nameFontSize}px "Press Start 2P", monospace`;
-      ctx.letterSpacing = '0.18em';
-      ctx.fillText(lv.name, 0, 0);
+      ctx.font          = `400 ${Math.min(shortSide() * 0.016, 9)}px "Press Start 2P", monospace`;
+      ctx.letterSpacing = '0.22em';
+      ctx.fillText(`— ${lv.name} —`, cx, cy - 82);
       ctx.restore();
 
-      ctx.save();
-      ctx.globalAlpha   = nameAlpha * 0.7;
-      ctx.fillStyle     = '#ffffff';
-      ctx.shadowColor   = lv.accent;
-      ctx.shadowBlur    = 14;
-      ctx.textAlign     = 'center';
-      ctx.font          = `400 ${Math.min(shortSide() * 0.018, 10)}px "Press Start 2P", monospace`;
-      ctx.letterSpacing = '0.12em';
-      ctx.fillText(lv.subtitle, cx, cy + 18);
-      ctx.restore();
-
+      // TAP TO CONTINUE
       if (t > 0.6) {
         ctx.save();
         ctx.globalAlpha   = Math.min(nameAlpha * 0.5, (t - 0.6) * 1.5);
@@ -1337,7 +1627,7 @@
         ctx.textAlign     = 'center';
         ctx.font          = `400 7px "Press Start 2P", monospace`;
         ctx.letterSpacing = '0.12em';
-        ctx.fillText('TAP TO CONTINUE', cx, cy + 50);
+        ctx.fillText('TAP TO CONTINUE', cx, cy + 80);
         ctx.restore();
       }
     }
@@ -1346,6 +1636,9 @@
   // ── MAIN DRAW ────────────────────────────────────────────────────────────────
 
   function draw() {
+    // Lore intro is fully self-contained
+    if (phase === 'intro') { drawLoreIntro(); return; }
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Heartbeat micro-pulse on background luminance
@@ -1426,5 +1719,8 @@
   // ── INIT ─────────────────────────────────────────────────────────────────────
 
   bestValEl.textContent = highScore;
+
+  // Start screen hidden until lore intro finishes
+  startScreen.style.display = 'none';
 
 })();

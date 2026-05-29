@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PULSE</title>
+  <meta name="theme-color" content="#080200">
+  <meta name="description" content="Earth 2031. The Vreth occupation. Every human will be tested. Your result determines your fate.">
+  <title>PULSE // VRETH CLASSIFICATION ENGINE</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -12,47 +14,84 @@
 
   <canvas id="canvas"></canvas>
 
-  <!-- HUD overlay -->
+  <!-- ── HUD overlay ───────────────────────────────────────────────────── -->
   <div id="hud" class="hidden">
     <div id="hud-score">0</div>
     <div id="hud-combo" class="hidden">×<span id="combo-val">2</span></div>
     <div id="hud-best">BEST<br><span id="best-val">0</span></div>
   </div>
 
-  <!-- Lives — horizontal, top-left, pixel hearts -->
+  <!-- ── Lives — horizontal, top-left, pixel hearts ────────────────────── -->
   <div id="lives-hud" class="hidden">
     <span id="life-0" class="life-heart"></span>
     <span id="life-1" class="life-heart"></span>
     <span id="life-2" class="life-heart"></span>
   </div>
 
-  <!-- Level path map (right side, vertical) -->
-  <div id="level-map" class="hidden"></div>
+  <!-- ── Classification progress map (right side, vertical) ────────────── -->
+  <div id="level-map" class="hidden">
+    <div class="lm-header">CASTE</div>
+  </div>
 
-  <!-- Start screen -->
+  <!-- ── START / TITLE SCREEN ──────────────────────────────────────────── -->
   <div id="start-screen">
     <div class="screen-card">
+
+      <!-- Vreth system identifier -->
+      <div class="vreth-system-label">VRETH CLASSIFICATION SYSTEM</div>
+
+      <!-- Game title -->
       <div class="game-title">PULSE</div>
-      <div class="game-tagline">tap the ring. survive the heat.</div>
+
+      <!-- Reframed tagline -->
+      <div class="game-tagline">NEURAL REFLEX MEASUREMENT DEVICE</div>
+
+      <!-- Lore flavour -->
+      <div class="game-lore-line">
+        EARTH 2031 &nbsp;·&nbsp; ALL HUMANS MUST BE TESTED<br>
+        YOUR RESULT DETERMINES YOUR FATE
+      </div>
+
+      <!-- Ring demo -->
       <div class="ring-demo" id="ring-demo"></div>
-      <button class="btn" id="start-btn">PRESS START</button>
+
+      <!-- Small Vreth instruction notice -->
+      <div class="vreth-notice">
+        SYNCHRONISE WITH THE PULSE<br>
+        THE MACHINE READS WHAT IS UNDERNEATH
+      </div>
+
+      <button class="btn" id="start-btn">BEGIN TEST</button>
+
       <div class="key-hint">SPACE · CLICK · TAP</div>
+
     </div>
   </div>
 
-  <!-- Game over screen -->
+  <!-- ── GAME OVER / VERDICT SCREEN ────────────────────────────────────── -->
   <div id="gameover-screen" class="screen-hidden">
     <div class="screen-card">
-      <div class="go-label">SCORE</div>
+
+      <!-- Score section -->
+      <div class="go-label">NEURAL SCORE</div>
       <div id="final-score" class="go-score">0</div>
-      <div id="new-hs-badge" class="new-hs hidden">★ NEW BEST ★</div>
+      <div id="new-hs-badge" class="new-hs hidden">★ SIGNAL ANOMALY ★</div>
+
       <div class="go-divider"></div>
-      <div class="go-label">BEST</div>
+
+      <!-- Best score -->
+      <div class="go-label">PEAK RECORD</div>
       <div id="final-best" class="go-best">0</div>
+
       <div class="go-divider"></div>
-      <div class="go-label">REACHED</div>
-      <div id="final-level" class="go-level">VOID</div>
-      <button class="btn" id="retry-btn">TRY AGAIN</button>
+
+      <!-- Rank verdict — text + color set by JS -->
+      <div class="go-label">RANK ASSIGNED</div>
+      <div id="final-level" class="go-level">—</div>
+      <!-- #go-verdict alien sentence injected here by game.js -->
+
+      <button class="btn" id="retry-btn">RETEST SUBJECT</button>
+
     </div>
   </div>
 

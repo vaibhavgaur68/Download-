@@ -1120,7 +1120,7 @@
     perfectStreak = 0; combo = 0;
     updateHUD();
 
-    if (lives <= 0 && false) {
+    if (lives <= 0) {
       SFX.miss();
       endGame();
     } else {

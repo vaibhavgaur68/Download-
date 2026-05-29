@@ -111,6 +111,14 @@
   let gridCache      = null;
   let gridCacheDirty = true;
 
+  // Gradient / hex caches — also declared before resize() to avoid TDZ errors
+  const _hexRgbCache = {};
+  let   _breakthroughGrad = null;
+  let   _godModeGrad      = null;
+  let   _godModeGradColor = null;
+  let   _bannerGrad       = null;
+  let   _bannerGradW      = 0;
+
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -337,14 +345,6 @@
   let heartbeatT     = 0;    // center dot pulse phase
 
   const SPEED_PIPS = 9;
-
-  // ── CACHES ────────────────────────────────────────────────────────────────────
-  const _hexRgbCache = {};          // hex → [r,g,b]
-  let   _breakthroughGrad = null;   // reuse radial gradient (breakthrough vignette)
-  let   _godModeGrad      = null;   // reuse radial gradient (god mode overlay)
-  let   _godModeGradColor = null;   // accent string for which the gradient was built
-  let   _bannerGrad       = null;   // reuse linear gradient (breakthrough banner)
-  let   _bannerGradW      = 0;      // canvas width when banner grad was built
 
   // ── HELPERS ──────────────────────────────────────────────────────────────────
 

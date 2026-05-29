@@ -131,8 +131,8 @@
   // At level 3+ every GPU compositing pass from shadowBlur stalls the frame.
   // liveBlur() returns 0 above that threshold so arcs stroke without a blur pass.
   function liveBlur(blur) {
-    if (PERF_LOW)     return blur * 0.4;
-    if (levelIdx >= 3) return 0;
+    if (PERF_LOW)      return 0;
+    if (levelIdx >= 2) return 0;
     return blur * BLUR_MULT;
   }
 
@@ -1242,15 +1242,9 @@
     if (Math.abs(shakeX) < 0.05) shakeX = 0;
     if (Math.abs(shakeY) < 0.05) shakeY = 0;
 
-    // Chromatic aberration — skip on low-end devices
+    // Chromatic aberration — draw as canvas overlay, no CSS filter (avoids GPU composite)
     if (chromaT > 0) {
       chromaT = Math.max(0, chromaT - dt * 2.4);
-      if (!PERF_LOW) {
-        canvas.style.filter = chromaT > 0.01
-          ? `hue-rotate(${Math.sin(chromaT * 20) * 24}deg) saturate(${1 + chromaT * 5.5})`
-          : '';
-        if (chromaT <= 0.01) canvas.style.filter = '';
-      }
     }
 
     // Particles
@@ -1351,26 +1345,24 @@
   // ── DRAW HELPERS ─────────────────────────────────────────────────────────────
 
   function circle(x, y, r, strokeColor, lineWidth, blur) {
-    ctx.save();
+    const lb = liveBlur(blur);
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth   = lineWidth;
-    ctx.shadowColor = strokeColor;
-    ctx.shadowBlur  = liveBlur(blur);
+    if (lb > 0) { ctx.shadowColor = strokeColor; ctx.shadowBlur = lb; }
     ctx.beginPath();
     ctx.arc(x, y, Math.max(r, 0), 0, Math.PI * 2);
     ctx.stroke();
-    ctx.restore();
+    if (lb > 0) ctx.shadowBlur = 0;
   }
 
   function dot(x, y, r, color, blur) {
-    ctx.save();
-    ctx.fillStyle   = color;
-    ctx.shadowColor = color;
-    ctx.shadowBlur  = liveBlur(blur);
+    const lb = liveBlur(blur);
+    ctx.fillStyle = color;
+    if (lb > 0) { ctx.shadowColor = color; ctx.shadowBlur = lb; }
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
+    if (lb > 0) ctx.shadowBlur = 0;
   }
 
   // ── DRAW LORE INTRO ──────────────────────────────────────────────────────────
@@ -1476,25 +1468,22 @@
     const blur  = 4 + prox * 22;
     const lw    = 1.5 + prox * 2.5;
 
-    // GOD MODE: comet trail — batched to avoid per-segment save/restore
+    // GOD MODE: comet trail — single save/restore, NO shadowBlur ever
     if (godMode && ringTrail.length > 0) {
-      // Shorten trail at high speed to stay smooth
-      const visLen = speed > 280 ? Math.ceil(ringTrail.length * 0.5) : ringTrail.length;
+      const visLen = levelIdx >= 2 ? Math.ceil(ringTrail.length * 0.4) : ringTrail.length;
       const slice  = ringTrail.slice(-visLen);
       ctx.save();
-      ctx.shadowColor = `rgb(${ar},${ag},${ab})`;
+      ctx.shadowBlur  = 0;
+      ctx.strokeStyle = `rgb(${ar},${ag},${ab})`;
       slice.forEach((t, i) => {
-        const frac   = (i + 1) / slice.length;
-        const talpha = frac * 0.52 * t.o;
-        ctx.globalAlpha = talpha;
-        ctx.lineWidth   = 0.5 + frac * 2.5;
-        // Reduce blur at high speed to avoid compositing stalls
-        ctx.shadowBlur  = PERF_LOW || speed > 280 ? 0 : (2 + frac * 20) * BLUR_MULT;
-        ctx.strokeStyle = `rgba(${ar},${ag},${ab},1)`;
+        const frac      = (i + 1) / slice.length;
+        ctx.globalAlpha = frac * 0.45 * t.o;
+        ctx.lineWidth   = 0.5 + frac * 2.0;
         ctx.beginPath();
         ctx.arc(cx, cy, t.r, 0, Math.PI * 2);
         ctx.stroke();
       });
+      ctx.globalAlpha = 1;
       ctx.restore();
     }
 
@@ -1514,16 +1503,13 @@
       const zoneProx = Math.max(0, 1 - absd / (lv.goodWin * sc * 2.4));
       if (zoneProx > 0) {
         const [ar, ag, ab] = hexToRgb(lv.accent);
-        ctx.save();
         ctx.globalAlpha = zoneProx * 0.09;
         ctx.fillStyle   = `rgb(${ar},${ag},${ab})`;
-        ctx.shadowColor = lv.accent;
-        ctx.shadowBlur  = liveBlur(14);
         ctx.beginPath();
         ctx.arc(cx, cy, tr + lv.goodWin, 0, Math.PI * 2);
         ctx.arc(cx, cy, Math.max(0, tr - lv.goodWin), 0, Math.PI * 2, true);
         ctx.fill('evenodd');
-        ctx.restore();
+        ctx.globalAlpha = 1;
       }
     }
 
@@ -1552,13 +1538,19 @@
 
   function drawParticles() {
     if (parts.length === 0) return;
-    const useShadow = !PERF_LOW && levelIdx < 3;
+    const useShadow = !PERF_LOW && levelIdx < 2;
+    // Group by color to minimize fillStyle switches
     ctx.save();
+    ctx.shadowBlur = 0;
+    let lastColor = null;
     parts.forEach(p => {
       const a = Math.pow(p.life, 1.4);
       ctx.globalAlpha = a;
-      ctx.fillStyle   = p.color;
-      if (useShadow) { ctx.shadowColor = p.color; ctx.shadowBlur = 6; }
+      if (p.color !== lastColor) {
+        ctx.fillStyle = p.color;
+        if (useShadow) { ctx.shadowColor = p.color; ctx.shadowBlur = 5; }
+        lastColor = p.color;
+      }
       const sz = p.r * 2;
       ctx.fillRect(
         Math.round(p.x + shakeX - p.r),
@@ -1566,6 +1558,8 @@
         Math.round(sz), Math.round(sz)
       );
     });
+    ctx.shadowBlur  = 0;
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -1575,13 +1569,13 @@
     ctx.font          = '400 9px "Press Start 2P", monospace';
     ctx.textAlign     = 'center';
     ctx.letterSpacing = '0.06em';
-    ctx.shadowBlur    = liveBlur(18);
+    ctx.shadowBlur    = 0;
     feedbacks.forEach(f => {
       ctx.globalAlpha = Math.max(0, f.alpha);
       ctx.fillStyle   = f.color;
-      ctx.shadowColor = f.color;
       ctx.fillText(f.text, f.x + shakeX, f.y + shakeY);
     });
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -1624,15 +1618,21 @@
   // ── DRAW SHOCKWAVES ──────────────────────────────────────────────────────────
 
   function drawShockwaves(cx, cy) {
+    if (shockwaves.length === 0) return;
+    const scx = cx + shakeX, scy = cy + shakeY;
+    // Batch: group by color, no shadowBlur (too expensive at level 3+)
+    ctx.save();
     shockwaves.forEach(s => {
       const [r, g, b] = hexToRgb(s.color);
-      circle(
-        cx + shakeX, cy + shakeY, s.r,
-        `rgba(${r},${g},${b},${s.alpha})`,
-        Math.max(0.2, s.lw * s.alpha * 2.2),
-        22 * s.alpha
-      );
+      ctx.globalAlpha = s.alpha;
+      ctx.strokeStyle = `rgb(${r},${g},${b})`;
+      ctx.lineWidth   = Math.max(0.2, s.lw * s.alpha * 2.2);
+      ctx.beginPath();
+      ctx.arc(scx, scy, Math.max(0, s.r), 0, Math.PI * 2);
+      ctx.stroke();
     });
+    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   // ── DRAW LIGHTNING ───────────────────────────────────────────────────────────
@@ -1643,11 +1643,10 @@
     ctx.lineWidth   = 1.5;
     ctx.lineCap     = 'round';
     ctx.lineJoin    = 'round';
-    ctx.shadowBlur  = liveBlur(16);
+    ctx.shadowBlur  = 0;
     lightningBolts.forEach(bolt => {
       ctx.globalAlpha = bolt.alpha;
       ctx.strokeStyle = bolt.color;
-      ctx.shadowColor = bolt.color;
       ctx.beginPath();
       bolt.points.forEach((p, i) => {
         if (i === 0) ctx.moveTo(p.x + shakeX, p.y + shakeY);
@@ -1655,6 +1654,7 @@
       });
       ctx.stroke();
     });
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 

@@ -514,6 +514,12 @@
     speed = lv.baseSpeed;
     setAccent(lv.accent);
 
+    // Remove verdict overlay if present
+    const ovl = document.getElementById('vreth-overlay');
+    if (ovl) ovl.remove();
+    matrixActive = false;
+    if (matrixRaf) { cancelAnimationFrame(matrixRaf); matrixRaf = null; }
+
     startScreen.style.display = 'none';
     goScreen.className         = 'screen-hidden';
     hudEl.classList.remove('hidden');
@@ -526,6 +532,277 @@
     lifePips.forEach(h => { h.classList.remove('lost','gained','losing'); });
     updateHUD(); updatePips(); updateLivesUI(); updateLevelHud();
     spawnRing();
+  }
+
+  // ── MATRIX VERDICT SEQUENCE ──────────────────────────────────────────────────
+
+  let matrixRaf    = null;   // animation frame handle for matrix
+  let matrixActive = false;
+
+  function runVerdictSequence(rankEarned, score, highScore, newBest) {
+    // ── Phase 1: blackout flash ──────────────────────────────────────────────
+    const overlay = document.createElement('div');
+    overlay.id = 'vreth-overlay';
+    overlay.style.cssText = [
+      'position:fixed','inset:0','z-index:999',
+      'background:#000','display:flex','flex-direction:column',
+      'align-items:center','justify-content:center',
+      'font-family:"Press Start 2P",monospace',
+      'overflow:hidden','opacity:0',
+      'transition:opacity 0.18s ease',
+    ].join(';');
+    document.body.appendChild(overlay);
+
+    // Force reflow then fade in to black
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+    });
+
+    // ── Phase 2: Matrix rain canvas ──────────────────────────────────────────
+    const matCanvas = document.createElement('canvas');
+    matCanvas.style.cssText = 'position:absolute;inset:0;opacity:0;transition:opacity 0.4s ease;';
+    overlay.appendChild(matCanvas);
+
+    // ── Phase 3: Analysis text panel ─────────────────────────────────────────
+    const analysisEl = document.createElement('div');
+    analysisEl.style.cssText = [
+      'position:relative','z-index:2','text-align:left',
+      'width:min(420px,88vw)','padding:0 8px',
+      'color:#00FFB2','font-size:clamp(0.26rem,1.2vw,0.34rem)',
+      'letter-spacing:0.12em','line-height:2.4',
+    ].join(';');
+    overlay.appendChild(analysisEl);
+
+    // ── Build analysis lines ──────────────────────────────────────────────────
+    const analysisLines = [
+      { text: '> VRETH CLASSIFICATION ENGINE v7.3.1',  delay: 0,    color: '#00FFB2' },
+      { text: '> SCANNING NEURAL SIGNATURE...',         delay: 320,  color: '#00FFB2' },
+      { text: `> RAW REFLEX INDEX: ${score}`,           delay: 780,  color: '#00CFFF' },
+      { text: `> PEAK RECORDED:    ${highScore}`,       delay: 1080, color: '#00CFFF' },
+      { text: '> CROSS-REF AGAINST 8.1B SUBJECTS...',  delay: 1400, color: '#00FFB2' },
+      { text: '> PATTERN MATCH COMPLETE.',              delay: 2000, color: '#00FFB2' },
+      { text: '> ASSIGNING CASTE...',                   delay: 2450, color: '#FFD700' },
+    ];
+
+    // ── Start matrix rain after 300 ms ───────────────────────────────────────
+    setTimeout(() => {
+      matCanvas.style.opacity = '0.22';
+      const mctx = matCanvas.getContext('2d');
+      matCanvas.width  = window.innerWidth;
+      matCanvas.height = window.innerHeight;
+
+      const cols    = Math.floor(matCanvas.width / 14);
+      const drops   = Array.from({ length: cols }, () => Math.random() * -80);
+      const CHARS   = 'VRETH01ΨΦΩ∑⟁▓░▒∂∇◈⟐⬡⬢01101001ABCDEF'.split('');
+      matrixActive  = true;
+
+      function matrixFrame() {
+        if (!matrixActive) return;
+        mctx.fillStyle = 'rgba(0,0,0,0.13)';
+        mctx.fillRect(0, 0, matCanvas.width, matCanvas.height);
+        mctx.font = '13px "Press Start 2P", monospace';
+        drops.forEach((y, i) => {
+          const ch = CHARS[Math.floor(Math.random() * CHARS.length)];
+          const bright = Math.random() > 0.92;
+          mctx.fillStyle = bright ? '#FFFFFF' : '#00FFB2';
+          mctx.globalAlpha = bright ? 0.95 : 0.55 + Math.random() * 0.3;
+          mctx.fillText(ch, i * 14, y * 14);
+          mctx.globalAlpha = 1;
+          if (y * 14 > matCanvas.height && Math.random() > 0.96) drops[i] = 0;
+          drops[i] += 0.6;
+        });
+        matrixRaf = requestAnimationFrame(matrixFrame);
+      }
+      matrixFrame();
+    }, 300);
+
+    // ── Typewrite analysis lines ──────────────────────────────────────────────
+    analysisLines.forEach(({ text, delay, color }) => {
+      setTimeout(() => {
+        const line = document.createElement('div');
+        line.style.color = color;
+        line.style.whiteSpace = 'pre';
+        analysisEl.appendChild(line);
+
+        let i = 0;
+        const iv = setInterval(() => {
+          line.textContent = text.slice(0, ++i);
+          if (i >= text.length) clearInterval(iv);
+        }, 22);
+
+        // Play subtle tick sound
+        try {
+          const a = ac();
+          const o = a.createOscillator();
+          const g = a.createGain();
+          o.connect(g); g.connect(a.destination);
+          o.type = 'square'; o.frequency.value = 120 + Math.random() * 60;
+          const t = a.currentTime;
+          g.gain.setValueAtTime(0.04, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+          o.start(t); o.stop(t + 0.07);
+        } catch (_) {}
+      }, delay);
+    });
+
+    // ── Phase 4: Verdict reveal after analysis ────────────────────────────────
+    const VERDICT_DELAY = 3200;
+
+    setTimeout(() => {
+      // Stop matrix rain, fade out
+      matrixActive = false;
+      if (matrixRaf) { cancelAnimationFrame(matrixRaf); matrixRaf = null; }
+      matCanvas.style.opacity = '0';
+
+      // Clear analysis, show verdict
+      analysisEl.innerHTML = '';
+      analysisEl.style.textAlign = 'center';
+      analysisEl.style.width = '100%';
+
+      // SUBJECT CLASSIFIED header
+      const header = document.createElement('div');
+      header.style.cssText = [
+        `color:#00FFB2`,
+        'font-size:clamp(0.28rem,1.1vw,0.36rem)',
+        'letter-spacing:0.35em',
+        'margin-bottom:18px',
+        'text-shadow:0 0 12px #00FFB2',
+        'animation:vFlicker 2s steps(2) infinite',
+      ].join(';');
+      header.textContent = '── SUBJECT CLASSIFIED ──';
+      analysisEl.appendChild(header);
+
+      // Score
+      const scoreLabel = document.createElement('div');
+      scoreLabel.style.cssText = 'color:rgba(0,255,178,0.5);font-size:clamp(0.26rem,1vw,0.32rem);letter-spacing:0.28em;margin-bottom:4px;';
+      scoreLabel.textContent = 'NEURAL SCORE';
+      analysisEl.appendChild(scoreLabel);
+
+      const scoreBig = document.createElement('div');
+      scoreBig.style.cssText = [
+        'color:#FFF4E0',
+        'font-size:clamp(2.4rem,10vw,5rem)',
+        'text-shadow:4px 4px 0 #FF4500,8px 8px 0 rgba(255,69,0,0.35)',
+        'line-height:1',
+        'margin-bottom:6px',
+      ].join(';');
+      scoreBig.textContent = score;
+      analysisEl.appendChild(scoreBig);
+
+      if (newBest) {
+        const badge = document.createElement('div');
+        badge.style.cssText = 'color:#FFD700;font-size:0.36rem;letter-spacing:0.18em;margin-bottom:10px;text-shadow:0 0 14px #FFD700;';
+        badge.textContent = '★ SIGNAL ANOMALY ★';
+        analysisEl.appendChild(badge);
+      }
+
+      // Divider
+      const div1 = document.createElement('div');
+      div1.style.cssText = 'width:40px;height:1px;background:rgba(0,255,178,0.25);margin:10px auto;';
+      analysisEl.appendChild(div1);
+
+      // Rank title — big, alien, coloured
+      const rankLabel = document.createElement('div');
+      rankLabel.style.cssText = 'color:rgba(0,255,178,0.45);font-size:clamp(0.26rem,1vw,0.32rem);letter-spacing:0.30em;margin-bottom:6px;';
+      rankLabel.textContent = 'CASTE ASSIGNED';
+      analysisEl.appendChild(rankLabel);
+
+      const rankTitle = document.createElement('div');
+      rankTitle.style.cssText = [
+        `color:${rankEarned.color}`,
+        'font-size:clamp(1.1rem,4.5vw,2.2rem)',
+        'letter-spacing:0.22em',
+        `text-shadow:3px 3px 0 rgba(0,0,0,0.8),0 0 30px ${rankEarned.color}`,
+        'margin-bottom:8px',
+        'animation:rankReveal 0.6s steps(8) ease-out',
+      ].join(';');
+      rankTitle.textContent = rankEarned.title;
+      analysisEl.appendChild(rankTitle);
+
+      // Alien verdict — typewritten
+      const verdictText = document.createElement('div');
+      verdictText.style.cssText = [
+        'color:rgba(0,255,178,0.45)',
+        'font-size:clamp(0.22rem,0.9vw,0.30rem)',
+        'letter-spacing:0.08em',
+        'max-width:320px',
+        'margin:0 auto 16px',
+        'line-height:2.2',
+        'animation:verdictIn 1s steps(24) ease-out',
+      ].join(';');
+      verdictText.textContent = rankEarned.alien;
+      analysisEl.appendChild(verdictText);
+
+      // Divider
+      const div2 = document.createElement('div');
+      div2.style.cssText = 'width:40px;height:1px;background:rgba(0,255,178,0.20);margin:8px auto 16px;';
+      analysisEl.appendChild(div2);
+
+      // Retry button
+      const btn = document.createElement('button');
+      btn.style.cssText = [
+        'font-family:"Press Start 2P",monospace',
+        'font-size:0.44rem',
+        'letter-spacing:0.14em',
+        'color:#080200',
+        'background:#FFF4E0',
+        'border:none',
+        'padding:14px 28px',
+        'cursor:pointer',
+        'margin-top:6px',
+        'box-shadow:4px 4px 0 #FF4500,8px 8px 0 rgba(255,69,0,0.35)',
+        'position:relative',
+        'min-height:48px',
+        'min-width:160px',
+      ].join(';');
+      btn.textContent = 'RETEST SUBJECT';
+      btn.addEventListener('click', () => {
+        matrixActive = false;
+        if (matrixRaf) { cancelAnimationFrame(matrixRaf); matrixRaf = null; }
+        overlay.remove();
+        startGame();
+      });
+      // hover style via JS since we can't use a stylesheet here easily
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = '#FF8C00';
+        btn.style.boxShadow  = '4px 4px 0 #CC5500,8px 8px 0 rgba(255,69,0,0.5),0 0 30px rgba(255,140,0,0.4)';
+        btn.style.transform  = 'translate(-1px,-1px)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = '#FFF4E0';
+        btn.style.boxShadow  = '4px 4px 0 #FF4500,8px 8px 0 rgba(255,69,0,0.35)';
+        btn.style.transform  = '';
+      });
+      btn.addEventListener('mousedown',  () => { btn.style.transform = 'translate(4px,4px)'; btn.style.boxShadow = 'none'; });
+      btn.addEventListener('mouseup',    () => { btn.style.transform = ''; });
+      analysisEl.appendChild(btn);
+
+      // Inject keyframe styles once
+      if (!document.getElementById('vreth-verdict-styles')) {
+        const st = document.createElement('style');
+        st.id = 'vreth-verdict-styles';
+        st.textContent = `
+          @keyframes vFlicker {
+            0%,88%,92%,96%,100%{opacity:1}
+            90%,94%{opacity:0.25}
+          }
+          @keyframes rankReveal {
+            from{clip-path:inset(0 100% 0 0);opacity:0}
+            to{clip-path:inset(0 0% 0 0);opacity:1}
+          }
+          @keyframes verdictIn {
+            from{clip-path:inset(0 100% 0 0)}
+            to{clip-path:inset(0 0% 0 0)}
+          }
+        `;
+        document.head.appendChild(st);
+      }
+
+      // Update the hidden goScreen too (so retry from original btn still works)
+      document.getElementById('final-score').textContent = score;
+      document.getElementById('final-best').textContent  = highScore;
+
+    }, VERDICT_DELAY);
   }
 
   function endGame() {
@@ -541,47 +818,21 @@
     const newBest = score > highScore;
     if (newBest) { highScore = score; localStorage.setItem('pulse_hs', highScore); }
 
-    // Determine rank earned
-    // If cleared 0 levels (died on level 1) → DRONE
-    // Otherwise → rank at levelIdx - 1 if died mid-level, or levelIdx if just leveled up
     const rankEarned = levelIdx === 0
       ? LORE.drone
       : LORE.ranks[Math.min(levelIdx - 1, LORE.ranks.length - 1)];
 
-    finalScoreEl.textContent = score;
-    finalBestEl.textContent  = highScore;
-
-    // Show rank instead of plain level name
-    finalLevelEl.textContent      = rankEarned.title;
-    finalLevelEl.style.color      = rankEarned.color;
-    finalLevelEl.style.textShadow = `0 0 20px ${rankEarned.color}`;
-
-    // Inject alien verdict line under rank
-    let verdictEl = document.getElementById('go-verdict');
-    if (!verdictEl) {
-      verdictEl    = document.createElement('div');
-      verdictEl.id = 'go-verdict';
-      verdictEl.style.cssText = [
-        'font-size: clamp(0.28rem, 1.2vw, 0.38rem)',
-        'letter-spacing: 0.08em',
-        'color: rgba(255,244,224,0.35)',
-        'max-width: 280px',
-        'line-height: 1.9',
-        'text-align: center',
-        'margin-top: 4px',
-        'font-family: var(--font)',
-      ].join(';');
-      finalLevelEl.insertAdjacentElement('afterend', verdictEl);
-    }
-    verdictEl.textContent = rankEarned.alien;
-
-    newHsBadge.classList.toggle('hidden', !newBest);
-
     livesHudEl.classList.add('hidden');
     levelMapEl.classList.add('hidden');
     speedBar.classList.remove('visible');
+    hudEl.classList.add('hidden');
 
-    setTimeout(() => { goScreen.className = ''; }, 650);
+    // Remove any pre-existing overlay from a previous round
+    const old = document.getElementById('vreth-overlay');
+    if (old) old.remove();
+
+    // Short delay so the red death flash registers first, then sequence begins
+    setTimeout(() => runVerdictSequence(rankEarned, score, highScore, newBest), 420);
   }
 
   // ── LEVEL UP ─────────────────────────────────────────────────────────────────

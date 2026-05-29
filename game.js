@@ -929,6 +929,7 @@
       waveOffset:   Math.random() * Math.PI * 2,
       stutterTimer: 0,
       opacity:      1,
+      age:          0,   // frames alive — prevents false auto-miss on first tick
     };
     ringTrail = [];
   }
@@ -1272,33 +1273,40 @@
       chromaT = Math.max(0, chromaT - dt * 2.4);
     }
 
-    // Particles
-    parts = parts.filter(p => {
+    // Particles — update in-place to avoid per-frame array allocation
+    let pi = parts.length;
+    while (pi--) {
+      const p = parts[pi];
       p.x += p.vx; p.y += p.vy;
       p.vx *= 0.92; p.vy *= 0.92;
       p.life -= p.decay;
-      return p.life > 0;
-    });
+      if (p.life <= 0) parts.splice(pi, 1);
+    }
 
-    // Feedbacks
-    feedbacks = feedbacks.filter(f => {
+    // Feedbacks — in-place
+    let fi = feedbacks.length;
+    while (fi--) {
+      const f = feedbacks[fi];
       f.y    += f.vy;
       f.alpha -= dt * 1.4;
-      return f.alpha > 0;
-    });
+      if (f.alpha <= 0) feedbacks.splice(fi, 1);
+    }
 
-    // Shockwaves
-    shockwaves = shockwaves.filter(s => {
+    // Shockwaves — in-place
+    let si = shockwaves.length;
+    while (si--) {
+      const s = shockwaves[si];
       s.r     += s.spd * dt;
       s.alpha -= dt * 1.15;
-      return s.alpha > 0;
-    });
+      if (s.alpha <= 0) shockwaves.splice(si, 1);
+    }
 
-    // Lightning fade
-    lightningBolts = lightningBolts.filter(b => {
-      b.alpha -= dt * 5.5;
-      return b.alpha > 0;
-    });
+    // Lightning fade — in-place
+    let li = lightningBolts.length;
+    while (li--) {
+      lightningBolts[li].alpha -= dt * 5.5;
+      if (lightningBolts[li].alpha <= 0) lightningBolts.splice(li, 1);
+    }
 
     // Breakthrough timer
     if (breakthroughActive) breakthroughT += dt;
@@ -1356,6 +1364,7 @@
     }
 
     ring.radius -= effectiveSpeed * screenScale() * dt;
+    ring.age    += 1;
 
     // Update God Mode comet trail
     if (godMode) {
@@ -1363,8 +1372,9 @@
       if (ringTrail.length > TRAIL_LEN) ringTrail.shift();
     }
 
-    // Auto-miss: passed through target zone
-    if (ring.radius < targetRadius() - (lv.goodWin + 6) * screenScale()) registerMiss();
+    // Auto-miss: passed through target zone.
+    // age > 2 guard prevents a large first-frame dt from instantly overshooting.
+    if (ring.age > 2 && ring.radius < targetRadius() - (lv.goodWin + 6) * screenScale()) registerMiss();
   }
 
   // ── DRAW HELPERS ─────────────────────────────────────────────────────────────
@@ -1489,7 +1499,8 @@
     }
 
     const baseAlpha = ring.opacity ?? 1;
-    const alpha = baseAlpha * (0.28 + prox * 0.72);
+    // Quantise alpha to 8 buckets so the rgba string stays cache-friendly
+    const alpha = Math.round(baseAlpha * (0.28 + prox * 0.72) * 8) / 8;
     const blur  = 4 + prox * 22;
     const lw    = 1.5 + prox * 2.5;
 
@@ -1564,13 +1575,19 @@
   function drawParticles() {
     if (parts.length === 0) return;
     const useShadow = !PERF_LOW && levelIdx < 2;
-    // Group by color to minimize fillStyle switches
     ctx.save();
     ctx.shadowBlur = 0;
     let lastColor = null;
+    let lastAlpha = -1;
     parts.forEach(p => {
-      const a = Math.pow(p.life, 1.4);
-      ctx.globalAlpha = a;
+      // Quantise alpha to 32 buckets to minimise ctx.globalAlpha writes
+      const rawA     = Math.pow(p.life, 1.4);
+      if (rawA < 0.02) return;                     // skip invisible particles
+      const quantA   = Math.round(rawA * 32) / 32;
+      if (quantA !== lastAlpha) {
+        ctx.globalAlpha = quantA;
+        lastAlpha = quantA;
+      }
       if (p.color !== lastColor) {
         ctx.fillStyle = p.color;
         if (useShadow) { ctx.shadowColor = p.color; ctx.shadowBlur = 5; }
@@ -2033,8 +2050,13 @@
   let lastT = 0;
 
   function loop(ts) {
-    const dt = Math.min((ts - lastT) / 1000, 0.05);
+    const rawDt = (ts - lastT) / 1000;
     lastT = ts;
+    // Tighter dt cap at high speed: large frame gaps cause the ring to jump
+    // past the target zone in one tick, triggering false auto-misses (red flash).
+    const speedFactor = ring ? Math.min(speed / 150, 1) : 0;
+    const dtCap = 0.05 - speedFactor * 0.03;   // 50ms at low speed → 20ms at max speed
+    const dt = Math.min(rawDt, dtCap);
     update(dt);
     flushLevelMap(ts);
     draw();

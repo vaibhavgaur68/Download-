@@ -114,7 +114,11 @@
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
-    gridCacheDirty = true;
+    gridCacheDirty    = true;
+    _breakthroughGrad = null;
+    _godModeGrad      = null;
+    _bannerGrad       = null;
+    _bannerGradW      = 0;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -334,6 +338,14 @@
 
   const SPEED_PIPS = 9;
 
+  // ── CACHES ────────────────────────────────────────────────────────────────────
+  const _hexRgbCache = {};          // hex → [r,g,b]
+  let   _breakthroughGrad = null;   // reuse radial gradient (breakthrough vignette)
+  let   _godModeGrad      = null;   // reuse radial gradient (god mode overlay)
+  let   _godModeGradColor = null;   // accent string for which the gradient was built
+  let   _bannerGrad       = null;   // reuse linear gradient (breakthrough banner)
+  let   _bannerGradW      = 0;      // canvas width when banner grad was built
+
   // ── HELPERS ──────────────────────────────────────────────────────────────────
 
   function currentLevel() { return LEVELS[Math.min(levelIdx, LEVELS.length - 1)]; }
@@ -343,11 +355,14 @@
   }
 
   function hexToRgb(hex) {
-    return [
+    if (_hexRgbCache[hex]) return _hexRgbCache[hex];
+    const v = [
       parseInt(hex.slice(1,3), 16),
       parseInt(hex.slice(3,5), 16),
       parseInt(hex.slice(5,7), 16),
     ];
+    _hexRgbCache[hex] = v;
+    return v;
   }
 
   // ── UI REFS ──────────────────────────────────────────────────────────────────
@@ -418,6 +433,9 @@
 
   // ── LEVEL MAP ────────────────────────────────────────────────────────────────
 
+  let _levelMapDirty    = false;
+  let _levelMapLastTime = 0;
+
   function buildLevelMap() {
     if (!levelMapEl) return;
     levelMapEl.innerHTML = '';
@@ -452,9 +470,19 @@
       row.appendChild(label);
       levelMapEl.appendChild(row);
     });
+    _levelMapDirty = true;
   }
 
   function updateLevelMap() {
+    _levelMapDirty = true;
+  }
+
+  function flushLevelMap(now) {
+    if (!_levelMapDirty) return;
+    if (now - _levelMapLastTime < 100) return;   // max 10 DOM updates/sec
+    _levelMapLastTime = now;
+    _levelMapDirty    = false;
+
     if (!levelMapEl) return;
     const lv     = currentLevel();
     const isLast = levelIdx >= LEVELS.length - 1;
@@ -465,14 +493,12 @@
       if (!fill || !name) return;
 
       if (i < levelIdx) {
-        // completed — full fill, accent glow
         fill.style.height     = '100%';
         fill.style.background = lvDef.accent;
         fill.style.boxShadow  = `0 0 6px ${lvDef.accent}, 0 0 14px ${lvDef.accent}70`;
         name.style.color      = `${lvDef.accent}70`;
         name.style.textShadow = 'none';
       } else if (i === levelIdx) {
-        // current — partial fill by progress
         const prog = isLast
           ? (levelHits % 30) / 30
           : Math.min(levelHits / lv.hitsNeeded, 1);
@@ -482,7 +508,6 @@
         name.style.color      = lv.accent;
         name.style.textShadow = `0 0 8px ${lv.accent}`;
       } else {
-        // future — empty
         fill.style.height    = '0%';
         fill.style.boxShadow = 'none';
         name.style.color     = 'rgba(255,255,255,0.08)';
@@ -1677,20 +1702,23 @@
     ctx.save();
     ctx.globalAlpha = prog * pulse;
 
-    // Horizontal gradient bar
+    // Horizontal gradient bar — reuse if canvas width unchanged
     const barH = 40;
-    const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-    grad.addColorStop(0,    'rgba(255,209,102,0)');
-    grad.addColorStop(0.22, 'rgba(255,209,102,0.18)');
-    grad.addColorStop(0.5,  'rgba(255,209,102,0.34)');
-    grad.addColorStop(0.78, 'rgba(255,209,102,0.18)');
-    grad.addColorStop(1,    'rgba(255,209,102,0)');
-    ctx.fillStyle = grad;
+    if (!_bannerGrad || _bannerGradW !== canvas.width) {
+      _bannerGrad  = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      _bannerGrad.addColorStop(0,    'rgba(255,209,102,0)');
+      _bannerGrad.addColorStop(0.22, 'rgba(255,209,102,0.18)');
+      _bannerGrad.addColorStop(0.5,  'rgba(255,209,102,0.34)');
+      _bannerGrad.addColorStop(0.78, 'rgba(255,209,102,0.18)');
+      _bannerGrad.addColorStop(1,    'rgba(255,209,102,0)');
+      _bannerGradW = canvas.width;
+    }
+    ctx.fillStyle = _bannerGrad;
     ctx.fillRect(0, bannerY - barH / 2, canvas.width, barH);
 
     ctx.fillStyle   = '#FFD166';
     ctx.shadowColor = '#FFD166';
-    ctx.shadowBlur  = 32;
+    ctx.shadowBlur  = levelIdx >= 2 ? 0 : 32;
     ctx.textAlign   = 'center';
     ctx.font        = '400 7px "Press Start 2P", monospace';
     ctx.letterSpacing = '0.28em';
@@ -1707,11 +1735,18 @@
     const cx = canvas.width  / 2;
     const cy = canvas.height / 2;
     const ss = Math.max(canvas.width, canvas.height);
-    const grad = ctx.createRadialGradient(cx, cy, shortSide() * 0.35, cx, cy, ss * 0.72);
-    grad.addColorStop(0, 'rgba(255,209,102,0)');
-    grad.addColorStop(1, `rgba(255,209,102,${intens})`);
+    // Create gradient once per game session; recreate only if canvas resized
+    if (!_breakthroughGrad ||
+        _breakthroughGrad._w !== canvas.width || _breakthroughGrad._h !== canvas.height) {
+      _breakthroughGrad = ctx.createRadialGradient(cx, cy, shortSide() * 0.35, cx, cy, ss * 0.72);
+      _breakthroughGrad.addColorStop(0, 'rgba(255,209,102,0)');
+      _breakthroughGrad.addColorStop(1, 'rgba(255,209,102,0.054)');  // fixed stop; alpha scaled via globalAlpha
+      _breakthroughGrad._w = canvas.width;
+      _breakthroughGrad._h = canvas.height;
+    }
     ctx.save();
-    ctx.fillStyle = grad;
+    ctx.globalAlpha = intens / 0.054;
+    ctx.fillStyle   = _breakthroughGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
   }
@@ -1727,12 +1762,22 @@
     const pulse    = 0.5 + 0.5 * Math.sin(godModeT * 5.5);
 
     if (!PERF_LOW) {
-      const intens = 0.07 + pulse * 0.06;
-      const ss     = Math.max(canvas.width, canvas.height);
-      const grad   = ctx.createRadialGradient(cx, cy, shortSide() * 0.22, cx, cy, ss * 0.72);
-      grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
-      grad.addColorStop(1, `rgba(${r},${g},${b},${intens})`);
-      ctx.save(); ctx.fillStyle = grad;
+      const intens     = 0.07 + pulse * 0.06;
+      const ss         = Math.max(canvas.width, canvas.height);
+      const accentKey  = lv.accent;
+      // Rebuild gradient only when accent color or canvas size changes
+      if (!_godModeGrad || _godModeGradColor !== accentKey ||
+          _godModeGrad._w !== canvas.width || _godModeGrad._h !== canvas.height) {
+        _godModeGrad = ctx.createRadialGradient(cx, cy, shortSide() * 0.22, cx, cy, ss * 0.72);
+        _godModeGrad.addColorStop(0, `rgba(${r},${g},${b},0)`);
+        _godModeGrad.addColorStop(1, `rgba(${r},${g},${b},0.13)`);  // fixed; scale via globalAlpha
+        _godModeGrad._w    = canvas.width;
+        _godModeGrad._h    = canvas.height;
+        _godModeGradColor  = accentKey;
+      }
+      ctx.save();
+      ctx.globalAlpha = intens / 0.13;
+      ctx.fillStyle   = _godModeGrad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.restore();
     }
@@ -1743,7 +1788,7 @@
     ctx.globalAlpha   = fadeIn * (0.45 + 0.55 * pulse);
     ctx.fillStyle     = lv.accent;
     ctx.shadowColor   = lv.accent;
-    ctx.shadowBlur    = 18 * BLUR_MULT;
+    ctx.shadowBlur    = levelIdx >= 2 ? 0 : 18 * BLUR_MULT;
     ctx.textAlign     = 'left';
     ctx.font          = '400 6px "Press Start 2P", monospace';
     ctx.letterSpacing = '0.28em';
@@ -1755,14 +1800,13 @@
 
   function drawHeartbeatDot(cx, cy) {
     if (phase === 'playing') {
-      // Sharp pulse: positive half of sin, cubed for snappy attack
       const hb    = Math.pow(Math.max(0, Math.sin(heartbeatT * Math.PI * 2)), 3);
       const dotR  = 3 + hb * 4;
       const alpha = 0.62 + hb * 0.38;
-      const blur  = 10 + hb * 22;
+      const blur  = levelIdx >= 2 ? 0 : (10 + hb * 22);
       dot(cx, cy, dotR, `rgba(255,255,255,${alpha})`, blur);
     } else {
-      dot(cx, cy, 3, 'rgba(255,255,255,0.85)', 12);
+      dot(cx, cy, 3, 'rgba(255,255,255,0.85)', levelIdx >= 2 ? 0 : 12);
     }
   }
 
@@ -1818,7 +1862,7 @@
         ctx.scale(nameScale, nameScale);
         ctx.fillStyle     = rank.color;
         ctx.shadowColor   = rank.color;
-        ctx.shadowBlur    = 40;
+        ctx.shadowBlur    = levelIdx >= 2 ? 0 : 40;
         ctx.textAlign     = 'center';
         const rankFontSize = Math.min(shortSide() * 0.052, 36);
         ctx.font          = `400 ${rankFontSize}px "Press Start 2P", monospace`;
@@ -1831,7 +1875,7 @@
         ctx.globalAlpha   = nameAlpha * 0.65;
         ctx.fillStyle     = '#ffffff';
         ctx.shadowColor   = rank.color;
-        ctx.shadowBlur    = 10;
+        ctx.shadowBlur    = levelIdx >= 2 ? 0 : 10;
         ctx.textAlign     = 'center';
         ctx.font          = `400 ${Math.min(shortSide() * 0.014, 8)}px "Press Start 2P", monospace`;
         ctx.letterSpacing = '0.08em';
@@ -1847,7 +1891,7 @@
         ctx.globalAlpha   = alienAlpha;
         ctx.fillStyle     = lv.accent;
         ctx.shadowColor   = lv.accent;
-        ctx.shadowBlur    = 8;
+        ctx.shadowBlur    = levelIdx >= 2 ? 0 : 8;
         ctx.textAlign     = 'center';
         ctx.font          = `400 ${Math.min(shortSide() * 0.012, 7)}px "Press Start 2P", monospace`;
         ctx.letterSpacing = '0.06em';
@@ -1992,6 +2036,7 @@
     const dt = Math.min((ts - lastT) / 1000, 0.05);
     lastT = ts;
     update(dt);
+    flushLevelMap(ts);
     draw();
     requestAnimationFrame(loop);
   }

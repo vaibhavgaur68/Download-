@@ -118,6 +118,9 @@
   let   _godModeGradColor = null;
   let   _bannerGrad       = null;
   let   _bannerGradW      = 0;
+  let   _bgFillStyle      = '';
+  let   _bgFillKey        = -1;
+  let   _bgFillLv         = -1;
 
   function resize() {
     canvas.width  = window.innerWidth;
@@ -127,6 +130,8 @@
     _godModeGrad      = null;
     _bannerGrad       = null;
     _bannerGradW      = 0;
+    _bgFillKey        = -1;
+    _bgFillLv         = -1;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -135,7 +140,7 @@
   // Detect low-end / mobile: reduce particles, shadowBlur, skip grid & trail
   const isMobile  = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600;
   const PERF_LOW  = isMobile || (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency <= 4);
-  const MAX_PARTS = PERF_LOW ? 60  : 180;
+  const MAX_PARTS = PERF_LOW ? 30  : 180;
   const MAX_BOLTS = PERF_LOW ? 3   : 7;
   const TRAIL_LEN = PERF_LOW ? 8   : 18;
   const BLUR_MULT = PERF_LOW ? 0.4 : 1.0;   // scale all shadowBlur values
@@ -338,7 +343,15 @@
   const GOD_THRESHOLD = 8;
 
   // Visual systems
-  let ringTrail      = [];   // comet trail [{r, o}]
+  // ringTrail replaced by a fixed circular buffer — zero heap allocation per frame.
+  // _trailR / _trailO store radius and opacity values; _trailHead is the write pointer.
+  const _trailR    = new Float32Array(TRAIL_LEN);
+  const _trailO    = new Float32Array(TRAIL_LEN);
+  let   _trailHead = 0;
+  let   _trailSize = 0;   // valid entries (ramps up to TRAIL_LEN, then stays there)
+  // Legacy alias kept so spawnRing / triggerLevelUp / deactivateGodMode can still
+  // call "clearTrail()" without a refactor — we just reset the counters instead.
+  const ringTrail  = { get length() { return _trailSize; } };
   let shockwaves     = [];   // expanding rings [{r, alpha, color, lw, speed}]
   let lightningBolts = [];   // zigzag sparks [{points, alpha, color}]
   let chromaT        = 0;    // chromatic aberration intensity
@@ -349,6 +362,15 @@
   // ── HELPERS ──────────────────────────────────────────────────────────────────
 
   function currentLevel() { return LEVELS[Math.min(levelIdx, LEVELS.length - 1)]; }
+
+  // Trail buffer helpers — used instead of array push/shift/slice
+  function clearTrail()              { _trailHead = 0; _trailSize = 0; }
+  function pushTrail(r, o) {
+    _trailR[_trailHead] = r;
+    _trailO[_trailHead] = o;
+    _trailHead = (_trailHead + 1) % TRAIL_LEN;
+    if (_trailSize < TRAIL_LEN) _trailSize++;
+  }
 
   function setAccent(hex) {
     document.documentElement.style.setProperty('--accent', hex);
@@ -530,7 +552,7 @@
     // Reset dopamine systems
     breakthroughActive = false; breakthroughT = 0;
     godMode = false; godModeT = 0; godStreak = 0;
-    ringTrail = []; shockwaves = []; lightningBolts = [];
+    clearTrail(); shockwaves = []; lightningBolts = [];
     chromaT = 0; heartbeatT = 0;
     hudScoreEl.classList.remove('breakthrough', 'godmode');
     canvas.style.filter = '';
@@ -910,7 +932,7 @@
     ceremony = { t: 0, level: lv };
     phase    = 'ceremony';
     ring     = null;
-    ringTrail = [];
+    clearTrail();
     ceremonyInputConsumed = false;
   }
 
@@ -931,7 +953,10 @@
       opacity:      1,
       age:          0,   // frames alive — prevents false auto-miss on first tick
     };
-    ringTrail = [];
+    clearTrail();
+    // Reset flashCol so any residual red tint from a previous miss/game-over
+    // can't bleed into the first frame of the new ring.
+    flashCol = '#ffffff';
   }
 
   // ── BREAKTHROUGH ─────────────────────────────────────────────────────────────
@@ -994,7 +1019,7 @@
     flashA = 0.14; flashCol = '#888888';
     hudScoreEl.classList.remove('godmode');
     canvas.style.filter = '';
-    ringTrail = [];
+    clearTrail();
     const cx = canvas.width  / 2;
     const cy = canvas.height / 2;
     pushFeedback('BROKEN', 'rgba(255,255,255,0.45)', cx, cy - targetRadius() - 72);
@@ -1088,7 +1113,7 @@
 
     if (isPerfect) SFX.perfect(); else SFX.good();
 
-    ring = null; ringTrail = [];
+    ring = null; clearTrail();
     updateHUD(); updatePips();
 
     hudScoreEl.classList.remove('bump');
@@ -1127,7 +1152,7 @@
       SFX.loseLife();
       shakeX = 18; shakeY = 11;
       flashA = 0.24; flashCol = '#FF2D55';
-      ring = null; ringTrail = [];
+      ring = null; clearTrail();
       spawnRing();
     }
   }
@@ -1366,10 +1391,9 @@
     ring.radius -= effectiveSpeed * screenScale() * dt;
     ring.age    += 1;
 
-    // Update God Mode comet trail
+    // Update God Mode comet trail — circular buffer write, no heap allocation
     if (godMode) {
-      ringTrail.push({ r: ring.radius, o: ring.opacity ?? 1 });
-      if (ringTrail.length > TRAIL_LEN) ringTrail.shift();
+      pushTrail(ring.radius, ring.opacity ?? 1);
     }
 
     // Auto-miss: passed through target zone.
@@ -1505,20 +1529,21 @@
     const lw    = 1.5 + prox * 2.5;
 
     // GOD MODE: comet trail — single save/restore, NO shadowBlur ever
-    if (godMode && ringTrail.length > 0) {
-      const visLen = levelIdx >= 2 ? Math.ceil(ringTrail.length * 0.4) : ringTrail.length;
-      const slice  = ringTrail.slice(-visLen);
+    if (godMode && _trailSize > 0) {
+      const visLen = levelIdx >= 2 ? Math.ceil(_trailSize * 0.4) : _trailSize;
       ctx.save();
       ctx.shadowBlur  = 0;
       ctx.strokeStyle = `rgb(${ar},${ag},${ab})`;
-      slice.forEach((t, i) => {
-        const frac      = (i + 1) / slice.length;
-        ctx.globalAlpha = frac * 0.45 * t.o;
+      // Read the last `visLen` entries from the circular buffer (oldest first)
+      for (let i = 0; i < visLen; i++) {
+        const idx   = (_trailHead - visLen + i + TRAIL_LEN) % TRAIL_LEN;
+        const frac  = (i + 1) / visLen;
+        ctx.globalAlpha = frac * 0.45 * _trailO[idx];
         ctx.lineWidth   = 0.5 + frac * 2.0;
         ctx.beginPath();
-        ctx.arc(cx, cy, t.r, 0, Math.PI * 2);
+        ctx.arc(cx, cy, _trailR[idx], 0, Math.PI * 2);
         ctx.stroke();
-      });
+      }
       ctx.globalAlpha = 1;
       ctx.restore();
     }
@@ -1623,6 +1648,9 @@
 
   // ── DRAW GRID ────────────────────────────────────────────────────────────────
   // Grid is static — render once to an offscreen canvas and blit every frame.
+  // On iPad (PERF_LOW) we skip the grid entirely.
+  // On desktop we still blit every frame since the background clears the canvas,
+  // but we skip the expensive offscreen-canvas REBUILD when the size hasn't changed.
 
   function drawGrid() {
     if (PERF_LOW) return;
@@ -1749,6 +1777,8 @@
     if (!breakthroughActive || PERF_LOW) return;
     const pulse  = 0.5 + 0.5 * Math.sin(breakthroughT * 2.8);
     const intens = 0.032 + pulse * 0.022;
+    const alpha  = intens / 0.054;
+    if (alpha < 0.01) return;   // skip imperceptibly faint frames
     const cx = canvas.width  / 2;
     const cy = canvas.height / 2;
     const ss = Math.max(canvas.width, canvas.height);
@@ -1762,7 +1792,7 @@
       _breakthroughGrad._h = canvas.height;
     }
     ctx.save();
-    ctx.globalAlpha = intens / 0.054;
+    ctx.globalAlpha = alpha;
     ctx.fillStyle   = _breakthroughGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
@@ -1780,23 +1810,26 @@
 
     if (!PERF_LOW) {
       const intens     = 0.07 + pulse * 0.06;
-      const ss         = Math.max(canvas.width, canvas.height);
-      const accentKey  = lv.accent;
-      // Rebuild gradient only when accent color or canvas size changes
-      if (!_godModeGrad || _godModeGradColor !== accentKey ||
-          _godModeGrad._w !== canvas.width || _godModeGrad._h !== canvas.height) {
-        _godModeGrad = ctx.createRadialGradient(cx, cy, shortSide() * 0.22, cx, cy, ss * 0.72);
-        _godModeGrad.addColorStop(0, `rgba(${r},${g},${b},0)`);
-        _godModeGrad.addColorStop(1, `rgba(${r},${g},${b},0.13)`);  // fixed; scale via globalAlpha
-        _godModeGrad._w    = canvas.width;
-        _godModeGrad._h    = canvas.height;
-        _godModeGradColor  = accentKey;
+      const alpha      = intens / 0.13;
+      if (alpha >= 0.01) {
+        const ss         = Math.max(canvas.width, canvas.height);
+        const accentKey  = lv.accent;
+        // Rebuild gradient only when accent color or canvas size changes
+        if (!_godModeGrad || _godModeGradColor !== accentKey ||
+            _godModeGrad._w !== canvas.width || _godModeGrad._h !== canvas.height) {
+          _godModeGrad = ctx.createRadialGradient(cx, cy, shortSide() * 0.22, cx, cy, ss * 0.72);
+          _godModeGrad.addColorStop(0, `rgba(${r},${g},${b},0)`);
+          _godModeGrad.addColorStop(1, `rgba(${r},${g},${b},0.13)`);  // fixed; scale via globalAlpha
+          _godModeGrad._w    = canvas.width;
+          _godModeGrad._h    = canvas.height;
+          _godModeGradColor  = accentKey;
+        }
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle   = _godModeGrad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
       }
-      ctx.save();
-      ctx.globalAlpha = intens / 0.13;
-      ctx.fillStyle   = _godModeGrad;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.restore();
     }
 
     // "GOD" label always shown
@@ -2009,7 +2042,15 @@
     const hbPulse = phase === 'playing'
       ? Math.pow(Math.max(0, Math.sin(heartbeatT * Math.PI * 2)), 3) * 5
       : 0;
-    ctx.fillStyle = `rgb(${br + hbPulse},${bg + hbPulse},${bb + hbPulse})`;
+    // Quantise hbPulse to 6 integer buckets so the rgb string is only rebuilt
+    // ~6 times per heartbeat cycle instead of on every pixel-perfect float change.
+    const hbQ = Math.round(hbPulse);
+    if (_bgFillKey !== hbQ || _bgFillLv !== levelIdx) {
+      _bgFillStyle = `rgb(${br + hbQ},${bg + hbQ},${bb + hbQ})`;
+      _bgFillKey   = hbQ;
+      _bgFillLv    = levelIdx;
+    }
+    ctx.fillStyle = _bgFillStyle;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     drawGrid();

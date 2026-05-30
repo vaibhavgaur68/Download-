@@ -153,45 +153,87 @@ body::after {
   margin-top: 4px;
 }
 
-/* ── PAUSE BUTTON ── */
+/* ── PAUSE BUTTON — minimal SVG style ── */
 #pause-btn {
   position: fixed;
-  /* sits just below the lives hearts row, top-left */
   top: 52px;
   left: 28px;
   z-index: 15;
-  font-family: var(--font);
-  font-size: 0.50rem;
-  line-height: 1;
-  color: rgba(255,244,224,0.55);
-  background: transparent;
-  border: 1px solid rgba(255,244,224,0.10);
-  padding: 6px 9px;
+  background: rgba(8,2,0,0.70);
+  border: 1px solid rgba(0,255,178,0.20);
+  padding: 0;
   cursor: pointer;
   pointer-events: all;
-  transition:
-    color       0.12s ease,
-    border-color 0.12s ease,
-    background   0.12s ease,
-    transform    0.08s steps(2);
-  /* pixel-style: no rounded corners */
   border-radius: 0;
-  min-width: 34px;
-  min-height: 34px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.15s ease,
+    background   0.15s ease,
+    box-shadow   0.15s ease,
+    transform    0.10s ease;
 }
 #pause-btn:hover {
-  color: var(--white);
-  border-color: rgba(255,244,224,0.30);
-  background: rgba(255,244,224,0.06);
+  border-color: rgba(0,255,178,0.50);
+  background: rgba(0,255,178,0.06);
+  box-shadow: 0 0 12px rgba(0,255,178,0.14);
 }
-#pause-btn:active {
-  transform: scale(0.90);
-}
+#pause-btn:active { transform: scale(0.92); }
 #pause-btn.hidden { display: none; }
+
+/* SVG icons inside the button */
+#pause-btn .icon-play  { display: none; }
+#pause-btn .icon-pause { display: block; }
+#pause-btn.is-paused .icon-pause { display: none; }
+#pause-btn.is-paused .icon-play  { display: block; }
+
+/* ── ROLE INFO BUTTON — visible only when paused ── */
+#role-info-btn {
+  position: fixed;
+  top: 96px;
+  left: 28px;
+  z-index: 15;
+  font-family: var(--font);
+  font-size: clamp(0.20rem, 0.8vw, 0.26rem);
+  letter-spacing: 0.14em;
+  line-height: 1;
+  color: rgba(255,255,255,0.70);
+  background: rgba(8,2,0,0.70);
+  border: 1px solid rgba(0,255,178,0.20);
+  padding: 0 10px;
+  cursor: pointer;
+  pointer-events: all;
+  border-radius: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color        0.15s ease,
+    border-color 0.15s ease,
+    background   0.15s ease,
+    box-shadow   0.15s ease,
+    transform    0.10s ease;
+  animation: roleInfoIn 0.16s ease-out;
+}
+@keyframes roleInfoIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+#role-info-btn:hover {
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.40);
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 0 12px rgba(255,255,255,0.10);
+}
+#role-info-btn:active { transform: scale(0.92); }
+#role-info-btn.hidden { display: none; }
 
 /* ── RANK TAP HINT — subtle underline + pointer on best-rank-val ── */
 #best-rank-val {

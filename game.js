@@ -573,22 +573,24 @@
         namEl.style.textShadow = 'none';
       }
 
-      // Progress fill — only meaningful for current (and completed = 100%)
+      // Progress fill — horizontal bar, width grows left→right
       if (isCurrent) {
         const prog = isLast
           ? (levelHits % 30) / 30
           : Math.min(levelHits / lv.hitsNeeded, 1);
-        progFill.style.height     = (prog * 100) + '%';
+        progFill.style.width      = (prog * 100) + '%';
+        progFill.style.height     = '100%';
         progFill.style.background = lv.accent;
         progFill.style.boxShadow  = `0 0 4px ${lv.accent}`;
         progFill.style.opacity    = '1';
       } else if (lvI < levelIdx) {
+        progFill.style.width      = '100%';
         progFill.style.height     = '100%';
         progFill.style.background = lvDef.accent;
         progFill.style.boxShadow  = 'none';
         progFill.style.opacity    = '0.5';
       } else {
-        progFill.style.height    = '0%';
+        progFill.style.width     = '0%';
         progFill.style.boxShadow = 'none';
       }
     }

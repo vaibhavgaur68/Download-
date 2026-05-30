@@ -265,101 +265,91 @@ body::after {
   100% { transform: scale(1)   rotate(0deg); }
 }
 
-/* ── COMPACT LEVEL PATH MAP ── */
-/* 
-   Replaces the old full-list map.
-   5 slots stacked vertically, centered on screen right edge.
-   Each slot = dot + name + micro progress bar.
-   Window: [ghost] [ghost] [CURRENT] [next] [ghost]
-   Slots fade out toward edges — only current is fully opaque.
+/* ── COMPACT LEVEL PATH MAP — horizontal, anchored below hud-best ── */
+/*
+   5 slots in a row: [ghost] [prev] [CURRENT] [next] [ghost]
+   Sits directly below the best-score/rank block (top-right).
+   Each slot = name label above + dot + thin progress fill below.
+   Connector lines run horizontally between dots.
 */
 #level-map {
   position: fixed;
-  top: 50%;
-  right: 14px;
-  transform: translateY(-50%);
+  top: 22px;
+  right: 24px;
+  /* pushed down past the hud-best block — ~6 lines of text at tiny font sizes */
+  margin-top: clamp(68px, 14vw, 96px);
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: center;
   gap: 0;
   z-index: 10;
   pointer-events: none;
   transition: opacity 0.4s ease;
-  width: 52px;
 }
 #level-map.hidden { opacity: 0; }
 
-/* Individual slot */
+/* Individual slot — vertical stack: name / dot / progress */
 .lm-slot {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 5px 0;
-  width: 100%;
-  justify-content: flex-end;
-  transition: opacity 0.35s ease;
+  gap: 3px;
+  padding: 0 4px;
   position: relative;
+  transition: opacity 0.35s ease;
 }
 
-/* Connector line between slots */
+/* Horizontal connector line between slots — sits at dot level */
 .lm-slot + .lm-slot::before {
   content: '';
   position: absolute;
-  top: -1px;
-  right: 3px;
-  width: 1px;
-  height: 3px;
-  background: rgba(0,255,178,0.08);
+  left: -4px;
+  top: calc(0.26rem + 3px + 3px); /* clear the name label + gap */
+  width: 8px;
+  height: 1px;
+  background: rgba(0,255,178,0.10);
 }
 
-/* Glowing dot */
+/* Glowing square dot */
 .lm-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 0;   /* keep pixel aesthetic */
+  width: 5px;
+  height: 5px;
+  border-radius: 0;
   flex-shrink: 0;
   transition:
-    background   0.3s ease,
-    box-shadow   0.3s ease,
-    transform    0.3s ease;
+    background  0.3s ease,
+    box-shadow  0.3s ease,
+    transform   0.3s ease;
 }
 
-/* Level name — tiny, right-aligned */
+/* Level name — tiny, centred above dot */
 .lm-sname {
-  font-size: 0.26rem;
-  letter-spacing: 0.14em;
+  font-size: 0.22rem;
+  letter-spacing: 0.10em;
   line-height: 1;
   white-space: nowrap;
-  text-align: right;
+  text-align: center;
   transition: color 0.3s ease, text-shadow 0.3s ease;
-  order: -1;   /* name left of dot */
 }
 
-/* Micro progress bar — only visible/relevant for current level */
+/* Micro progress bar — thin horizontal strip below the dot */
 .lm-prog {
-  position: absolute;
-  right: 0;
-  bottom: 2px;
-  width: 6px;
-  height: 14px;
-  background: rgba(0,255,178,0.06);
+  width: 18px;
+  height: 2px;
+  background: rgba(0,255,178,0.07);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  pointer-events: none;
-  opacity: 0;   /* hidden by default; JS sets opacity:1 on current slot */
+  position: relative;
+  opacity: 0;   /* hidden by default; JS enables for current slot */
 }
 
-/* filled portion — grows upward */
+/* filled portion — grows left→right */
 .lm-prog-fill {
-  width: 100%;
-  height: 0%;
-  background: rgba(0,255,178,0.4);
   position: absolute;
-  bottom: 0;
-  transition: height 0.2s steps(6), background 0.3s ease;
+  top: 0; left: 0;
+  height: 100%;
+  width: 0%;
+  background: rgba(0,255,178,0.4);
+  transition: width 0.2s steps(6), background 0.3s ease;
 }
 
 /* Show progress bar only on current level slot (slot index 2) */

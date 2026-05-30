@@ -2,24 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#080200">
   <meta name="description" content="Earth 2031. The Vreth occupation. Every human will be tested. Your result determines your fate.">
-
-  <!-- PWA -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-immersive">
-  <meta name="apple-mobile-web-app-title" content="PULSE">
-  <meta name="application-name" content="PULSE">
-
-  <!-- Icons — using free Iconify CDN SVG icons as fallback PNG sources -->
-  <!-- 192 & 512 generated from SVG data URI so no file needed -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23080200'/><text y='72' x='12' font-size='72' font-family='monospace' fill='%2300FFB2'>P</text></svg>">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23080200'/><text y='72' x='12' font-size='72' font-family='monospace' fill='%2300FFB2'>P</text></svg>">
-
-  <link rel="manifest" href="manifest.json">
-
   <title>PULSE // VRETH CLASSIFICATION ENGINE</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -33,6 +18,7 @@
   <div id="hud" class="hidden">
     <div id="hud-score">0</div>
     <div id="hud-combo" class="hidden">×<span id="combo-val">2</span></div>
+    <!-- Best score + best rank ever reached -->
     <div id="hud-best">
       <span class="best-label">BEST</span>
       <span class="best-score-val" id="best-val">0</span>
@@ -41,78 +27,81 @@
     </div>
   </div>
 
-  <!-- ── Pause button — minimal SVG ───────────────────────────────────── -->
-  <button id="pause-btn" class="hidden" title="Pause" aria-label="Pause">
-    <!-- Pause icon (two vertical bars) -->
-    <svg class="btn-icon icon-pause" xmlns="http://www.w3.org/2000/svg"
-         width="16" height="16" viewBox="0 0 24 24"
-         fill="none" stroke="rgba(0,255,178,0.80)" stroke-width="2.5"
-         stroke-linecap="square">
-      <rect x="6"  y="4" width="4" height="16" fill="rgba(0,255,178,0.80)" stroke="none"/>
-      <rect x="14" y="4" width="4" height="16" fill="rgba(0,255,178,0.80)" stroke="none"/>
-    </svg>
-    <!-- Play icon (triangle) -->
-    <svg class="btn-icon icon-play" xmlns="http://www.w3.org/2000/svg"
-         width="16" height="16" viewBox="0 0 24 24"
-         fill="rgba(0,255,178,0.80)" stroke="none">
-      <polygon points="5,3 19,12 5,21"/>
-    </svg>
-  </button>
+  <!-- ── Pause button ──────────────────────────────────────────────────── -->
+  <button id="pause-btn" class="hidden" title="Pause">⏸</button>
 
-  <!-- ── Lives ─────────────────────────────────────────────────────────── -->
+  <!-- ── Lives — horizontal, top-left, pixel hearts ────────────────────── -->
   <div id="lives-hud" class="hidden">
     <span id="life-0" class="life-heart"></span>
     <span id="life-1" class="life-heart"></span>
     <span id="life-2" class="life-heart"></span>
   </div>
 
-  <!-- ── Level path map ────────────────────────────────────────────────── -->
+  <!-- ── Compact level path map (right side, vertical, windowed) ───────── -->
   <div id="level-map" class="hidden"></div>
 
   <!-- ── START / TITLE SCREEN ──────────────────────────────────────────── -->
   <div id="start-screen">
     <div class="screen-card">
+
+      <!-- Vreth system identifier -->
       <div class="vreth-system-label">VRETH CLASSIFICATION SYSTEM</div>
+
+      <!-- Game title -->
       <div class="game-title">PULSE</div>
+
+      <!-- Reframed tagline -->
       <div class="game-tagline">NEURAL REFLEX MEASUREMENT DEVICE</div>
+
+      <!-- Lore flavour -->
       <div class="game-lore-line">
         EARTH 2031 &nbsp;·&nbsp; ALL HUMANS MUST BE TESTED<br>
         YOUR RESULT DETERMINES YOUR FATE
       </div>
+
+      <!-- Ring demo -->
       <div class="ring-demo" id="ring-demo"></div>
+
+      <!-- Small Vreth instruction notice -->
       <div class="vreth-notice">
         SYNCHRONISE WITH THE PULSE<br>
         THE MACHINE READS WHAT IS UNDERNEATH
       </div>
+
       <button class="btn" id="start-btn">BEGIN TEST</button>
+
       <div class="key-hint">SPACE · CLICK · TAP</div>
+
     </div>
   </div>
 
   <!-- ── GAME OVER / VERDICT SCREEN ────────────────────────────────────── -->
   <div id="gameover-screen" class="screen-hidden">
     <div class="screen-card">
+
+      <!-- Score section -->
       <div class="go-label">NEURAL SCORE</div>
       <div id="final-score" class="go-score">0</div>
       <div id="new-hs-badge" class="new-hs hidden">★ SIGNAL ANOMALY ★</div>
+
       <div class="go-divider"></div>
+
+      <!-- Best score -->
       <div class="go-label">PEAK RECORD</div>
       <div id="final-best" class="go-best">0</div>
+
       <div class="go-divider"></div>
+
+      <!-- Rank verdict — text + color set by JS -->
       <div class="go-label">RANK ASSIGNED</div>
       <div id="final-level" class="go-level">—</div>
+      <!-- #go-verdict alien sentence injected here by game.js -->
+
       <button class="btn" id="retry-btn">RETEST SUBJECT</button>
+
     </div>
   </div>
 
-  <script>
-    // Register service worker for PWA offline support
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
-      });
-    }
-  </script>
   <script src="game.js"></script>
 </body>
 </html>

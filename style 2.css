@@ -1,0 +1,748 @@
+/* ──────────────────────────────────────────────────────────────────────────────
+   PULSE — style.css  (v6: compact path map + rank HUD)
+   Earth 2031. The Vreth occupation. Every human will be tested.
+────────────────────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --accent: #FF8C00;
+  --gold:   #FFD700;
+  --red:    #FF2200;
+  --white:  #FFF4E0;
+  --dim:    rgba(255,244,224,0.30);
+  --font:   'Press Start 2P', 'Courier New', monospace;
+  --bg:     #080200;
+  --ember:  #FF4500;
+
+  /* Vreth palette */
+  --vreth-green:  #00FFB2;
+  --vreth-blue:   #00CFFF;
+  --vreth-dim:    rgba(0,255,178,0.12);
+  --vreth-border: rgba(0,255,178,0.18);
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: var(--font);
+  color: var(--white);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: none;
+  image-rendering: pixelated;
+}
+
+/* ── CRT SCANLINES ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,20,10,0.11) 2px,
+    rgba(0,20,10,0.11) 4px
+  );
+  pointer-events: none;
+  z-index: 200;
+}
+
+/* ── CANVAS ── */
+#canvas {
+  display: block;
+  width: 100%; height: 100%;
+  position: fixed;
+  top: 0; left: 0;
+  cursor: crosshair;
+  will-change: transform;
+  image-rendering: pixelated;
+}
+
+/* ── HUD ── */
+#hud {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 22px 28px 0;
+  pointer-events: none;
+  z-index: 10;
+}
+#hud.hidden { opacity: 0; }
+
+#hud-score {
+  font-size: clamp(1.6rem, 5.5vw, 3rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--white);
+  text-shadow:
+    3px 3px 0 var(--ember),
+    6px 6px 0 rgba(255,69,0,0.35);
+  line-height: 1;
+  min-width: 80px;
+  text-align: center;
+  transition: transform 0.07s cubic-bezier(0.34,1.56,0.64,1);
+}
+#hud-score.bump { transform: scale(1.18); }
+
+#hud-score.breakthrough {
+  color: var(--gold);
+  text-shadow: 3px 3px 0 #B8860B, 6px 6px 0 rgba(184,134,11,0.35);
+}
+#hud-score.godmode {
+  color: var(--white);
+  text-shadow: 3px 3px 0 var(--accent), 0 0 24px var(--accent);
+}
+
+#hud-combo {
+  position: fixed;
+  top: 22px; left: 50%;
+  transform: translateX(-50%);
+  margin-top: clamp(2.8rem, 9vw, 5rem);
+  font-size: clamp(0.42rem, 1.6vw, 0.58rem);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  text-shadow: 2px 2px 0 rgba(255,140,0,0.45);
+  animation: comboFadeIn 0.2s steps(3) ease-out;
+}
+#hud-combo.hidden { display: none; }
+
+@keyframes comboFadeIn {
+  from { opacity: 0; transform: translateX(-50%) scale(0.8); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* ── BEST SCORE + BEST RANK — top right ── */
+#hud-best {
+  position: fixed;
+  top: 22px; right: 24px;
+  font-size: 0.38rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  line-height: 2;
+  text-align: right;
+}
+
+#hud-best .best-label {
+  font-size: 0.30rem;
+  letter-spacing: 0.14em;
+  color: rgba(255,244,224,0.22);
+  display: block;
+  line-height: 1.4;
+}
+
+#hud-best .best-score-val {
+  font-size: 0.38rem;
+  color: var(--dim);
+  display: block;
+  line-height: 1.6;
+}
+
+#hud-best .best-rank-label {
+  font-size: 0.26rem;
+  letter-spacing: 0.14em;
+  color: rgba(0,255,178,0.20);
+  display: block;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+/* ── PAUSE BUTTON — minimal SVG style ── */
+#pause-btn {
+  position: fixed;
+  top: 52px;
+  left: 28px;
+  z-index: 15;
+  background: rgba(8,2,0,0.70);
+  border: 1px solid rgba(0,255,178,0.20);
+  padding: 0;
+  cursor: pointer;
+  pointer-events: all;
+  border-radius: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.15s ease,
+    background   0.15s ease,
+    box-shadow   0.15s ease,
+    transform    0.10s ease;
+}
+#pause-btn:hover {
+  border-color: rgba(0,255,178,0.50);
+  background: rgba(0,255,178,0.06);
+  box-shadow: 0 0 12px rgba(0,255,178,0.14);
+}
+#pause-btn:active { transform: scale(0.92); }
+#pause-btn.hidden { display: none; }
+
+/* SVG icons inside the button */
+#pause-btn .btn-icon { display: block; }
+#pause-btn .icon-pause,
+#pause-btn .icon-play { display: none; }
+#pause-btn .icon-pause { display: block; }           /* default = playing → show pause */
+#pause-btn.is-paused .icon-pause { display: none; }
+#pause-btn.is-paused .icon-play  { display: block; }
+
+/* ── ROLE INFO BUTTON — visible only when paused ── */
+#role-info-btn {
+  position: fixed;
+  top: 96px;
+  left: 28px;
+  z-index: 15;
+  font-family: var(--font);
+  font-size: clamp(0.20rem, 0.8vw, 0.26rem);
+  letter-spacing: 0.14em;
+  line-height: 1;
+  color: rgba(0,255,178,0.65);
+  background: rgba(8,2,0,0.70);
+  border: 1px solid rgba(0,255,178,0.20);
+  padding: 0 10px;
+  cursor: pointer;
+  pointer-events: all;
+  border-radius: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color        0.15s ease,
+    border-color 0.15s ease,
+    background   0.15s ease,
+    box-shadow   0.15s ease,
+    transform    0.10s ease;
+  animation: roleInfoIn 0.16s ease-out;
+}
+@keyframes roleInfoIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+#role-info-btn:hover {
+  color: var(--vreth-green);
+  border-color: rgba(0,255,178,0.50);
+  background: rgba(0,255,178,0.06);
+  box-shadow: 0 0 12px rgba(0,255,178,0.14);
+}
+#role-info-btn:active { transform: scale(0.92); }
+#role-info-btn.hidden { display: none; }
+
+/* ── RANK TAP HINT — subtle underline + pointer on best-rank-val ── */
+#best-rank-val {
+  display: block;
+  font-size: 0.32rem;
+  letter-spacing: 0.14em;
+  line-height: 1.5;
+  text-shadow: 0 0 8px currentColor;
+  transition: color 0.4s ease, opacity 0.2s ease;
+  cursor: pointer;
+  /* dotted underline hints it's interactive without breaking pixel look */
+  text-decoration: underline dotted rgba(0,255,178,0.25);
+  text-underline-offset: 3px;
+}
+#best-rank-val:hover {
+  opacity: 0.75;
+}
+
+/* ── PIXEL HEART LIVES ── */
+#lives-hud {
+  position: fixed;
+  top: 24px;
+  left: 28px;
+  display: flex;
+  flex-direction: row;
+  gap: 26px;
+  z-index: 10;
+  pointer-events: none;
+  align-items: center;
+}
+#lives-hud.hidden { display: none; }
+
+.life-heart {
+  display: inline-block;
+  position: relative;
+  width: 3px;
+  height: 3px;
+  background: transparent;
+  box-shadow:
+    3px  0px 0 0 #FF2D55,
+    6px  0px 0 0 #FF2D55,
+    12px 0px 0 0 #FF2D55,
+    15px 0px 0 0 #FF2D55,
+    0px  3px 0 0 #FF2D55,
+    3px  3px 0 0 #FF4D6E,
+    6px  3px 0 0 #FF2D55,
+    9px  3px 0 0 #FF2D55,
+    12px 3px 0 0 #FF4D6E,
+    15px 3px 0 0 #FF2D55,
+    18px 3px 0 0 #FF2D55,
+    0px  6px 0 0 #FF2D55,
+    3px  6px 0 0 #FF2D55,
+    6px  6px 0 0 #FF4D6E,
+    9px  6px 0 0 #FF2D55,
+    12px 6px 0 0 #FF2D55,
+    15px 6px 0 0 #FF4D6E,
+    18px 6px 0 0 #FF2D55,
+    3px  9px 0 0 #FF2D55,
+    6px  9px 0 0 #FF2D55,
+    9px  9px 0 0 #FF2D55,
+    12px 9px 0 0 #FF2D55,
+    15px 9px 0 0 #FF2D55,
+    6px  12px 0 0 #FF2D55,
+    9px  12px 0 0 #FF2D55,
+    12px 12px 0 0 #FF2D55,
+    9px  15px 0 0 #FF2D55;
+  filter: drop-shadow(0 0 5px rgba(255,45,85,0.95));
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.life-heart.lost {
+  box-shadow:
+    3px  0px 0 0 #2A1A1A,
+    6px  0px 0 0 #2A1A1A,
+    12px 0px 0 0 #2A1A1A,
+    15px 0px 0 0 #2A1A1A,
+    0px  3px 0 0 #2A1A1A,
+    3px  3px 0 0 #3A2A2A,
+    6px  3px 0 0 #2A1A1A,
+    9px  3px 0 0 #2A1A1A,
+    12px 3px 0 0 #3A2A2A,
+    15px 3px 0 0 #2A1A1A,
+    18px 3px 0 0 #2A1A1A,
+    0px  6px 0 0 #2A1A1A,
+    3px  6px 0 0 #2A1A1A,
+    6px  6px 0 0 #3A2A2A,
+    9px  6px 0 0 #2A1A1A,
+    12px 6px 0 0 #2A1A1A,
+    15px 6px 0 0 #3A2A2A,
+    18px 6px 0 0 #2A1A1A,
+    3px  9px 0 0 #2A1A1A,
+    6px  9px 0 0 #2A1A1A,
+    9px  9px 0 0 #2A1A1A,
+    12px 9px 0 0 #2A1A1A,
+    15px 9px 0 0 #2A1A1A,
+    6px  12px 0 0 #2A1A1A,
+    9px  12px 0 0 #2A1A1A,
+    12px 12px 0 0 #2A1A1A,
+    9px  15px 0 0 #2A1A1A;
+  filter: none;
+  opacity: 0.4;
+}
+
+.life-heart.gained {
+  animation: heartGain 0.5s steps(8) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes heartGain {
+  0%   { transform: scale(0.4); opacity: 0.3; }
+  55%  { transform: scale(1.5); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+.life-heart.losing {
+  animation: heartLose 0.35s steps(6) ease-out forwards;
+}
+@keyframes heartLose {
+  0%   { transform: scale(1.2); }
+  50%  { transform: scale(0.6) rotate(-10deg); }
+  100% { transform: scale(1)   rotate(0deg); }
+}
+
+/* ── COMPACT LEVEL PATH MAP — horizontal, anchored below hud-best ── */
+/*
+   5 slots in a row: [ghost] [prev] [CURRENT] [next] [ghost]
+   Sits directly below the best-score/rank block (top-right).
+   Each slot = name label above + dot + thin progress fill below.
+   Connector lines run horizontally between dots.
+*/
+#level-map {
+  position: fixed;
+  top: 22px;
+  right: 24px;
+  /* pushed down past the hud-best block — ~6 lines of text at tiny font sizes */
+  margin-top: clamp(68px, 14vw, 96px);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  z-index: 10;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+#level-map.hidden { opacity: 0; }
+
+/* Individual slot — vertical stack: name / dot / progress */
+.lm-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0 4px;
+  position: relative;
+  transition: opacity 0.35s ease;
+}
+
+/* Horizontal connector line between slots — sits at dot level */
+.lm-slot + .lm-slot::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: calc(0.26rem + 3px + 3px); /* clear the name label + gap */
+  width: 8px;
+  height: 1px;
+  background: rgba(0,255,178,0.10);
+}
+
+/* Glowing square dot */
+.lm-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 0;
+  flex-shrink: 0;
+  transition:
+    background  0.3s ease,
+    box-shadow  0.3s ease,
+    transform   0.3s ease;
+}
+
+/* Level name — tiny, centred above dot */
+.lm-sname {
+  font-size: 0.22rem;
+  letter-spacing: 0.10em;
+  line-height: 1;
+  white-space: nowrap;
+  text-align: center;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+/* Micro progress bar — thin horizontal strip below the dot */
+.lm-prog {
+  width: 18px;
+  height: 2px;
+  background: rgba(0,255,178,0.07);
+  overflow: hidden;
+  position: relative;
+  opacity: 0;   /* hidden by default; JS enables for current slot */
+}
+
+/* filled portion — grows left→right */
+.lm-prog-fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  width: 0%;
+  background: rgba(0,255,178,0.4);
+  transition: width 0.2s steps(6), background 0.3s ease;
+}
+
+/* Show progress bar only on current level slot (slot index 2) */
+#lmslot-2 .lm-prog { opacity: 1; }
+
+/* ── SCREENS ── */
+#start-screen, #gameover-screen {
+  position: fixed; inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  /* CRITICAL: fully opaque so the game canvas doesn't bleed through */
+  background: #080200;
+}
+#start-screen    { animation: fadeIn 0.6s steps(8) ease-out; }
+#gameover-screen { animation: slideUp 0.4s steps(6) cubic-bezier(0.22, 1, 0.36, 1); }
+#gameover-screen.screen-hidden { display: none; }
+
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.screen-card {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 14px;
+  padding: 0 20px; text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── TITLE / START SCREEN ── */
+
+/* Vreth system label above the title */
+.vreth-system-label {
+  font-size: clamp(0.28rem, 1.2vw, 0.36rem);
+  letter-spacing: 0.32em;
+  color: var(--vreth-green);
+  text-shadow: 0 0 14px var(--vreth-green);
+  margin-bottom: 2px;
+  animation: labelFlicker 4s steps(2) infinite;
+}
+@keyframes labelFlicker {
+  0%, 89%, 91%, 94%, 96%, 100% { opacity: 1; }
+  90%, 93%, 95%                 { opacity: 0.3; }
+}
+
+.game-title {
+  font-size: clamp(2.8rem, 12vw, 6rem);
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: var(--white);
+  text-shadow:
+    4px 4px 0 var(--ember),
+    8px 8px 0 rgba(255,69,0,0.5),
+    12px 12px 0 rgba(255,69,0,0.2);
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.game-tagline {
+  font-size: clamp(0.32rem, 1.5vw, 0.44rem);
+  font-weight: 400;
+  letter-spacing: 0.10em;
+  color: rgba(255,244,224,0.22);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  line-height: 1.8;
+}
+
+.game-lore-line {
+  font-size: clamp(0.26rem, 1.1vw, 0.34rem);
+  letter-spacing: 0.14em;
+  color: rgba(0,255,178,0.35);
+  text-shadow: 0 0 10px rgba(0,255,178,0.3);
+  margin-bottom: 22px;
+  line-height: 2;
+}
+
+/* ── VRETH SCANNER — replaces the ring-demo, drawn on canvas ── */
+.ring-demo {
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  position: relative; margin-bottom: 20px;
+}
+
+/* Vreth classification notice below ring */
+.vreth-notice {
+  font-size: clamp(0.24rem, 1vw, 0.30rem);
+  letter-spacing: 0.18em;
+  color: rgba(0,255,178,0.28);
+  line-height: 2.2;
+  margin-top: -10px;
+  margin-bottom: 4px;
+}
+
+.key-hint {
+  font-size: 0.38rem;
+  letter-spacing: 0.16em;
+  color: rgba(255,244,224,0.18);
+  margin-top: 8px;
+}
+
+/* ── GAME OVER / VERDICT SCREEN ── */
+.go-label {
+  font-size: 0.38rem;
+  letter-spacing: 0.22em;
+  color: rgba(0,255,178,0.35);
+  text-shadow: 0 0 8px rgba(0,255,178,0.2);
+  margin-bottom: -4px;
+  text-transform: uppercase;
+}
+
+.go-score {
+  font-size: clamp(2.6rem, 11vw, 6rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--white);
+  line-height: 1;
+  text-shadow:
+    4px 4px 0 var(--ember),
+    8px 8px 0 rgba(255,69,0,0.35);
+}
+
+.go-divider {
+  width: 40px; height: 1px;
+  background: rgba(0,255,178,0.20);
+  margin: 8px 0;
+}
+
+.go-best {
+  font-size: clamp(0.9rem, 3.5vw, 1.5rem);
+  font-weight: 400;
+  color: var(--dim);
+  text-shadow: 2px 2px 0 rgba(255,69,0,0.3);
+}
+
+.go-level {
+  font-size: clamp(0.9rem, 3.8vw, 1.6rem);
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  text-shadow: 3px 3px 0 rgba(255,140,0,0.4), 0 0 22px var(--accent);
+  animation: rankPulse 2.4s ease-in-out infinite;
+}
+@keyframes rankPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.82; }
+}
+
+#go-verdict {
+  font-size: clamp(0.24rem, 1.1vw, 0.34rem);
+  letter-spacing: 0.08em;
+  color: rgba(0,255,178,0.40);
+  text-shadow: 0 0 8px rgba(0,255,178,0.25);
+  max-width: 300px;
+  line-height: 2.0;
+  text-align: center;
+  margin-top: 2px;
+  font-family: var(--font);
+  animation: verdictTypeIn 0.8s steps(20) ease-out;
+}
+@keyframes verdictTypeIn {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0% 0 0); }
+}
+
+.new-hs {
+  font-size: 0.44rem;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 #B8860B;
+  animation: hsGlow 0.8s steps(4) infinite alternate;
+}
+.new-hs.hidden { display: none; }
+@keyframes hsGlow {
+  from { text-shadow: 2px 2px 0 #B8860B; opacity: 0.8; }
+  to   { text-shadow: 2px 2px 0 #B8860B, 0 0 28px var(--gold); opacity: 1; }
+}
+
+/* ── PIXEL BUTTON ── */
+.btn {
+  font-family: var(--font);
+  font-size: 0.52rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: #080200;
+  background: var(--white);
+  border: none;
+  padding: clamp(12px, 3vw, 16px) clamp(22px, 7vw, 32px);
+  border-radius: 0;
+  box-shadow:
+    4px 4px 0 var(--ember),
+    8px 8px 0 rgba(255,69,0,0.35);
+  cursor: pointer;
+  margin-top: 14px;
+  transition: transform 0.08s steps(2), box-shadow 0.08s steps(2), background 0.08s steps(2);
+  min-height: 48px;
+  min-width: 160px;
+  position: relative;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 1px solid rgba(0,255,178,0.15);
+  pointer-events: none;
+  transition: border-color 0.2s ease;
+}
+.btn:hover::before {
+  border-color: rgba(0,255,178,0.40);
+  box-shadow: 0 0 14px rgba(0,255,178,0.15);
+}
+
+.btn:hover {
+  background: var(--accent);
+  color: #080200;
+  box-shadow:
+    4px 4px 0 #CC5500,
+    8px 8px 0 rgba(255,69,0,0.5),
+    0 0 30px rgba(255,140,0,0.45);
+  transform: translate(-1px, -1px);
+}
+.btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+/* ── SPEED PIPS ── */
+#speed-bar {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+#speed-bar.visible { opacity: 1; }
+
+.speed-pip {
+  width: 5px; height: 5px;
+  border-radius: 0;
+  background: rgba(0,255,178,0.07);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+.speed-pip.active {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+/* ── VRETH CORNER MARK ── */
+body::before {
+  content: 'VRETH // CLASSIFICATION ENGINE // v7.3.1';
+  position: fixed;
+  bottom: 14px;
+  left: 16px;
+  font-family: var(--font);
+  font-size: 0.22rem;
+  letter-spacing: 0.20em;
+  color: rgba(0,255,178,0.10);
+  pointer-events: none;
+  z-index: 5;
+  white-space: nowrap;
+}
+
+/* ── START SCREEN — Vreth scanner rings (CSS-only atmosphere layer) ── */
+#start-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 28%, rgba(0,255,178,0.018) 50%, transparent 72%),
+    radial-gradient(circle at 50% 50%, transparent 48%, rgba(0,255,178,0.012) 68%, transparent 82%);
+  pointer-events: none;
+  animation: scannerPulse 6s ease-in-out infinite;
+}
+
+#start-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,20,10,0.11) 2px,
+    rgba(0,20,10,0.11) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes scannerPulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}

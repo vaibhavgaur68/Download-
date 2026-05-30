@@ -637,7 +637,12 @@
     speedBar.classList.add('visible');
 
     bestValEl.textContent = highScore;
-    if (pauseBtnEl) { pauseBtnEl.textContent = '⏸'; pauseBtnEl.classList.remove('hidden'); }
+    if (pauseBtnEl) {
+      pauseBtnEl.textContent = '';
+      pauseBtnEl.classList.remove('hidden', 'is-paused');
+      pauseBtnEl.title = 'Pause';
+    }
+    hideRoleInfoBtn();
     lifePips.forEach(h => { h.classList.remove('lost','gained','losing'); });
     updateHUD(); updatePips(); updateLivesUI(); updateLevelHud();
     spawnRing();
@@ -944,6 +949,7 @@
     hudEl.classList.add('hidden');
     paused = false;
     if (pauseBtnEl) pauseBtnEl.classList.add('hidden');
+    hideRoleInfoBtn();
 
     // Remove any pre-existing overlay from a previous round
     const old = document.getElementById('vreth-overlay');
@@ -1019,19 +1025,48 @@
   function pauseGame() {
     if (phase !== 'playing' && phase !== 'ceremony') return;
     paused = true;
-    pauseBtnEl.textContent = '▶';
+    pauseBtnEl.textContent = '';
     pauseBtnEl.title = 'Resume';
+    pauseBtnEl.classList.add('is-paused');
+    showRoleInfoBtn();
     drawPauseOverlay();
   }
 
   function resumeGame() {
     if (!paused) return;
     paused = false;
-    lastT  = 0;   // reset so the first frame after resume has dt=0 (no jump)
-    pauseBtnEl.textContent = '⏸';
+    lastT  = 0;
+    pauseBtnEl.textContent = '';
     pauseBtnEl.title = 'Pause';
-    // Erase the pause overlay text from the canvas on next draw frame
+    pauseBtnEl.classList.remove('is-paused');
+    hideRoleInfoBtn();
     _levelMapDirty = true;
+  }
+
+  // ── ROLE INFO BUTTON ─────────────────────────────────────────────────────────
+
+  function showRoleInfoBtn() {
+    if (document.getElementById('role-info-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'role-info-btn';
+    btn.setAttribute('aria-label', 'View your role in society');
+    btn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+           fill="none" stroke="rgba(0,255,178,0.75)" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+      ROLE INFO`;
+    btn.addEventListener('click', e => { e.stopPropagation(); showRankDossier(); });
+    btn.addEventListener('touchstart', e => {
+      e.stopPropagation(); e.preventDefault(); showRankDossier();
+    }, { passive: false });
+    document.body.appendChild(btn);
+  }
+
+  function hideRoleInfoBtn() {
+    const btn = document.getElementById('role-info-btn');
+    if (btn) btn.remove();
   }
 
   function togglePause() {

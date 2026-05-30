@@ -153,45 +153,204 @@ body::after {
   margin-top: 4px;
 }
 
-/* ── PAUSE BUTTON ── */
+/* ── PAUSE BUTTON — themed pixel-art style ── */
 #pause-btn {
   position: fixed;
-  /* sits just below the lives hearts row, top-left */
   top: 52px;
   left: 28px;
   z-index: 15;
   font-family: var(--font);
-  font-size: 0.50rem;
+  font-size: 0;          /* hide emoji text; we use SVG icons via ::before */
   line-height: 1;
-  color: rgba(255,244,224,0.55);
-  background: transparent;
-  border: 1px solid rgba(255,244,224,0.10);
-  padding: 6px 9px;
+  color: transparent;
+  background: rgba(8,2,0,0.75);
+  border: 1px solid rgba(0,255,178,0.22);
+  padding: 0;
   cursor: pointer;
   pointer-events: all;
-  transition:
-    color       0.12s ease,
-    border-color 0.12s ease,
-    background   0.12s ease,
-    transform    0.08s steps(2);
-  /* pixel-style: no rounded corners */
   border-radius: 0;
-  min-width: 34px;
-  min-height: 34px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    2px 2px 0 rgba(0,255,178,0.08),
+    inset 0 0 12px rgba(0,255,178,0.04);
+  transition:
+    border-color  0.12s ease,
+    background    0.12s ease,
+    box-shadow    0.12s ease,
+    transform     0.08s steps(2);
+  overflow: hidden;
 }
+
+/* Pixel-art PAUSE icon: two vertical bars */
+#pause-btn::before {
+  content: '';
+  display: block;
+  width: 14px;
+  height: 14px;
+  /* Two pixel bars via box-shadow on a 2×12 base pixel */
+  background: rgba(0,255,178,0.85);
+  box-shadow:
+    6px 0 0 0 rgba(0,255,178,0.85);
+  width: 3px;
+  height: 13px;
+  margin-left: -3px;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* When playing = paused state icon becomes ▶ triangle */
+#pause-btn.is-paused::before {
+  /* Pixel-art play triangle (pointing right) */
+  background: transparent;
+  box-shadow:
+    0px   0px 0 0 var(--vreth-green),
+    0px   3px 0 0 var(--vreth-green),
+    0px   6px 0 0 var(--vreth-green),
+    0px   9px 0 0 var(--vreth-green),
+    0px  12px 0 0 var(--vreth-green),
+    3px   3px 0 0 var(--vreth-green),
+    3px   6px 0 0 var(--vreth-green),
+    3px   9px 0 0 var(--vreth-green),
+    6px   4px 0 0 var(--vreth-green),
+    6px   6px 0 0 var(--vreth-green),
+    6px   8px 0 0 var(--vreth-green),
+    9px   5px 0 0 var(--vreth-green),
+    9px   6px 0 0 var(--vreth-green),
+    9px   7px 0 0 var(--vreth-green),
+    12px  6px 0 0 var(--vreth-green);
+  width: 3px;
+  height: 3px;
+  margin-left: -6px;
+}
+
+/* Corner notch — top-right pixel detail */
+#pause-btn::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 5px; height: 5px;
+  background: rgba(0,255,178,0.18);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+}
+
 #pause-btn:hover {
-  color: var(--white);
-  border-color: rgba(255,244,224,0.30);
-  background: rgba(255,244,224,0.06);
+  border-color: rgba(0,255,178,0.55);
+  background: rgba(0,255,178,0.06);
+  box-shadow:
+    2px 2px 0 rgba(0,255,178,0.18),
+    0 0 16px rgba(0,255,178,0.12),
+    inset 0 0 14px rgba(0,255,178,0.06);
+}
+#pause-btn:hover::before {
+  background: var(--vreth-green);
+  box-shadow: 6px 0 0 0 var(--vreth-green);
+}
+#pause-btn:hover.is-paused::before {
+  background: transparent;
+  box-shadow:
+    0px   0px 0 0 var(--vreth-green),
+    0px   3px 0 0 var(--vreth-green),
+    0px   6px 0 0 var(--vreth-green),
+    0px   9px 0 0 var(--vreth-green),
+    0px  12px 0 0 var(--vreth-green),
+    3px   3px 0 0 var(--vreth-green),
+    3px   6px 0 0 var(--vreth-green),
+    3px   9px 0 0 var(--vreth-green),
+    6px   4px 0 0 var(--vreth-green),
+    6px   6px 0 0 var(--vreth-green),
+    6px   8px 0 0 var(--vreth-green),
+    9px   5px 0 0 var(--vreth-green),
+    9px   6px 0 0 var(--vreth-green),
+    9px   7px 0 0 var(--vreth-green),
+    12px  6px 0 0 var(--vreth-green);
+  width: 3px;
+  height: 3px;
 }
 #pause-btn:active {
-  transform: scale(0.90);
+  transform: translate(2px, 2px);
+  box-shadow: none;
 }
 #pause-btn.hidden { display: none; }
+
+/* ── ROLE INFO BUTTON — shown only when paused ── */
+#role-info-btn {
+  position: fixed;
+  top: 96px;   /* below pause button with gap */
+  left: 28px;
+  z-index: 15;
+  font-family: var(--font);
+  font-size: clamp(0.20rem, 0.8vw, 0.26rem);
+  letter-spacing: 0.14em;
+  line-height: 1;
+  color: rgba(0,255,178,0.70);
+  background: rgba(8,2,0,0.82);
+  border: 1px solid rgba(0,255,178,0.22);
+  padding: 8px 10px;
+  cursor: pointer;
+  pointer-events: all;
+  border-radius: 0;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    2px 2px 0 rgba(0,255,178,0.08),
+    inset 0 0 12px rgba(0,255,178,0.03);
+  transition:
+    color         0.12s ease,
+    border-color  0.12s ease,
+    background    0.12s ease,
+    box-shadow    0.12s ease,
+    transform     0.08s steps(2),
+    opacity       0.15s ease;
+  white-space: nowrap;
+  /* Slide-in animation */
+  animation: roleInfoIn 0.18s steps(4) ease-out;
+}
+@keyframes roleInfoIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+#role-info-btn::before {
+  content: '▸';
+  margin-right: 6px;
+  font-size: clamp(0.22rem, 0.9vw, 0.28rem);
+  color: var(--vreth-green);
+  text-shadow: 0 0 6px var(--vreth-green);
+}
+
+/* Corner notch detail */
+#role-info-btn::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 4px; height: 4px;
+  background: rgba(0,255,178,0.15);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+}
+
+#role-info-btn:hover {
+  color: var(--vreth-green);
+  border-color: rgba(0,255,178,0.55);
+  background: rgba(0,255,178,0.06);
+  box-shadow:
+    2px 2px 0 rgba(0,255,178,0.18),
+    0 0 16px rgba(0,255,178,0.12),
+    inset 0 0 14px rgba(0,255,178,0.05);
+  text-shadow: 0 0 10px rgba(0,255,178,0.4);
+}
+#role-info-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+#role-info-btn.hidden { display: none; }
 
 /* ── RANK TAP HINT — subtle underline + pointer on best-rank-val ── */
 #best-rank-val {

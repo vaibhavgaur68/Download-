@@ -637,7 +637,12 @@
     speedBar.classList.add('visible');
 
     bestValEl.textContent = highScore;
-    if (pauseBtnEl) { pauseBtnEl.textContent = '⏸'; pauseBtnEl.classList.remove('hidden'); }
+    if (pauseBtnEl) {
+      pauseBtnEl.textContent = '';
+      pauseBtnEl.classList.remove('hidden', 'is-paused');
+      pauseBtnEl.title = 'Pause';
+    }
+    hideRoleInfoBtn();
     lifePips.forEach(h => { h.classList.remove('lost','gained','losing'); });
     updateHUD(); updatePips(); updateLivesUI(); updateLevelHud();
     spawnRing();
@@ -944,6 +949,7 @@
     hudEl.classList.add('hidden');
     paused = false;
     if (pauseBtnEl) pauseBtnEl.classList.add('hidden');
+    hideRoleInfoBtn();
 
     // Remove any pre-existing overlay from a previous round
     const old = document.getElementById('vreth-overlay');
@@ -1019,19 +1025,41 @@
   function pauseGame() {
     if (phase !== 'playing' && phase !== 'ceremony') return;
     paused = true;
-    pauseBtnEl.textContent = '▶';
+    pauseBtnEl.textContent = '';
     pauseBtnEl.title = 'Resume';
+    pauseBtnEl.classList.add('is-paused');
+    showRoleInfoBtn();
     drawPauseOverlay();
   }
 
   function resumeGame() {
     if (!paused) return;
     paused = false;
-    lastT  = 0;   // reset so the first frame after resume has dt=0 (no jump)
-    pauseBtnEl.textContent = '⏸';
+    lastT  = 0;
+    pauseBtnEl.textContent = '';
     pauseBtnEl.title = 'Pause';
-    // Erase the pause overlay text from the canvas on next draw frame
+    pauseBtnEl.classList.remove('is-paused');
+    hideRoleInfoBtn();
     _levelMapDirty = true;
+  }
+
+  // ── ROLE INFO BUTTON ─────────────────────────────────────────────────────────
+
+  function showRoleInfoBtn() {
+    if (document.getElementById('role-info-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'role-info-btn';
+    btn.textContent = 'ROLE INFO';
+    btn.addEventListener('click', e => { e.stopPropagation(); showRankDossier(); });
+    btn.addEventListener('touchstart', e => {
+      e.stopPropagation(); e.preventDefault(); showRankDossier();
+    }, { passive: false });
+    document.body.appendChild(btn);
+  }
+
+  function hideRoleInfoBtn() {
+    const btn = document.getElementById('role-info-btn');
+    if (btn) btn.remove();
   }
 
   function togglePause() {

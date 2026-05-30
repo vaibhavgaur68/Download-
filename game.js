@@ -638,7 +638,6 @@
 
     bestValEl.textContent = highScore;
     if (pauseBtnEl) {
-      pauseBtnEl.textContent = '';
       pauseBtnEl.classList.remove('hidden', 'is-paused');
       pauseBtnEl.title = 'Pause';
     }
@@ -1025,7 +1024,6 @@
   function pauseGame() {
     if (phase !== 'playing' && phase !== 'ceremony') return;
     paused = true;
-    pauseBtnEl.textContent = '';
     pauseBtnEl.title = 'Resume';
     pauseBtnEl.classList.add('is-paused');
     showRoleInfoBtn();
@@ -1036,7 +1034,6 @@
     if (!paused) return;
     paused = false;
     lastT  = 0;
-    pauseBtnEl.textContent = '';
     pauseBtnEl.title = 'Pause';
     pauseBtnEl.classList.remove('is-paused');
     hideRoleInfoBtn();
@@ -1050,7 +1047,7 @@
     const btn = document.createElement('button');
     btn.id = 'role-info-btn';
     btn.setAttribute('aria-label', 'View your role in society');
-    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>ROLE INFO`;
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00FFB2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>ROLE INFO`;
     btn.addEventListener('click', e => { e.stopPropagation(); showRankDossier(); });
     btn.addEventListener('touchstart', e => {
       e.stopPropagation(); e.preventDefault(); showRankDossier();

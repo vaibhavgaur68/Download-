@@ -305,6 +305,9 @@
   let perfectStreak = 0;
   let speed         = LEVELS[0].baseSpeed;
   let highScore     = parseInt(localStorage.getItem('pulse_hs') || '0');
+  // Highest rank index ever reached (-1 = never finished a level, 0 = DRONE achieved, etc.)
+  // We store the rankKey string so it survives LEVELS array changes
+  let highRankIdx   = parseInt(localStorage.getItem('pulse_hr') || '-1');
 
   // Lore intro state
   let introLineIdx  = 0;
@@ -458,50 +461,52 @@
   let _levelMapDirty    = false;
   let _levelMapLastTime = 0;
 
-  function buildLevelMap() {
-    if (!levelMapEl) return;
-    levelMapEl.innerHTML = '';
-    LEVELS.forEach((lv, i) => {
-      const row = document.createElement('div');
-      row.className = 'lm-row';
-      row.id = `lmrow-${i}`;
-
-      // Spine: single continuous connector segment per level
-      const spine = document.createElement('div');
-      spine.className = 'lm-spine';
-
-      const line = document.createElement('div');
-      line.className = 'lm-connector';
-      line.id = `lmline-${i}`;
-      const fill = document.createElement('div');
-      fill.className = 'lm-connector-fill';
-      fill.id = `lmfill-${i}`;
-      line.appendChild(fill);
-      spine.appendChild(line);
-
-      // Label
-      const label = document.createElement('div');
-      label.className = 'lm-label';
-      const name = document.createElement('span');
-      name.className = 'lm-name';
-      name.id = `lmname-${i}`;
-      name.textContent = lv.name;
-      label.appendChild(name);
-
-      row.appendChild(spine);
-      row.appendChild(label);
-      levelMapEl.appendChild(row);
-    });
+  function updateLevelMap() {
     _levelMapDirty = true;
   }
 
-  function updateLevelMap() {
+  function buildLevelMap() {
+    if (!levelMapEl) return;
+    levelMapEl.innerHTML = '';
+
+    // Compact windowed map: shows a 5-slot window around current level
+    // We build static DOM; flushLevelMap updates content + styles dynamically
+    // Slots: [prev-2] [prev-1] [CURRENT] [next-1] [next-2]
+    // Only current + next-1 are clearly legible; rest are ghost/blurred
+
+    for (let slot = 0; slot < 5; slot++) {
+      const node = document.createElement('div');
+      node.className = 'lm-slot';
+      node.id = `lmslot-${slot}`;
+
+      const dot = document.createElement('div');
+      dot.className = 'lm-dot';
+      dot.id = `lmdot-${slot}`;
+
+      const namEl = document.createElement('div');
+      namEl.className = 'lm-sname';
+      namEl.id = `lmsname-${slot}`;
+
+      const prog = document.createElement('div');
+      prog.className = 'lm-prog';
+      prog.id = `lmprog-${slot}`;
+      const progFill = document.createElement('div');
+      progFill.className = 'lm-prog-fill';
+      progFill.id = `lmprogfill-${slot}`;
+      prog.appendChild(progFill);
+
+      node.appendChild(dot);
+      node.appendChild(namEl);
+      node.appendChild(prog);
+      levelMapEl.appendChild(node);
+    }
+
     _levelMapDirty = true;
   }
 
   function flushLevelMap(now) {
     if (!_levelMapDirty) return;
-    if (now - _levelMapLastTime < 100) return;   // max 10 DOM updates/sec
+    if (now - _levelMapLastTime < 100) return;
     _levelMapLastTime = now;
     _levelMapDirty    = false;
 
@@ -509,33 +514,84 @@
     const lv     = currentLevel();
     const isLast = levelIdx >= LEVELS.length - 1;
 
-    LEVELS.forEach((lvDef, i) => {
-      const fill = document.getElementById(`lmfill-${i}`);
-      const name = document.getElementById(`lmname-${i}`);
-      if (!fill || !name) return;
+    // Window: slots 0-4 map to levelIdx offsets [-2, -1, 0, +1, +2]
+    for (let slot = 0; slot < 5; slot++) {
+      const offset   = slot - 2;          // -2 .. +2
+      const lvI      = levelIdx + offset;
+      const dot      = document.getElementById(`lmdot-${slot}`);
+      const namEl    = document.getElementById(`lmsname-${slot}`);
+      const progFill = document.getElementById(`lmprogfill-${slot}`);
+      const slotEl   = document.getElementById(`lmslot-${slot}`);
 
-      if (i < levelIdx) {
-        fill.style.height     = '100%';
-        fill.style.background = lvDef.accent;
-        fill.style.boxShadow  = `0 0 6px ${lvDef.accent}, 0 0 14px ${lvDef.accent}70`;
-        name.style.color      = `${lvDef.accent}70`;
-        name.style.textShadow = 'none';
-      } else if (i === levelIdx) {
+      if (!dot || !namEl || !progFill || !slotEl) continue;
+
+      const isCurrent = offset === 0;
+      const isNext    = offset === 1;
+      const isPrev    = offset === -1;
+      const isGhost   = Math.abs(offset) >= 2;
+
+      if (lvI < 0 || lvI >= LEVELS.length) {
+        // Out of range — hide slot
+        slotEl.style.opacity = '0';
+        slotEl.style.visibility = 'hidden';
+        continue;
+      }
+
+      slotEl.style.visibility = 'visible';
+      const lvDef = LEVELS[lvI];
+
+      // Opacity tiers
+      if (isCurrent)    slotEl.style.opacity = '1';
+      else if (isNext)  slotEl.style.opacity = '0.45';
+      else if (isPrev)  slotEl.style.opacity = '0.25';
+      else              slotEl.style.opacity = '0.10';
+
+      // Dot color + glow
+      if (isCurrent) {
+        dot.style.background  = lvDef.accent;
+        dot.style.boxShadow   = `0 0 6px ${lvDef.accent}, 0 0 12px ${lvDef.accent}60`;
+        dot.style.transform   = 'scale(1.0)';
+      } else if (lvI < levelIdx) {
+        // Completed level
+        dot.style.background  = lvDef.accent;
+        dot.style.boxShadow   = `0 0 3px ${lvDef.accent}50`;
+        dot.style.transform   = 'scale(0.65)';
+      } else {
+        // Future level
+        dot.style.background  = 'rgba(0,255,178,0.12)';
+        dot.style.boxShadow   = 'none';
+        dot.style.transform   = isNext ? 'scale(0.72)' : 'scale(0.55)';
+      }
+
+      // Name
+      namEl.textContent = lvDef.name;
+      if (isCurrent) {
+        namEl.style.color      = lvDef.accent;
+        namEl.style.textShadow = `0 0 6px ${lvDef.accent}`;
+      } else {
+        namEl.style.color      = 'rgba(0,255,178,0.5)';
+        namEl.style.textShadow = 'none';
+      }
+
+      // Progress fill — only meaningful for current (and completed = 100%)
+      if (isCurrent) {
         const prog = isLast
           ? (levelHits % 30) / 30
           : Math.min(levelHits / lv.hitsNeeded, 1);
-        fill.style.height     = (prog * 100) + '%';
-        fill.style.background = lv.accent;
-        fill.style.boxShadow  = `0 0 8px ${lv.accent}, 0 0 18px ${lv.accent}80`;
-        name.style.color      = lv.accent;
-        name.style.textShadow = `0 0 8px ${lv.accent}`;
+        progFill.style.height     = (prog * 100) + '%';
+        progFill.style.background = lv.accent;
+        progFill.style.boxShadow  = `0 0 4px ${lv.accent}`;
+        progFill.style.opacity    = '1';
+      } else if (lvI < levelIdx) {
+        progFill.style.height     = '100%';
+        progFill.style.background = lvDef.accent;
+        progFill.style.boxShadow  = 'none';
+        progFill.style.opacity    = '0.5';
       } else {
-        fill.style.height    = '0%';
-        fill.style.boxShadow = 'none';
-        name.style.color     = 'rgba(255,255,255,0.08)';
-        name.style.textShadow = 'none';
+        progFill.style.height    = '0%';
+        progFill.style.boxShadow = 'none';
       }
-    });
+    }
   }
 
   // ── GAME CONTROL ─────────────────────────────────────────────────────────────
@@ -868,6 +924,13 @@
     const rankEarned = levelIdx === 0
       ? LORE.drone
       : LORE.ranks[Math.min(levelIdx - 1, LORE.ranks.length - 1)];
+
+    // Persist highest rank: drone = index -1 special, ranks start at 0
+    const earnedRankIdx = levelIdx === 0 ? -1 : Math.min(levelIdx - 1, LORE.ranks.length - 1);
+    if (earnedRankIdx > highRankIdx) {
+      highRankIdx = earnedRankIdx;
+      localStorage.setItem('pulse_hr', highRankIdx);
+    }
 
     livesHudEl.classList.add('hidden');
     levelMapEl.classList.add('hidden');
@@ -1240,6 +1303,20 @@
   function updateHUD() {
     hudScoreEl.textContent = score;
     bestValEl.textContent  = highScore;
+
+    // Show best rank ever reached
+    const bestRankEl = document.getElementById('best-rank-val');
+    if (bestRankEl) {
+      if (highRankIdx === -1) {
+        bestRankEl.textContent = '—';
+        bestRankEl.style.color = 'rgba(255,244,224,0.18)';
+      } else {
+        const br = LORE.ranks[highRankIdx];
+        bestRankEl.textContent = br.title;
+        bestRankEl.style.color = br.color;
+      }
+    }
+
     if (combo >= 2) {
       comboValEl.textContent = combo;
       hudComboEl.classList.remove('hidden');
@@ -2127,6 +2204,19 @@
   // ── INIT ─────────────────────────────────────────────────────────────────────
 
   bestValEl.textContent = highScore;
+
+  // Initialise best rank display
+  const _initRankEl = document.getElementById('best-rank-val');
+  if (_initRankEl) {
+    if (highRankIdx >= 0 && highRankIdx < LORE.ranks.length) {
+      const _ir = LORE.ranks[highRankIdx];
+      _initRankEl.textContent = _ir.title;
+      _initRankEl.style.color = _ir.color;
+    } else {
+      _initRankEl.textContent = '—';
+      _initRankEl.style.color = 'rgba(255,244,224,0.18)';
+    }
+  }
 
   // Start screen hidden until lore intro finishes
   startScreen.style.display = 'none';

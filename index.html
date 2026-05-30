@@ -18,7 +18,13 @@
   <div id="hud" class="hidden">
     <div id="hud-score">0</div>
     <div id="hud-combo" class="hidden">×<span id="combo-val">2</span></div>
-    <div id="hud-best">BEST<br><span id="best-val">0</span></div>
+    <!-- Best score + best rank ever reached -->
+    <div id="hud-best">
+      <span class="best-label">BEST</span>
+      <span class="best-score-val" id="best-val">0</span>
+      <span class="best-rank-label">TOP RANK</span>
+      <span id="best-rank-val">—</span>
+    </div>
   </div>
 
   <!-- ── Lives — horizontal, top-left, pixel hearts ────────────────────── -->
@@ -28,10 +34,8 @@
     <span id="life-2" class="life-heart"></span>
   </div>
 
-  <!-- ── Classification progress map (right side, vertical) ────────────── -->
-  <div id="level-map" class="hidden">
-    <div class="lm-header">CASTE</div>
-  </div>
+  <!-- ── Compact level path map (right side, vertical, windowed) ───────── -->
+  <div id="level-map" class="hidden"></div>
 
   <!-- ── START / TITLE SCREEN ──────────────────────────────────────────── -->
   <div id="start-screen">

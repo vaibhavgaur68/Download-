@@ -153,14 +153,12 @@ body::after {
   margin-top: 4px;
 }
 
-/* ── PAUSE BUTTON — simple green, no border ── */
+/* ── PAUSE BUTTON — pure CSS, no SVG, no border ── */
 #pause-btn {
   position: fixed;
   top: 52px;
   left: 28px;
-  z-index: 15;
-  background: transparent;
-  border: none;
+  z-index: 100;
   padding: 0;
   cursor: pointer;
   pointer-events: all;
@@ -170,52 +168,69 @@ body::after {
   align-items: center;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
-  opacity: 0.75;
+  -webkit-appearance: none;
+  appearance: none;
+  opacity: 0.80;
   transition: opacity 0.15s ease, transform 0.10s ease;
 }
 #pause-btn:hover  { opacity: 1; }
-#pause-btn:active { transform: scale(0.90); }
-#pause-btn.hidden { display: none; }
+#pause-btn:active { transform: scale(0.88); opacity: 1; }
+#pause-btn.hidden { display: none !important; }
 
-/* Icon visibility toggling */
-#pause-btn .icon-play  { display: none; }
-#pause-btn .icon-pause { display: block; }
-#pause-btn.is-paused .icon-pause { display: none; }
-#pause-btn.is-paused .icon-play  { display: block; }
+/* The icon is drawn on ::before only — no child elements needed */
+#pause-btn::before {
+  content: '';
+  display: block;
+  /* Default = PAUSE: two vertical green bars side by side */
+  width: 16px;
+  height: 18px;
+  background: #00FFB2;
+  /* Two bars: left bar is the element itself, right bar is a box-shadow copy */
+  clip-path: polygon(0 0, 35% 0, 35% 100%, 0 100%,
+                     0 100%, 0 0,
+                     65% 0, 100% 0, 100% 100%, 65% 100%);
+  transition: clip-path 0.12s ease, background 0.12s ease;
+}
+
+/* PLAY state: solid right-pointing triangle */
+#pause-btn.is-paused::before {
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  width: 18px;
+  height: 18px;
+}
 
 /* ── ROLE INFO BUTTON — visible only when paused ── */
 #role-info-btn {
   position: fixed;
   top: 96px;
   left: 28px;
-  z-index: 15;
+  z-index: 100;
   font-family: var(--font);
   font-size: 8px;
   letter-spacing: 0.12em;
   line-height: 1;
-  color: rgba(0,255,178,0.85);
-  background: rgba(8,2,0,0.82);
-  border: 1px solid rgba(0,255,178,0.30);
-  padding: 0 12px;
+  color: #00FFB2;
+  background: rgba(0,0,0,0.90);
+  border: 1px solid #00FFB2;
+  padding: 0 14px;
   cursor: pointer;
   pointer-events: all;
-  height: 36px;
+  height: 38px;
   display: flex;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
-  transition: opacity 0.15s ease, transform 0.10s ease;
-  animation: roleInfoIn 0.18s ease-out;
   -webkit-appearance: none;
   appearance: none;
+  opacity: 1;
+  animation: roleInfoIn 0.18s ease-out;
 }
 @keyframes roleInfoIn {
   from { opacity: 0; transform: translateX(-8px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-#role-info-btn:hover  { opacity: 0.85; }
-#role-info-btn:active { transform: scale(0.95); }
+#role-info-btn:active { opacity: 0.7; }
 
 /* ── RANK TAP HINT — subtle underline + pointer on best-rank-val ── */
 #best-rank-val {

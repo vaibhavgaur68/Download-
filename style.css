@@ -153,18 +153,14 @@ body::after {
   margin-top: 4px;
 }
 
-/* ── PAUSE BUTTON — themed pixel-art style ── */
+/* ── PAUSE BUTTON — minimal SVG style ── */
 #pause-btn {
   position: fixed;
   top: 52px;
   left: 28px;
   z-index: 15;
-  font-family: var(--font);
-  font-size: 0;          /* hide emoji text; we use SVG icons via ::before */
-  line-height: 1;
-  color: transparent;
-  background: rgba(8,2,0,0.75);
-  border: 1px solid rgba(0,255,178,0.22);
+  background: rgba(8,2,0,0.70);
+  border: 1px solid rgba(0,255,178,0.20);
   padding: 0;
   cursor: pointer;
   pointer-events: all;
@@ -175,181 +171,70 @@ body::after {
   align-items: center;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
-  box-shadow:
-    2px 2px 0 rgba(0,255,178,0.08),
-    inset 0 0 12px rgba(0,255,178,0.04);
   transition:
-    border-color  0.12s ease,
-    background    0.12s ease,
-    box-shadow    0.12s ease,
-    transform     0.08s steps(2);
-  overflow: hidden;
+    border-color 0.15s ease,
+    background   0.15s ease,
+    box-shadow   0.15s ease,
+    transform    0.10s ease;
 }
-
-/* Pixel-art PAUSE icon: two vertical bars */
-#pause-btn::before {
-  content: '';
-  display: block;
-  width: 14px;
-  height: 14px;
-  /* Two pixel bars via box-shadow on a 2×12 base pixel */
-  background: rgba(0,255,178,0.85);
-  box-shadow:
-    6px 0 0 0 rgba(0,255,178,0.85);
-  width: 3px;
-  height: 13px;
-  margin-left: -3px;
-  transition: background 0.12s ease, box-shadow 0.12s ease;
-}
-
-/* When playing = paused state icon becomes ▶ triangle */
-#pause-btn.is-paused::before {
-  /* Pixel-art play triangle (pointing right) */
-  background: transparent;
-  box-shadow:
-    0px   0px 0 0 var(--vreth-green),
-    0px   3px 0 0 var(--vreth-green),
-    0px   6px 0 0 var(--vreth-green),
-    0px   9px 0 0 var(--vreth-green),
-    0px  12px 0 0 var(--vreth-green),
-    3px   3px 0 0 var(--vreth-green),
-    3px   6px 0 0 var(--vreth-green),
-    3px   9px 0 0 var(--vreth-green),
-    6px   4px 0 0 var(--vreth-green),
-    6px   6px 0 0 var(--vreth-green),
-    6px   8px 0 0 var(--vreth-green),
-    9px   5px 0 0 var(--vreth-green),
-    9px   6px 0 0 var(--vreth-green),
-    9px   7px 0 0 var(--vreth-green),
-    12px  6px 0 0 var(--vreth-green);
-  width: 3px;
-  height: 3px;
-  margin-left: -6px;
-}
-
-/* Corner notch — top-right pixel detail */
-#pause-btn::after {
-  content: '';
-  position: absolute;
-  top: 0; right: 0;
-  width: 5px; height: 5px;
-  background: rgba(0,255,178,0.18);
-  clip-path: polygon(100% 0, 0 0, 100% 100%);
-}
-
 #pause-btn:hover {
-  border-color: rgba(0,255,178,0.55);
+  border-color: rgba(0,255,178,0.50);
   background: rgba(0,255,178,0.06);
-  box-shadow:
-    2px 2px 0 rgba(0,255,178,0.18),
-    0 0 16px rgba(0,255,178,0.12),
-    inset 0 0 14px rgba(0,255,178,0.06);
+  box-shadow: 0 0 12px rgba(0,255,178,0.14);
 }
-#pause-btn:hover::before {
-  background: var(--vreth-green);
-  box-shadow: 6px 0 0 0 var(--vreth-green);
-}
-#pause-btn:hover.is-paused::before {
-  background: transparent;
-  box-shadow:
-    0px   0px 0 0 var(--vreth-green),
-    0px   3px 0 0 var(--vreth-green),
-    0px   6px 0 0 var(--vreth-green),
-    0px   9px 0 0 var(--vreth-green),
-    0px  12px 0 0 var(--vreth-green),
-    3px   3px 0 0 var(--vreth-green),
-    3px   6px 0 0 var(--vreth-green),
-    3px   9px 0 0 var(--vreth-green),
-    6px   4px 0 0 var(--vreth-green),
-    6px   6px 0 0 var(--vreth-green),
-    6px   8px 0 0 var(--vreth-green),
-    9px   5px 0 0 var(--vreth-green),
-    9px   6px 0 0 var(--vreth-green),
-    9px   7px 0 0 var(--vreth-green),
-    12px  6px 0 0 var(--vreth-green);
-  width: 3px;
-  height: 3px;
-}
-#pause-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: none;
-}
+#pause-btn:active { transform: scale(0.92); }
 #pause-btn.hidden { display: none; }
 
-/* ── ROLE INFO BUTTON — shown only when paused ── */
+/* SVG icons inside the button */
+#pause-btn .btn-icon { display: block; }
+#pause-btn .icon-pause,
+#pause-btn .icon-play { display: none; }
+#pause-btn .icon-pause { display: block; }           /* default = playing → show pause */
+#pause-btn.is-paused .icon-pause { display: none; }
+#pause-btn.is-paused .icon-play  { display: block; }
+
+/* ── ROLE INFO BUTTON — visible only when paused ── */
 #role-info-btn {
   position: fixed;
-  top: 96px;   /* below pause button with gap */
+  top: 96px;
   left: 28px;
   z-index: 15;
   font-family: var(--font);
   font-size: clamp(0.20rem, 0.8vw, 0.26rem);
   letter-spacing: 0.14em;
   line-height: 1;
-  color: rgba(0,255,178,0.70);
-  background: rgba(8,2,0,0.82);
-  border: 1px solid rgba(0,255,178,0.22);
-  padding: 8px 10px;
+  color: rgba(0,255,178,0.65);
+  background: rgba(8,2,0,0.70);
+  border: 1px solid rgba(0,255,178,0.20);
+  padding: 0 10px;
   cursor: pointer;
   pointer-events: all;
   border-radius: 0;
-  min-width: 36px;
-  min-height: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow:
-    2px 2px 0 rgba(0,255,178,0.08),
-    inset 0 0 12px rgba(0,255,178,0.03);
-  transition:
-    color         0.12s ease,
-    border-color  0.12s ease,
-    background    0.12s ease,
-    box-shadow    0.12s ease,
-    transform     0.08s steps(2),
-    opacity       0.15s ease;
+  gap: 7px;
   white-space: nowrap;
-  /* Slide-in animation */
-  animation: roleInfoIn 0.18s steps(4) ease-out;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color        0.15s ease,
+    border-color 0.15s ease,
+    background   0.15s ease,
+    box-shadow   0.15s ease,
+    transform    0.10s ease;
+  animation: roleInfoIn 0.16s ease-out;
 }
 @keyframes roleInfoIn {
-  from { opacity: 0; transform: translateX(-8px); }
+  from { opacity: 0; transform: translateX(-6px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-
-#role-info-btn::before {
-  content: '▸';
-  margin-right: 6px;
-  font-size: clamp(0.22rem, 0.9vw, 0.28rem);
-  color: var(--vreth-green);
-  text-shadow: 0 0 6px var(--vreth-green);
-}
-
-/* Corner notch detail */
-#role-info-btn::after {
-  content: '';
-  position: absolute;
-  top: 0; right: 0;
-  width: 4px; height: 4px;
-  background: rgba(0,255,178,0.15);
-  clip-path: polygon(100% 0, 0 0, 100% 100%);
-}
-
 #role-info-btn:hover {
   color: var(--vreth-green);
-  border-color: rgba(0,255,178,0.55);
+  border-color: rgba(0,255,178,0.50);
   background: rgba(0,255,178,0.06);
-  box-shadow:
-    2px 2px 0 rgba(0,255,178,0.18),
-    0 0 16px rgba(0,255,178,0.12),
-    inset 0 0 14px rgba(0,255,178,0.05);
-  text-shadow: 0 0 10px rgba(0,255,178,0.4);
+  box-shadow: 0 0 12px rgba(0,255,178,0.14);
 }
-#role-info-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: none;
-}
+#role-info-btn:active { transform: scale(0.92); }
 #role-info-btn.hidden { display: none; }
 
 /* ── RANK TAP HINT — subtle underline + pointer on best-rank-val ── */

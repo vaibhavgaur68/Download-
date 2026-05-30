@@ -1,0 +1,27 @@
+{
+  "name": "PULSE — Vreth Classification Engine",
+  "short_name": "PULSE",
+  "description": "Earth 2031. The Vreth occupation. Every human will be tested. Your result determines your fate.",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "portrait-primary",
+  "background_color": "#080200",
+  "theme_color": "#080200",
+  "lang": "en",
+  "scope": "./",
+  "categories": ["games"],
+  "icons": [
+    {
+      "src": "https://api.iconify.design/game-icons:neural-stem.svg?color=%2300FFB2&width=192&height=192",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "https://api.iconify.design/game-icons:neural-stem.svg?color=%2300FFB2&width=512&height=512",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1049,7 +1049,14 @@
     if (document.getElementById('role-info-btn')) return;
     const btn = document.createElement('button');
     btn.id = 'role-info-btn';
-    btn.textContent = 'ROLE INFO';
+    btn.setAttribute('aria-label', 'View your role in society');
+    btn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+           fill="none" stroke="rgba(0,255,178,0.75)" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+      ROLE INFO`;
     btn.addEventListener('click', e => { e.stopPropagation(); showRankDossier(); });
     btn.addEventListener('touchstart', e => {
       e.stopPropagation(); e.preventDefault(); showRankDossier();

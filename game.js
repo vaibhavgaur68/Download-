@@ -296,6 +296,7 @@
   // ── STATE ────────────────────────────────────────────────────────────────────
 
   let phase         = 'intro';   // starts with lore intro now
+  let paused        = false;     // true while game is suspended
   let score         = 0;
   let combo         = 0;
   let hitCount      = 0;
@@ -397,6 +398,7 @@
   const hudComboEl   = document.getElementById('hud-combo');
   const comboValEl   = document.getElementById('combo-val');
   const bestValEl    = document.getElementById('best-val');
+  const pauseBtnEl   = document.getElementById('pause-btn');
   const startScreen  = document.getElementById('start-screen');
   const goScreen     = document.getElementById('gameover-screen');
   const finalScoreEl = document.getElementById('final-score');
@@ -600,6 +602,7 @@
 
   function startGame() {
     phase         = 'playing';
+    paused        = false;
     score         = 0; combo = 0; hitCount = 0; levelHits = 0;
     levelIdx      = 0; lives = 3; perfectStreak = 0;
     parts         = []; feedbacks = [];
@@ -634,6 +637,7 @@
     speedBar.classList.add('visible');
 
     bestValEl.textContent = highScore;
+    if (pauseBtnEl) { pauseBtnEl.textContent = '⏸'; pauseBtnEl.classList.remove('hidden'); }
     lifePips.forEach(h => { h.classList.remove('lost','gained','losing'); });
     updateHUD(); updatePips(); updateLivesUI(); updateLevelHud();
     spawnRing();
@@ -938,6 +942,8 @@
     levelMapEl.classList.add('hidden');
     speedBar.classList.remove('visible');
     hudEl.classList.add('hidden');
+    paused = false;
+    if (pauseBtnEl) pauseBtnEl.classList.add('hidden');
 
     // Remove any pre-existing overlay from a previous round
     const old = document.getElementById('vreth-overlay');
@@ -1006,6 +1012,242 @@
     phase    = 'playing';
     waveT    = 0; stutterT = 0; stutterPaused = false;
     spawnRing();
+  }
+
+  // ── PAUSE / RESUME ────────────────────────────────────────────────────────────
+
+  function pauseGame() {
+    if (phase !== 'playing' && phase !== 'ceremony') return;
+    paused = true;
+    pauseBtnEl.textContent = '▶';
+    pauseBtnEl.title = 'Resume';
+    drawPauseOverlay();
+  }
+
+  function resumeGame() {
+    if (!paused) return;
+    paused = false;
+    lastT  = 0;   // reset so the first frame after resume has dt=0 (no jump)
+    pauseBtnEl.textContent = '⏸';
+    pauseBtnEl.title = 'Pause';
+    // Erase the pause overlay text from the canvas on next draw frame
+    _levelMapDirty = true;
+  }
+
+  function togglePause() {
+    if (paused) resumeGame(); else pauseGame();
+  }
+
+  function drawPauseOverlay() {
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2;
+
+    // Dark translucent veil
+    ctx.save();
+    ctx.fillStyle = 'rgba(8,2,0,0.72)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Vreth pause label
+    ctx.fillStyle   = 'rgba(0,255,178,0.22)';
+    ctx.font        = `400 ${Math.min(W * 0.014, 8)}px "Press Start 2P", monospace`;
+    ctx.textAlign   = 'center';
+    ctx.letterSpacing = '0.30em';
+    ctx.fillText('VRETH CLASSIFICATION ENGINE', cx, cy - 42);
+
+    // BIG "PAUSED"
+    ctx.fillStyle    = 'rgba(255,244,224,0.88)';
+    ctx.shadowColor  = '#FF4500';
+    ctx.shadowBlur   = 18;
+    ctx.font         = `400 ${Math.min(W * 0.068, 52)}px "Press Start 2P", monospace`;
+    ctx.letterSpacing = '0.08em';
+    ctx.fillText('PAUSED', cx, cy + 14);
+
+    // Sub-label
+    ctx.shadowBlur   = 0;
+    ctx.fillStyle    = 'rgba(255,244,224,0.28)';
+    ctx.font         = `400 ${Math.min(W * 0.012, 7)}px "Press Start 2P", monospace`;
+    ctx.letterSpacing = '0.20em';
+    ctx.fillText('TAP ▶ OR PRESS P TO RESUME', cx, cy + 46);
+
+    ctx.restore();
+  }
+
+  // ── RANK DOSSIER PANEL ────────────────────────────────────────────────────────
+
+  function showRankDossier() {
+    if (document.getElementById('rank-dossier')) return; // already open
+
+    const rank = highRankIdx >= 0
+      ? LORE.ranks[Math.min(highRankIdx, LORE.ranks.length - 1)]
+      : null;
+
+    const panel = document.createElement('div');
+    panel.id = 'rank-dossier';
+    panel.style.cssText = [
+      'position:fixed','inset:0','z-index:50',
+      'display:flex','align-items:center','justify-content:center',
+      'background:rgba(8,2,0,0.88)',
+      'font-family:"Press Start 2P",monospace',
+      'animation:dossierIn 0.22s steps(6) ease-out',
+    ].join(';');
+
+    // Inject keyframes once
+    if (!document.getElementById('dossier-styles')) {
+      const st = document.createElement('style');
+      st.id = 'dossier-styles';
+      st.textContent = `
+        @keyframes dossierIn {
+          from { opacity:0; transform:scale(0.94); }
+          to   { opacity:1; transform:scale(1); }
+        }
+        @keyframes dossierOut {
+          from { opacity:1; transform:scale(1); }
+          to   { opacity:0; transform:scale(0.94); }
+        }
+        #rank-dossier-card {
+          border: 1px solid rgba(0,255,178,0.14);
+          box-shadow: 0 0 40px rgba(0,255,178,0.06), inset 0 0 60px rgba(0,0,0,0.5);
+        }
+        #rank-dossier-card::before {
+          content:'';
+          position:absolute;inset:0;
+          background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,20,10,0.09) 2px,rgba(0,20,10,0.09) 4px);
+          pointer-events:none;
+        }
+        .dossier-row {
+          display:flex; flex-direction:column; gap:4px;
+          margin-bottom:16px; text-align:left;
+        }
+        .dossier-key {
+          font-size:clamp(0.22rem,0.9vw,0.28rem);
+          letter-spacing:0.22em; color:rgba(0,255,178,0.35);
+          line-height:1;
+        }
+        .dossier-val {
+          font-size:clamp(0.28rem,1.1vw,0.36rem);
+          letter-spacing:0.10em; color:#FFF4E0;
+          line-height:1.8;
+        }
+        .dossier-close-btn:hover {
+          background:#FF8C00 !important; color:#080200 !important;
+          box-shadow:4px 4px 0 #CC5500, 0 0 20px rgba(255,140,0,0.4) !important;
+          transform:translate(-1px,-1px);
+        }
+        .dossier-close-btn:active {
+          transform:translate(3px,3px) !important;
+          box-shadow:none !important;
+        }
+      `;
+      document.head.appendChild(st);
+    }
+
+    const card = document.createElement('div');
+    card.id = 'rank-dossier-card';
+    card.style.cssText = [
+      'position:relative',
+      'width:min(340px,88vw)',
+      'padding:clamp(20px,5vw,28px) clamp(18px,5vw,26px)',
+      'background:#0D0603',
+      'overflow:hidden',
+    ].join(';');
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:clamp(0.22rem,0.9vw,0.28rem);letter-spacing:0.30em;color:rgba(0,255,178,0.30);margin-bottom:18px;text-align:center;';
+    hdr.textContent = '── SUBJECT DOSSIER ──';
+    card.appendChild(hdr);
+
+    if (!rank) {
+      // No rank earned yet
+      const empty = document.createElement('div');
+      empty.style.cssText = 'font-size:clamp(0.26rem,1vw,0.32rem);letter-spacing:0.10em;color:rgba(255,244,224,0.28);line-height:2.2;text-align:center;padding:12px 0;';
+      empty.textContent = 'NO CLASSIFICATION ON RECORD.\nCOMPLETE A TEST TO BE\nASSIGNED A CASTE.';
+      empty.style.whiteSpace = 'pre-line';
+      card.appendChild(empty);
+    } else {
+      // Rank title — big, coloured
+      const titleRow = document.createElement('div');
+      titleRow.className = 'dossier-row';
+      const titleKey = document.createElement('div');
+      titleKey.className = 'dossier-key'; titleKey.textContent = 'CASTE';
+      const titleVal = document.createElement('div');
+      titleVal.className = 'dossier-val';
+      titleVal.textContent = rank.title;
+      titleVal.style.cssText = `font-size:clamp(0.9rem,3.5vw,1.6rem);letter-spacing:0.18em;color:${rank.color};text-shadow:0 0 18px ${rank.color}80;`;
+      titleRow.appendChild(titleKey); titleRow.appendChild(titleVal);
+      card.appendChild(titleRow);
+
+      // Divider
+      const div1 = document.createElement('div');
+      div1.style.cssText = 'width:100%;height:1px;background:rgba(0,255,178,0.10);margin:4px 0 16px;';
+      card.appendChild(div1);
+
+      // Role in society
+      const roleRow = document.createElement('div');
+      roleRow.className = 'dossier-row';
+      const roleKey = document.createElement('div');
+      roleKey.className = 'dossier-key'; roleKey.textContent = 'ROLE IN OCCUPIED SOCIETY';
+      const roleVal = document.createElement('div');
+      roleVal.className = 'dossier-val'; roleVal.textContent = rank.desc;
+      roleRow.appendChild(roleKey); roleRow.appendChild(roleVal);
+      card.appendChild(roleRow);
+
+      // Vreth verdict
+      const alienRow = document.createElement('div');
+      alienRow.className = 'dossier-row';
+      const alienKey = document.createElement('div');
+      alienKey.className = 'dossier-key'; alienKey.textContent = 'VRETH ASSESSMENT';
+      const alienVal = document.createElement('div');
+      alienVal.className = 'dossier-val';
+      alienVal.textContent = rank.alien;
+      alienVal.style.cssText = `color:rgba(0,255,178,0.55);font-size:clamp(0.22rem,0.85vw,0.28rem);letter-spacing:0.08em;line-height:2;`;
+      alienRow.appendChild(alienKey); alienRow.appendChild(alienVal);
+      card.appendChild(alienRow);
+
+      // Peak score
+      const scoreRow = document.createElement('div');
+      scoreRow.className = 'dossier-row';
+      const scoreKey = document.createElement('div');
+      scoreKey.className = 'dossier-key'; scoreKey.textContent = 'PEAK NEURAL SCORE';
+      const scoreVal = document.createElement('div');
+      scoreVal.className = 'dossier-val'; scoreVal.textContent = highScore;
+      scoreRow.appendChild(scoreKey); scoreRow.appendChild(scoreVal);
+      card.appendChild(scoreRow);
+    }
+
+    // Divider before button
+    const div2 = document.createElement('div');
+    div2.style.cssText = 'width:100%;height:1px;background:rgba(0,255,178,0.08);margin:4px 0 18px;';
+    card.appendChild(div2);
+
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'dossier-close-btn';
+    closeBtn.textContent = 'CLOSE DOSSIER';
+    closeBtn.style.cssText = [
+      'font-family:"Press Start 2P",monospace',
+      'font-size:clamp(0.30rem,1.1vw,0.38rem)',
+      'letter-spacing:0.12em',
+      'color:#080200','background:#FFF4E0',
+      'border:none','cursor:pointer',
+      'padding:10px 20px',
+      'box-shadow:4px 4px 0 #FF4500,8px 8px 0 rgba(255,69,0,0.3)',
+      'display:block','margin:0 auto',
+      'min-height:44px','min-width:140px',
+      'transition:transform 0.08s steps(2),box-shadow 0.08s steps(2)',
+    ].join(';');
+
+    function closeDossier() {
+      panel.style.animation = 'dossierOut 0.18s steps(5) ease-in forwards';
+      setTimeout(() => panel.remove(), 200);
+    }
+
+    closeBtn.addEventListener('click', e => { e.stopPropagation(); closeDossier(); });
+    panel.addEventListener('click', e => { if (e.target === panel) closeDossier(); });
+    card.appendChild(closeBtn);
+
+    panel.appendChild(card);
+    document.body.appendChild(panel);
   }
 
   // ── RING SPAWN ───────────────────────────────────────────────────────────────
@@ -2172,6 +2414,15 @@
   function loop(ts) {
     const rawDt = (ts - lastT) / 1000;
     lastT = ts;
+
+    if (paused) {
+      // Just keep rendering the frozen frame + pause overlay; no state update
+      draw();
+      drawPauseOverlay();
+      requestAnimationFrame(loop);
+      return;
+    }
+
     // Tighter dt cap at high speed: large frame gaps cause the ring to jump
     // past the target zone in one tick, triggering false auto-misses (red flash).
     const speedFactor = ring ? Math.min(speed / 150, 1) : 0;
@@ -2187,14 +2438,40 @@
 
   // ── EVENTS ───────────────────────────────────────────────────────────────────
 
-  function handleInput() { onInput(); }
+  function handleInput() { if (!paused) onInput(); }
 
   canvas.addEventListener('click',      handleInput);
   canvas.addEventListener('touchstart', e => { e.preventDefault(); handleInput(); }, { passive: false });
 
   document.addEventListener('keydown', e => {
+    if (e.code === 'KeyP') {
+      e.preventDefault();
+      if (phase === 'playing' || phase === 'ceremony' || paused) togglePause();
+      return;
+    }
     if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); handleInput(); }
   });
+
+  // Pause button
+  if (pauseBtnEl) {
+    pauseBtnEl.addEventListener('click', e => {
+      e.stopPropagation();
+      if (phase === 'playing' || phase === 'ceremony' || paused) togglePause();
+    });
+    pauseBtnEl.addEventListener('touchstart', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (phase === 'playing' || phase === 'ceremony' || paused) togglePause();
+    }, { passive: false });
+  }
+
+  // Rank dossier — click the best-rank-val element
+  const _rankClickEl = document.getElementById('best-rank-val');
+  if (_rankClickEl) {
+    _rankClickEl.style.cursor = 'pointer';
+    _rankClickEl.addEventListener('click',      e => { e.stopPropagation(); showRankDossier(); });
+    _rankClickEl.addEventListener('touchstart', e => { e.stopPropagation(); e.preventDefault(); showRankDossier(); }, { passive: false });
+  }
 
   document.getElementById('start-btn').addEventListener('click', e => {
     e.stopPropagation(); startGame();

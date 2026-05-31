@@ -206,9 +206,9 @@
     },
     {
       accent: '#FFF4E0', name: 'PLASMA',  subtitle: 'beyond the flame.',
-      hitsNeeded: 999, perfectWin: 5, goodWin: 12,
+      hitsNeeded: 30, perfectWin: 5, goodWin: 12,
       baseSpeed: 290, maxSpeed: 460,  speedStep: 14,
-      behavior: 'near-invisible', bgTint: [22, 12, 6, 1],
+      behavior: 'plasma-visible', bgTint: [22, 12, 6, 1],
     },
   ];
 
@@ -637,11 +637,7 @@
     speedBar.classList.add('visible');
 
     bestValEl.textContent = highScore;
-    if (pauseBtnEl) {
-      pauseBtnEl.classList.remove('hidden', 'is-paused');
-      pauseBtnEl.title = 'Pause';
-    }
-    hideRoleInfoBtn();
+    if (pauseBtnEl) { pauseBtnEl.textContent = '⏸'; pauseBtnEl.classList.remove('hidden'); }
     lifePips.forEach(h => { h.classList.remove('lost','gained','losing'); });
     updateHUD(); updatePips(); updateLivesUI(); updateLevelHud();
     spawnRing();
@@ -948,7 +944,6 @@
     hudEl.classList.add('hidden');
     paused = false;
     if (pauseBtnEl) pauseBtnEl.classList.add('hidden');
-    hideRoleInfoBtn();
 
     // Remove any pre-existing overlay from a previous round
     const old = document.getElementById('vreth-overlay');
@@ -1019,45 +1014,517 @@
     spawnRing();
   }
 
+  // ── PLASMA ENDING — cinematic final sequence ─────────────────────────────────
+
+  function triggerPlasmaEnding() {
+    phase = 'gameover';
+    ring  = null;
+    paused = false;
+
+    // Save score
+    const newBest = score > highScore;
+    if (newBest) { highScore = score; localStorage.setItem('pulse_hs', highScore); }
+
+    // ASCENDANT rank (index 6) — the last rank
+    const rankEarned = LORE.ranks[LORE.ranks.length - 1];
+    const earnedRankIdx = LORE.ranks.length - 1;
+    if (earnedRankIdx > highRankIdx) {
+      highRankIdx = earnedRankIdx;
+      localStorage.setItem('pulse_hr', highRankIdx);
+    }
+
+    livesHudEl.classList.add('hidden');
+    levelMapEl.classList.add('hidden');
+    speedBar.classList.remove('visible');
+    hudEl.classList.add('hidden');
+    if (pauseBtnEl) pauseBtnEl.classList.add('hidden');
+
+    const old = document.getElementById('vreth-overlay');
+    if (old) old.remove();
+
+    // Massive flash + boom before blackout
+    flashA = 1.0; flashCol = '#FFFFFF';
+    shakeX = 60; shakeY = 40;
+    SFX.shockwaveBoom();
+    for (let i = 0; i < 8; i++) {
+      setTimeout(() => SFX.shockwaveBoom(), i * 90);
+    }
+
+    setTimeout(() => runPlasmaEndingSequence(score, highScore, newBest, rankEarned), 600);
+  }
+
+  function runPlasmaEndingSequence(finalScore, bestScore, newBest, rankEarned) {
+    // ── Create full-screen overlay ────────────────────────────────────────────
+    const overlay = document.createElement('div');
+    overlay.id = 'vreth-overlay';
+    overlay.style.cssText = [
+      'position:fixed','inset:0','z-index:999',
+      'background:#000','display:flex','flex-direction:column',
+      'align-items:center','justify-content:center',
+      'font-family:"Press Start 2P",monospace',
+      'overflow:hidden','opacity:0',
+      'transition:opacity 0.3s ease',
+    ].join(';');
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+
+    // ── Matrix rain canvas (starts green → corrupts to red) ───────────────────
+    const matCanvas = document.createElement('canvas');
+    matCanvas.style.cssText = 'position:absolute;inset:0;opacity:0;transition:opacity 0.5s ease;';
+    overlay.appendChild(matCanvas);
+    matCanvas.width  = window.innerWidth;
+    matCanvas.height = window.innerHeight;
+
+    const mctx  = matCanvas.getContext('2d');
+    const cols   = Math.floor(matCanvas.width / 14);
+    const drops  = Array.from({ length: cols }, () => Math.random() * -80);
+    const CHARS  = '01VRETH∑ΨΩ∂∇◈⬡⬢ΨABCDEF1001CLASSIFIED∴⟁▓░▒⚠ANOMALY01DANGER'.split('');
+    matrixActive = true;
+
+    // Phase timer: 0-2s = green matrix, 2-4s = corruption (red creep), 4s+ = full red
+    let matPhaseT = 0;
+    let lastMatTs = performance.now();
+
+    function matrixFrame() {
+      if (!matrixActive) return;
+      const now = performance.now();
+      matPhaseT += (now - lastMatTs) / 1000;
+      lastMatTs  = now;
+
+      // Background fade — stays black
+      mctx.fillStyle = 'rgba(0,0,0,0.14)';
+      mctx.fillRect(0, 0, matCanvas.width, matCanvas.height);
+      mctx.font = '13px "Press Start 2P", monospace';
+
+      drops.forEach((y, i) => {
+        const ch = CHARS[Math.floor(Math.random() * CHARS.length)];
+        const bright = Math.random() > 0.90;
+
+        // Color shift: green → corrupt (flickering red) → full red
+        let r, g, b;
+        if (matPhaseT < 2) {
+          // Pure green matrix
+          r = 0; g = bright ? 255 : 180; b = bright ? 178 : 80;
+        } else if (matPhaseT < 4) {
+          // Corruption creep: each column independently flips red based on col position + noise
+          const corruptFrac = (matPhaseT - 2) / 2;
+          const columnNoise = ((i * 7919) % 100) / 100;   // deterministic per-column
+          if (columnNoise < corruptFrac + Math.random() * 0.15) {
+            // Corrupted column: red
+            r = bright ? 255 : 200; g = bright ? 40 : 0; b = 0;
+          } else {
+            r = 0; g = bright ? 255 : 180; b = bright ? 178 : 80;
+          }
+        } else {
+          // Full red emergency
+          r = bright ? 255 : 200; g = bright ? 60 : 0; b = 0;
+        }
+
+        mctx.fillStyle   = `rgb(${r},${g},${b})`;
+        mctx.globalAlpha = bright ? 0.95 : 0.5 + Math.random() * 0.3;
+        mctx.fillText(ch, i * 14, y * 14);
+        mctx.globalAlpha = 1;
+        if (y * 14 > matCanvas.height && Math.random() > 0.96) drops[i] = 0;
+        drops[i] += matPhaseT < 3 ? 0.5 : 0.8 + Math.random() * 0.4;  // accelerate when red
+      });
+      matrixRaf = requestAnimationFrame(matrixFrame);
+    }
+
+    // ── Emergency red strobe overlay ──────────────────────────────────────────
+    const strobeEl = document.createElement('div');
+    strobeEl.style.cssText = [
+      'position:absolute','inset:0','z-index:3',
+      'background:rgba(180,0,0,0.0)',
+      'pointer-events:none',
+      'transition:background 0.06s ease',
+    ].join(';');
+    overlay.appendChild(strobeEl);
+
+    // ── Content panel — sits above matrix ─────────────────────────────────────
+    const contentEl = document.createElement('div');
+    contentEl.style.cssText = [
+      'position:relative','z-index:5','text-align:center',
+      'width:min(520px,92vw)','padding:0 12px',
+      'display:flex','flex-direction:column','align-items:center','gap:0',
+    ].join(';');
+    overlay.appendChild(contentEl);
+
+    // ── Phase 1: BLACKOUT (0ms) — just black + matrix begins ─────────────────
+    setTimeout(() => {
+      matCanvas.style.opacity = '0.30';
+      matrixFrame();
+    }, 400);
+
+    // ── Phase 2: Codes start breaking / matrix visible (1200ms) ──────────────
+
+    // ── Phase 3: Emergency alarm + strobe (2800ms) ───────────────────────────
+    let strobeInterval = null;
+    let strobeOn       = false;
+
+    setTimeout(() => {
+      // Start strobe
+      strobeInterval = setInterval(() => {
+        strobeOn = !strobeOn;
+        strobeEl.style.background = strobeOn
+          ? 'rgba(200,0,0,0.22)'
+          : 'rgba(0,0,0,0)';
+      }, 280);
+
+      // Alarm sound — repeating harsh buzzer
+      function alarmPulse(times) {
+        if (times <= 0) return;
+        try {
+          const a = ac();
+          // Low rumble + high screech
+          const o1 = a.createOscillator(), g1 = a.createGain();
+          o1.connect(g1); g1.connect(a.destination);
+          o1.type = 'sawtooth'; o1.frequency.value = 80;
+          const t = a.currentTime;
+          g1.gain.setValueAtTime(0.28, t);
+          g1.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+          o1.start(t); o1.stop(t + 0.36);
+
+          const o2 = a.createOscillator(), g2 = a.createGain();
+          o2.connect(g2); g2.connect(a.destination);
+          o2.type = 'square'; o2.frequency.value = 880;
+          g2.gain.setValueAtTime(0.0, t);
+          g2.gain.linearRampToValueAtTime(0.18, t + 0.04);
+          g2.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+          o2.start(t); o2.stop(t + 0.33);
+
+          // Second chirp of the alarm pair
+          const o3 = a.createOscillator(), g3 = a.createGain();
+          o3.connect(g3); g3.connect(a.destination);
+          o3.type = 'square'; o3.frequency.value = 660;
+          g3.gain.setValueAtTime(0.0, t + 0.18);
+          g3.gain.linearRampToValueAtTime(0.14, t + 0.22);
+          g3.gain.exponentialRampToValueAtTime(0.001, t + 0.46);
+          o3.start(t + 0.18); o3.stop(t + 0.47);
+        } catch (_) {}
+        setTimeout(() => alarmPulse(times - 1), 700);
+      }
+      alarmPulse(8);
+
+    }, 2800);
+
+    // ── Phase 4: WARNING SIGN appears (3800ms) ───────────────────────────────
+    setTimeout(() => {
+      // Inject keyframe styles for the ending sequence
+      if (!document.getElementById('plasma-end-styles')) {
+        const st = document.createElement('style');
+        st.id = 'plasma-end-styles';
+        st.textContent = `
+          @keyframes warningFlash {
+            0%,49%  { opacity: 1; }
+            50%,99% { opacity: 0.1; }
+          }
+          @keyframes warningPulse {
+            0%,100% { text-shadow: 0 0 20px #FF0000, 0 0 40px #FF0000, 4px 4px 0 #8B0000; }
+            50%     { text-shadow: 0 0 60px #FF0000, 0 0 80px #FF3300, 4px 4px 0 #8B0000; }
+          }
+          @keyframes threatSlideIn {
+            from { clip-path:inset(0 100% 0 0); opacity:0.2; }
+            to   { clip-path:inset(0 0% 0 0);   opacity:1; }
+          }
+          @keyframes scanLine {
+            0%   { top: -4px; }
+            100% { top: 100%; }
+          }
+          @keyframes glitchShift {
+            0%,100% { transform: translateX(0) skewX(0deg); }
+            8%      { transform: translateX(-4px) skewX(-1deg); }
+            16%     { transform: translateX(4px) skewX(1deg); }
+            24%     { transform: translateX(0); }
+            60%     { transform: translateX(-2px); }
+            70%     { transform: translateX(2px) skewX(-0.5deg); }
+          }
+          @keyframes anomalyReveal {
+            0%   { letter-spacing: 0.8em; opacity:0; transform:scale(1.2); }
+            60%  { letter-spacing: 0.22em; opacity:1; transform:scale(1.02); }
+            100% { letter-spacing: 0.18em; opacity:1; transform:scale(1); }
+          }
+          @keyframes threatTypeIn {
+            from { max-height: 0; opacity: 0; }
+            to   { max-height: 600px; opacity: 1; }
+          }
+          @keyframes eliminatePulse {
+            0%,100% { background:#FF0000; box-shadow:0 0 0 0 rgba(255,0,0,0.6), 6px 6px 0 #8B0000; }
+            50%     { background:#CC0000; box-shadow:0 0 0 12px rgba(255,0,0,0), 6px 6px 0 #8B0000; }
+          }
+          @keyframes borderAlarm {
+            0%,100% { border-color: rgba(255,0,0,0.6); box-shadow: 0 0 0 0 rgba(255,0,0,0.3), inset 0 0 40px rgba(200,0,0,0.08); }
+            50%     { border-color: rgba(255,0,0,1);   box-shadow: 0 0 30px rgba(255,0,0,0.5), inset 0 0 40px rgba(200,0,0,0.18); }
+          }
+          @keyframes scanLineSweep {
+            0%   { transform: translateY(-100%); opacity:0.6; }
+            100% { transform: translateY(200vh); opacity:0.2; }
+          }
+          @keyframes vFlicker2 {
+            0%,86%,88%,92%,96%,100% { opacity:1; }
+            87%,90%,94% { opacity:0.1; }
+          }
+        `;
+        document.head.appendChild(st);
+      }
+
+      // Scan line that sweeps down
+      const scanLine = document.createElement('div');
+      scanLine.style.cssText = [
+        'position:absolute','left:0','width:100%','height:3px',
+        'background:linear-gradient(90deg,transparent,rgba(255,0,0,0.6),transparent)',
+        'z-index:4','animation:scanLineSweep 2.2s linear infinite',
+        'pointer-events:none',
+      ].join(';');
+      overlay.appendChild(scanLine);
+
+      // Warning icon — pixelated ⚠
+      const warnIcon = document.createElement('div');
+      warnIcon.style.cssText = [
+        'font-size:clamp(3rem,12vw,5.5rem)',
+        'line-height:1',
+        'margin-bottom:12px',
+        'animation:warningFlash 0.6s steps(2) infinite, warningPulse 1.2s ease-in-out infinite',
+        'filter:drop-shadow(0 0 20px rgba(255,0,0,0.8))',
+      ].join(';');
+      warnIcon.textContent = '⚠';
+      contentEl.appendChild(warnIcon);
+
+      // ANOMALY DETECTED header
+      const anomalyEl = document.createElement('div');
+      anomalyEl.style.cssText = [
+        'color:#FF0000',
+        'font-size:clamp(0.7rem,3.5vw,1.6rem)',
+        'letter-spacing:0.18em',
+        'text-shadow:0 0 20px #FF0000, 0 0 40px #FF0000, 4px 4px 0 #8B0000',
+        'margin-bottom:8px',
+        'animation:anomalyReveal 0.8s steps(12) ease-out, warningFlash 0.9s steps(2) 1.5s infinite',
+        'animation-fill-mode:forwards',
+      ].join(';');
+      anomalyEl.textContent = 'ANOMALY DETECTED';
+      contentEl.appendChild(anomalyEl);
+
+      // Exclamation divider
+      const bangDiv = document.createElement('div');
+      bangDiv.style.cssText = [
+        'color:rgba(255,0,0,0.5)',
+        'font-size:clamp(0.30rem,1.2vw,0.38rem)',
+        'letter-spacing:0.40em',
+        'margin-bottom:14px',
+        'animation:vFlicker2 2s steps(2) infinite',
+      ].join(';');
+      bangDiv.textContent = '! ! ! ! ! ! ! ! ! ! ! ! !';
+      contentEl.appendChild(bangDiv);
+
+    }, 3800);
+
+    // ── Phase 5: Threat message (5200ms) ─────────────────────────────────────
+    setTimeout(() => {
+      // Threat card
+      const threatCard = document.createElement('div');
+      threatCard.style.cssText = [
+        'border:1px solid rgba(255,0,0,0.6)',
+        'padding:clamp(14px,4vw,22px) clamp(14px,5vw,28px)',
+        'width:min(480px,90vw)',
+        'background:rgba(20,0,0,0.90)',
+        'position:relative',
+        'animation:borderAlarm 0.9s ease-in-out infinite, glitchShift 4s steps(8) infinite',
+        'margin-bottom:20px',
+      ].join(';');
+
+      // VRETH HIGH COMMAND header in card
+      const cmdLabel = document.createElement('div');
+      cmdLabel.style.cssText = [
+        'color:rgba(255,80,80,0.6)',
+        'font-size:clamp(0.24rem,1vw,0.30rem)',
+        'letter-spacing:0.30em',
+        'margin-bottom:12px',
+        'text-align:center',
+        'animation:vFlicker2 3s steps(2) infinite',
+      ].join(';');
+      cmdLabel.textContent = '⟁ VRETH HIGH COMMAND ⟁';
+      threatCard.appendChild(cmdLabel);
+
+      // Subject ID line
+      const subjectLine = document.createElement('div');
+      subjectLine.style.cssText = [
+        'color:rgba(255,120,120,0.5)',
+        'font-size:clamp(0.22rem,0.85vw,0.28rem)',
+        'letter-spacing:0.18em',
+        'margin-bottom:14px',
+        'text-align:center',
+      ].join(';');
+      subjectLine.textContent = `SUBJECT #${Math.floor(Math.random()*900000+100000)} // NEURAL SCORE: ${finalScore}`;
+      threatCard.appendChild(subjectLine);
+
+      // Divider
+      const div1 = document.createElement('div');
+      div1.style.cssText = 'width:100%;height:1px;background:rgba(255,0,0,0.25);margin:0 0 14px;';
+      threatCard.appendChild(div1);
+
+      // Main threat text — typewritten
+      const threatLines = [
+        'THIS SUBJECT CANNOT BE CLASSIFIED.',
+        '',
+        'NEURAL SIGNATURE EXCEEDS ALL KNOWN',
+        'VRETH COGNITIVE BENCHMARKS.',
+        '',
+        'A MIND THIS POWERFUL IS A THREAT',
+        'TO THE OCCUPATION.',
+        '',
+        'HIGH COMMAND HAS ISSUED ORDER 7-ZERO:',
+        '',
+        'LOCATE. CONTAIN. ELIMINATE.',
+        '',
+        'YOU ARE CONSIDERED EXTREMELY',
+        'DANGEROUS TO VRETH CIVILISATION.',
+        '',
+        'THERE IS NO RANK FOR WHAT YOU ARE.',
+      ];
+
+      const threatTextEl = document.createElement('div');
+      threatTextEl.style.cssText = [
+        'color:#FF4444',
+        'font-size:clamp(0.24rem,1vw,0.32rem)',
+        'letter-spacing:0.10em',
+        'line-height:2.2',
+        'text-align:left',
+        'overflow:hidden',
+        'animation:threatTypeIn 0.01s ease-out',
+        'white-space:pre-line',
+      ].join(';');
+      threatCard.appendChild(threatTextEl);
+      contentEl.appendChild(threatCard);
+
+      // Typewrite the threat lines
+      let allText = threatLines.join('\n');
+      let charIdx = 0;
+      const typeInterval = setInterval(() => {
+        charIdx += 2;
+        threatTextEl.textContent = allText.slice(0, charIdx);
+        if (charIdx >= allText.length) clearInterval(typeInterval);
+        // click sound per character
+        try {
+          const a = ac();
+          const o = a.createOscillator(), g = a.createGain();
+          o.connect(g); g.connect(a.destination);
+          o.type = 'square'; o.frequency.value = 60 + Math.random() * 40;
+          const t = a.currentTime;
+          g.gain.setValueAtTime(0.03, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+          o.start(t); o.stop(t + 0.05);
+        } catch(_) {}
+      }, 35);
+
+    }, 5200);
+
+    // ── Phase 6: ELIMINATE button + final verdict (9000ms) ───────────────────
+    setTimeout(() => {
+      // Stop strobe — switch to slow steady heartbeat flash
+      if (strobeInterval) { clearInterval(strobeInterval); strobeInterval = null; }
+      let heartbeatPhase = 0;
+      const heartbeatStrobe = setInterval(() => {
+        heartbeatPhase++;
+        strobeEl.style.background = (heartbeatPhase % 6 === 0 || heartbeatPhase % 6 === 1)
+          ? 'rgba(180,0,0,0.18)'
+          : 'rgba(0,0,0,0)';
+      }, 200);
+
+      // "YOU HAVE BEEN MARKED" label
+      const markedEl = document.createElement('div');
+      markedEl.style.cssText = [
+        'color:rgba(255,60,60,0.75)',
+        'font-size:clamp(0.26rem,1.1vw,0.34rem)',
+        'letter-spacing:0.22em',
+        'margin-bottom:14px',
+        'text-align:center',
+        'animation:vFlicker2 1.8s steps(2) infinite',
+      ].join(';');
+      markedEl.textContent = '⚠  YOU HAVE BEEN MARKED  ⚠';
+      contentEl.appendChild(markedEl);
+
+      // Retry button — styled as ELIMINATE ORDER (ironic/tense reframe)
+      const btn = document.createElement('button');
+      btn.style.cssText = [
+        'font-family:"Press Start 2P",monospace',
+        'font-size:clamp(0.38rem,1.4vw,0.48rem)',
+        'letter-spacing:0.10em',
+        'color:#FFF4E0',
+        'background:#FF0000',
+        'border:2px solid rgba(255,100,100,0.5)',
+        'padding:clamp(12px,3vw,16px) clamp(22px,7vw,32px)',
+        'cursor:pointer',
+        'margin-top:6px',
+        'box-shadow:6px 6px 0 #8B0000, 0 0 30px rgba(255,0,0,0.6)',
+        'position:relative',
+        'min-height:48px',
+        'min-width:200px',
+        'animation:eliminatePulse 1.1s ease-in-out infinite',
+      ].join(';');
+      btn.textContent = 'RUN. THEY\'RE COMING.';
+      btn.addEventListener('click', () => {
+        matrixActive = false;
+        clearInterval(heartbeatStrobe);
+        if (matrixRaf) { cancelAnimationFrame(matrixRaf); matrixRaf = null; }
+        overlay.remove();
+        startGame();
+      });
+      btn.addEventListener('touchstart', e => {
+        e.stopPropagation(); e.preventDefault();
+        matrixActive = false;
+        clearInterval(heartbeatStrobe);
+        if (matrixRaf) { cancelAnimationFrame(matrixRaf); matrixRaf = null; }
+        overlay.remove();
+        startGame();
+      }, { passive: false });
+      contentEl.appendChild(btn);
+
+      // Sub label
+      const subBtn = document.createElement('div');
+      subBtn.style.cssText = [
+        'color:rgba(255,80,80,0.35)',
+        'font-size:clamp(0.22rem,0.85vw,0.28rem)',
+        'letter-spacing:0.16em',
+        'margin-top:10px',
+        'text-align:center',
+      ].join(';');
+      subBtn.textContent = 'TAP · CLICK · SPACE';
+      contentEl.appendChild(subBtn);
+
+      // Space key still works
+      const _endSpaceHandler = (e) => {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          matrixActive = false;
+          clearInterval(heartbeatStrobe);
+          if (matrixRaf) { cancelAnimationFrame(matrixRaf); matrixRaf = null; }
+          overlay.remove();
+          document.removeEventListener('keydown', _endSpaceHandler);
+          startGame();
+        }
+      };
+      document.addEventListener('keydown', _endSpaceHandler);
+
+    }, 9000);
+  }
+
   // ── PAUSE / RESUME ────────────────────────────────────────────────────────────
 
   function pauseGame() {
     if (phase !== 'playing' && phase !== 'ceremony') return;
     paused = true;
+    pauseBtnEl.textContent = '▶';
     pauseBtnEl.title = 'Resume';
-    pauseBtnEl.classList.add('is-paused');
-    showRoleInfoBtn();
     drawPauseOverlay();
   }
 
   function resumeGame() {
     if (!paused) return;
     paused = false;
-    lastT  = 0;
+    lastT  = 0;   // reset so the first frame after resume has dt=0 (no jump)
+    pauseBtnEl.textContent = '⏸';
     pauseBtnEl.title = 'Pause';
-    pauseBtnEl.classList.remove('is-paused');
-    hideRoleInfoBtn();
+    // Erase the pause overlay text from the canvas on next draw frame
     _levelMapDirty = true;
-  }
-
-  // ── ROLE INFO BUTTON ─────────────────────────────────────────────────────────
-
-  function showRoleInfoBtn() {
-    if (document.getElementById('role-info-btn')) return;
-    const btn = document.createElement('button');
-    btn.id = 'role-info-btn';
-    btn.setAttribute('aria-label', 'View your role in society');
-    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00FFB2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>ROLE INFO`;
-    btn.addEventListener('click', e => { e.stopPropagation(); showRankDossier(); });
-    btn.addEventListener('touchstart', e => {
-      e.stopPropagation(); e.preventDefault(); showRankDossier();
-    }, { passive: false });
-    document.body.appendChild(btn);
-  }
-
-  function hideRoleInfoBtn() {
-    const btn = document.getElementById('role-info-btn');
-    if (btn) btn.remove();
   }
 
   function togglePause() {
@@ -1456,6 +1923,9 @@
 
     if (levelHits >= lv.hitsNeeded && levelIdx < LEVELS.length - 1) {
       triggerLevelUp();
+    } else if (levelHits >= lv.hitsNeeded && levelIdx === LEVELS.length - 1) {
+      // ── PLASMA COMPLETE — final boss ending ──
+      triggerPlasmaEnding();
     } else {
       spawnRing();
     }
@@ -1730,6 +2200,12 @@
       case 'near-invisible': {
         const t = waveT * 2.1 + ring.waveOffset;
         ring.opacity = 0.12 + 0.25 * Math.max(0, Math.sin(t));
+        break;
+      }
+      case 'plasma-visible': {
+        // PLASMA: pulsing, bright — the final boss ring must be seen
+        const t = waveT * 1.6 + ring.waveOffset;
+        ring.opacity = 0.55 + 0.45 * Math.abs(Math.sin(t));
         break;
       }
       default: break;

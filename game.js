@@ -1938,7 +1938,7 @@
     // Chromatic aberration jolt
     chromaT = 0.58;
 
-    lives--;
+    // lives--;  // INFINITE LIVES — testing
     updateLivesUI();
 
     const cx = canvas.width  / 2;
@@ -1948,7 +1948,7 @@
     perfectStreak = 0; combo = 0;
     updateHUD();
 
-    if (lives <= 0) {
+    if (lives <= 0 && false) {  // INFINITE LIVES — testing
       SFX.miss();
       endGame();
     } else {
@@ -2221,7 +2221,7 @@
 
     // Auto-miss: passed through target zone.
     // age > 2 guard prevents a large first-frame dt from instantly overshooting.
-    if (ring.age > 2 && ring.radius < targetRadius() - (lv.goodWin + 6) * screenScale()) registerMiss();
+    if (ring.age > 2 && false && ring.radius < targetRadius() - (lv.goodWin + 6) * screenScale()) registerMiss(); // RESTORE: remove && false below for normal play
   }
 
   // ── DRAW HELPERS ─────────────────────────────────────────────────────────────

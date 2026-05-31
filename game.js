@@ -173,42 +173,49 @@
       hitsNeeded: 8,  perfectWin: 9,  goodWin: 20,
       baseSpeed: 105, maxSpeed: 180,  speedStep: 9,
       behavior: 'normal', bgTint: [8, 2, 0, 1],
+      decoys: 0, barriers: 0, invert: false,
     },
     {
       accent: '#FF8C00', name: 'FLAME',   subtitle: 'heat is rising.',
       hitsNeeded: 10, perfectWin: 9,  goodWin: 18,
       baseSpeed: 130, maxSpeed: 220,  speedStep: 10,
       behavior: 'wave', bgTint: [12, 4, 0, 1],
+      decoys: 0, barriers: 0, invert: false,
     },
     {
       accent: '#FFD700', name: 'HEAT',    subtitle: 'temperature critical.',
       hitsNeeded: 12, perfectWin: 8,  goodWin: 17,
       baseSpeed: 155, maxSpeed: 260,  speedStep: 11,
       behavior: 'wave', bgTint: [16, 8, 0, 1],
+      decoys: 0, barriers: 0, invert: false,
     },
     {
       accent: '#FF4500', name: 'BLAZE',   subtitle: 'burning out of control.',
       hitsNeeded: 14, perfectWin: 7,  goodWin: 16,
       baseSpeed: 180, maxSpeed: 300,  speedStep: 12,
       behavior: 'stutter', bgTint: [18, 3, 0, 1],
+      decoys: 1, barriers: 0, invert: false,   // ← 1 decoy ring
     },
     {
       accent: '#FF2200', name: 'INFERNO', subtitle: 'no way back.',
       hitsNeeded: 16, perfectWin: 7,  goodWin: 15,
       baseSpeed: 210, maxSpeed: 340,  speedStep: 12,
       behavior: 'ghost', bgTint: [20, 2, 0, 1],
+      decoys: 1, barriers: 2, invert: false,   // ← 1 decoy + 2 rotating barriers
     },
     {
       accent: '#CC0000', name: 'FORGE',   subtitle: 'pressure becomes power.',
       hitsNeeded: 18, perfectWin: 6,  goodWin: 13,
       baseSpeed: 250, maxSpeed: 390,  speedStep: 13,
       behavior: 'stutter', bgTint: [18, 0, 0, 1],
+      decoys: 2, barriers: 2, invert: true,    // ← 2 decoys + barriers + invert flashes
     },
     {
       accent: '#FFF4E0', name: 'PLASMA',  subtitle: 'beyond the flame.',
       hitsNeeded: 30, perfectWin: 5, goodWin: 12,
       baseSpeed: 290, maxSpeed: 460,  speedStep: 14,
       behavior: 'plasma-visible', bgTint: [22, 12, 6, 1],
+      decoys: 2, barriers: 3, invert: true,    // ← full chaos
     },
   ];
 
@@ -362,6 +369,23 @@
   let heartbeatT     = 0;    // center dot pulse phase
 
   const SPEED_PIPS = 9;
+
+  // ── OBSTACLE STATE ────────────────────────────────────────────────────────────
+  // Decoy rings — ghost rings that travel at a slightly different speed
+  // [{radius, speedMult, opacity, age}]
+  let decoys = [];
+
+  // Rotating barriers — arc segments orbiting the target circle
+  // [{angle, arc, speed, alpha, warningT}]  arc = half-arc in radians
+  let barriers = [];
+  let barrierT = 0;   // global rotation timer
+
+  // Invert flash — brief direction reversal for the ring
+  let invertActive = false;   // is the ring currently inverted?
+  let invertT      = 0;       // time since invert triggered (drives duration + warning)
+  let invertCooldown = 0;     // countdown until next invert can fire
+  const INVERT_DURATION = 0.30;   // seconds the ring travels outward
+  const INVERT_COOLDOWN = 3.5;    // minimum gap between inverts
 
   // ── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -620,6 +644,10 @@
     chromaT = 0; heartbeatT = 0;
     hudScoreEl.classList.remove('breakthrough', 'godmode');
     canvas.style.filter = '';
+
+    // Reset obstacles
+    decoys = []; barriers = [];
+    barrierT = 0; invertActive = false; invertT = 0; invertCooldown = 2.0;
 
     const lv = currentLevel();
     speed = lv.baseSpeed;
@@ -1014,6 +1042,9 @@
     ceremony = null;
     phase    = 'playing';
     waveT    = 0; stutterT = 0; stutterPaused = false;
+    // Clear obstacles for the new level — they respawn with spawnRing
+    decoys = []; barriers = [];
+    barrierT = 0; invertActive = false; invertT = 0; invertCooldown = 2.0;
     spawnRing();
   }
 
@@ -1760,6 +1791,36 @@
     // Reset flashCol so any residual red tint from a previous miss/game-over
     // can't bleed into the first frame of the new ring.
     flashCol = '#ffffff';
+
+    // ── Spawn decoy rings for this level ─────────────────────────────────────
+    const lv = currentLevel();
+    decoys = [];
+    for (let i = 0; i < lv.decoys; i++) {
+      // Each decoy starts at the same spawn radius but travels at a different speed.
+      // Offset: ±12–28% speed so it diverges noticeably but not immediately obviously.
+      const offset = (i % 2 === 0 ? 1 : -1) * (0.12 + Math.random() * 0.16);
+      decoys.push({
+        radius:    spawnRadius() + (i + 1) * 18 * screenScale(),  // slightly staggered start
+        speedMult: 1 + offset,
+        opacity:   0.28 + Math.random() * 0.12,   // always dimmer than real ring
+        age:       0,
+        waveOffset: Math.random() * Math.PI * 2,
+      });
+    }
+
+    // ── Spawn rotating barriers for this level ────────────────────────────────
+    if (lv.barriers > 0 && barriers.length === 0) {
+      barriers = [];
+      for (let i = 0; i < lv.barriers; i++) {
+        barriers.push({
+          angle:    (i / lv.barriers) * Math.PI * 2,   // evenly distributed
+          arc:      0.48 + Math.random() * 0.30,        // half-arc ~27–44° each side
+          speed:    (1.2 + Math.random() * 0.8) * (i % 2 === 0 ? 1 : -1),  // alternating rotation
+          alpha:    0.85,
+          warningT: 0,
+        });
+      }
+    }
   }
 
   // ── BREAKTHROUGH ─────────────────────────────────────────────────────────────
@@ -1860,6 +1921,42 @@
     const lv   = currentLevel();
     const diff = Math.abs(ring.radius - targetRadius());
     const sc   = screenScale();
+
+    // ── Barrier check — tapping while the ring is in a barrier arc = miss ────
+    // Check if the inward position of the ring is currently inside any barrier arc.
+    // We map the ring's current travel progress to an angle to keep it simple:
+    // barriers block "top-of-screen" (angle ≈ 0) and rotate; we treat any tap
+    // as coming from angle 0 (since the ring is a full circle) so a barrier hits
+    // if the ring radius is within goodWin of the target AND a barrier arc covers
+    // the "12 o'clock" position (where the tap is conceptually aimed).
+    if (barriers.length > 0 && diff <= lv.goodWin * sc) {
+      const TAP_ANGLE = -Math.PI / 2;   // 12 o'clock — player always taps the top arc
+      for (const b of barriers) {
+        const normalised = ((b.angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        const tapNorm    = ((TAP_ANGLE  % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        let   angleDiff  = Math.abs(normalised - tapNorm);
+        if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+        if (angleDiff < b.arc) {
+          // Hit a barrier — forces a miss
+          registerMiss();
+          pushFeedback('BLOCKED', '#FF0066',
+            canvas.width / 2, canvas.height / 2 - targetRadius() - 50);
+          return;
+        }
+      }
+    }
+
+    // ── Decoy check — tapping when close to a decoy but not the real ring ────
+    // If a decoy is within goodWin and closer than the real ring → miss
+    for (const d of decoys) {
+      const decoyDiff = Math.abs(d.radius - targetRadius());
+      if (decoyDiff <= lv.goodWin * sc && decoyDiff < diff) {
+        registerMiss();
+        pushFeedback('DECOY', '#FF0066',
+          canvas.width / 2, canvas.height / 2 - targetRadius() - 50);
+        return;
+      }
+    }
 
     if (diff <= lv.perfectWin * sc)   registerHit('PERFECT', lv.accent, 10, true);
     else if (diff <= lv.goodWin * sc) registerHit('GOOD', '#FFD166', 5, false);
@@ -2225,6 +2322,69 @@
     // Auto-miss: passed through target zone.
     // age > 2 guard prevents a large first-frame dt from instantly overshooting.
     if (ring.age > 2 && ring.radius < targetRadius() - (lv.goodWin + 6) * screenScale()) registerMiss();
+
+    // ── OBSTACLE UPDATES ─────────────────────────────────────────────────────
+
+    // ── Decoy rings ──────────────────────────────────────────────────────────
+    let di = decoys.length;
+    while (di--) {
+      const d = decoys[di];
+      d.radius -= effectiveSpeed * d.speedMult * screenScale() * dt;
+      d.age    += 1;
+      // Auto-cull decoys that have passed through (no miss penalty — they're distractors)
+      if (d.age > 2 && d.radius < targetRadius() - (lv.goodWin + 20) * screenScale()) {
+        decoys.splice(di, 1);
+      }
+    }
+
+    // ── Rotating barriers ────────────────────────────────────────────────────
+    barrierT += dt;
+    for (const b of barriers) {
+      b.angle += b.speed * dt;
+      // Warning pulse: flash brighter when ring is within 60px of the target radius
+      const dist = ring ? Math.abs(ring.radius - targetRadius()) : 999;
+      b.warningT = dist < 60 * screenScale() ? b.warningT + dt : Math.max(0, b.warningT - dt * 3);
+    }
+
+    // ── Invert flash ─────────────────────────────────────────────────────────
+    if (lv.invert) {
+      if (invertCooldown > 0) {
+        invertCooldown -= dt;
+      }
+      if (invertActive) {
+        invertT += dt;
+        if (invertT >= INVERT_DURATION) {
+          invertActive = false;
+          invertCooldown = INVERT_COOLDOWN * (0.7 + Math.random() * 0.6);
+        }
+      } else if (invertCooldown <= 0 && ring && ring.radius > targetRadius() + 30 * screenScale()) {
+        // Trigger invert when ring is still far from target (gives player a chance)
+        invertActive = true;
+        invertT      = 0;
+        flashA   = 0.18;
+        flashCol = '#00FFB2';
+        shakeX   = 8; shakeY = 5;
+        // Play a short warning click
+        try {
+          const a = ac();
+          const o = a.createOscillator(), g = a.createGain();
+          o.connect(g); g.connect(a.destination);
+          o.type = 'square'; o.frequency.value = 440;
+          const t = a.currentTime;
+          g.gain.setValueAtTime(0.12, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+          o.start(t); o.stop(t + 0.09);
+        } catch (_) {}
+        pushFeedback('INVERT', '#00FFB2',
+          canvas.width / 2, canvas.height / 2 - targetRadius() - 50);
+      }
+    }
+
+    // Apply invert: ring moves outward instead of inward
+    if (invertActive) {
+      // Undo the inward move applied above and push outward instead
+      ring.radius += effectiveSpeed * 2 * screenScale() * dt;
+    }
   }
 
   // ── DRAW HELPERS ─────────────────────────────────────────────────────────────
@@ -2469,6 +2629,120 @@
       ctx.fillText(f.text, f.x + shakeX, f.y + shakeY);
     });
     ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // ── DRAW DECOY RINGS ─────────────────────────────────────────────────────────
+
+  function drawDecoys(cx, cy) {
+    if (decoys.length === 0) return;
+    ctx.save();
+    ctx.shadowBlur = 0;
+    for (const d of decoys) {
+      if (d.radius <= 0) continue;
+      // Decoys are drawn in a cool hostile green — distinct from any level accent
+      // so the player can eventually "learn" their color without making it trivial.
+      ctx.globalAlpha = d.opacity;
+      ctx.strokeStyle = 'rgba(0,200,100,0.55)';
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([4, 6]);   // dashed so it looks "fake"
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.max(0, d.radius), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // ── DRAW ROTATING BARRIERS ───────────────────────────────────────────────────
+
+  function drawBarriers(cx, cy) {
+    if (barriers.length === 0) return;
+    const tr = targetRadius();
+    const sc = screenScale();
+    const lv = currentLevel();
+    ctx.save();
+    ctx.shadowBlur = 0;
+    for (const b of barriers) {
+      // Warning pulse: brighter as ring approaches
+      const warn   = Math.min(b.warningT * 3, 1);
+      const baseA  = 0.55 + warn * 0.35;
+      const innerR = tr - lv.goodWin * sc - 4;
+      const outerR = tr + lv.goodWin * sc + 4;
+
+      // Draw a thick arc segment — the "forbidden zone"
+      ctx.globalAlpha = baseA;
+      ctx.strokeStyle = warn > 0.3 ? `rgba(255,0,60,${0.8 + warn * 0.2})` : 'rgba(255,20,80,0.75)';
+
+      // Outer arc (thicker = more menacing)
+      ctx.lineWidth = 3 + warn * 2;
+      if (!PERF_LOW && warn > 0.2) {
+        ctx.shadowColor = 'rgba(255,0,60,0.6)';
+        ctx.shadowBlur  = 6 + warn * 10;
+      }
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerR, b.angle - b.arc, b.angle + b.arc);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Inner arc (thinner echo)
+      ctx.lineWidth   = 1.5;
+      ctx.strokeStyle = `rgba(255,0,60,${0.35 + warn * 0.3})`;
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerR, b.angle - b.arc, b.angle + b.arc);
+      ctx.stroke();
+
+      // End cap dots
+      ctx.fillStyle   = `rgba(255,0,60,${0.6 + warn * 0.4})`;
+      ctx.globalAlpha = baseA;
+      for (const side of [-1, 1]) {
+        const ex = cx + Math.cos(b.angle + side * b.arc) * outerR;
+        const ey = cy + Math.sin(b.angle + side * b.arc) * outerR;
+        ctx.beginPath();
+        ctx.arc(ex, ey, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // ── DRAW INVERT WARNING ──────────────────────────────────────────────────────
+
+  function drawInvertWarning(cx, cy) {
+    if (!invertActive) return;
+    // Draw a teal pulsing arrow pointing outward — the "INVERT" visual cue
+    const prog   = invertT / INVERT_DURATION;   // 0 → 1 over the invert window
+    const pulse  = Math.sin(prog * Math.PI * 6) * 0.5 + 0.5;
+    const alpha  = (1 - prog) * (0.5 + pulse * 0.4);
+    if (alpha < 0.02) return;
+
+    const tr = targetRadius();
+    ctx.save();
+    ctx.globalAlpha   = alpha;
+    ctx.strokeStyle   = '#00FFB2';
+    ctx.lineWidth     = 1.5;
+    ctx.shadowColor   = '#00FFB2';
+    ctx.shadowBlur    = PERF_LOW ? 0 : 8;
+
+    // Four outward-pointing chevrons at cardinal points
+    const angles = [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5];
+    const arrowR = tr + 24 + pulse * 8;
+    const arrowLen = 10 + pulse * 4;
+    for (const a of angles) {
+      const ox = cx + Math.cos(a) * arrowR;
+      const oy = cy + Math.sin(a) * arrowR;
+      const ax = Math.cos(a), ay = Math.sin(a);
+      const px = -ay, py = ax;  // perpendicular
+      ctx.beginPath();
+      ctx.moveTo(ox - ax * arrowLen * 0.4 + px * arrowLen * 0.35,
+                 oy - ay * arrowLen * 0.4 + py * arrowLen * 0.35);
+      ctx.lineTo(ox + ax * arrowLen * 0.6, oy + ay * arrowLen * 0.6);
+      ctx.lineTo(ox - ax * arrowLen * 0.4 - px * arrowLen * 0.35,
+                 oy - ay * arrowLen * 0.4 - py * arrowLen * 0.35);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -2894,7 +3168,12 @@
     drawShockwaves(cx, cy);
 
     drawTarget(cx, cy);
-    if (phase !== 'ceremony') drawRing(cx, cy);
+    if (phase !== 'ceremony') {
+      drawBarriers(cx, cy);       // barriers sit on top of target ring but behind the main ring
+      drawDecoys(cx, cy);         // decoys behind the real ring
+      drawRing(cx, cy);
+      drawInvertWarning(cx, cy);  // invert chevrons on top of ring
+    }
     drawParticles();
     drawLightning();
 

@@ -425,11 +425,14 @@
   }
   document.body.appendChild(speedBar);
 
+  // Cache pip elements once — avoids a querySelectorAll + spread on every pip update
+  const _speedPips = Array.from(speedBar.querySelectorAll('.speed-pip'));
+
   function updatePips() {
     const lv    = currentLevel();
     const frac  = Math.min((speed - lv.baseSpeed) / Math.max(lv.maxSpeed - lv.baseSpeed, 1), 1);
     const level = Math.round(frac * SPEED_PIPS);
-    [...speedBar.querySelectorAll('.speed-pip')].forEach((p, i) => {
+    _speedPips.forEach((p, i) => {
       p.classList.toggle('active', i < level);
     });
   }
@@ -1520,7 +1523,7 @@
   function resumeGame() {
     if (!paused) return;
     paused = false;
-    lastT  = 0;   // reset so the first frame after resume has dt=0 (no jump)
+    lastT  = performance.now();   // prevents a giant dt spike on the first frame after resume
     pauseBtnEl.textContent = '⏸';
     pauseBtnEl.title = 'Pause';
     // Erase the pause overlay text from the canvas on next draw frame
@@ -1938,7 +1941,7 @@
     // Chromatic aberration jolt
     chromaT = 0.58;
 
-    // lives--;  // INFINITE LIVES — testing
+    lives--;
     updateLivesUI();
 
     const cx = canvas.width  / 2;
@@ -1948,7 +1951,7 @@
     perfectStreak = 0; combo = 0;
     updateHUD();
 
-    if (lives <= 0 && false) {  // INFINITE LIVES — testing
+    if (lives <= 0) {  // game over when out of lives
       SFX.miss();
       endGame();
     } else {
@@ -2221,7 +2224,7 @@
 
     // Auto-miss: passed through target zone.
     // age > 2 guard prevents a large first-frame dt from instantly overshooting.
-    if (ring.age > 2 && false && ring.radius < targetRadius() - (lv.goodWin + 6) * screenScale()) registerMiss(); // RESTORE: remove && false below for normal play
+    if (ring.age > 2 && ring.radius < targetRadius() - (lv.goodWin + 6) * screenScale()) registerMiss();
   }
 
   // ── DRAW HELPERS ─────────────────────────────────────────────────────────────

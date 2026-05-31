@@ -100,9 +100,9 @@ body::after {
 
 #hud-combo {
   position: fixed;
-  top: 22px; left: 50%;
+  top: clamp(calc(22px + 2.8rem), calc(22px + 9vw), calc(22px + 5rem));
+  left: 50%;
   transform: translateX(-50%);
-  margin-top: clamp(2.8rem, 9vw, 5rem);
   font-size: clamp(0.42rem, 1.6vw, 0.58rem);
   font-weight: 400;
   letter-spacing: 0.06em;
@@ -322,10 +322,9 @@ body::after {
 */
 #level-map {
   position: fixed;
-  top: 22px;
+  top: clamp(calc(22px + 68px), calc(22px + 14vw), calc(22px + 96px));
   right: 24px;
   /* pushed down past the hud-best block — ~6 lines of text at tiny font sizes */
-  margin-top: clamp(68px, 14vw, 96px);
   display: flex;
   flex-direction: row;
   align-items: center;
